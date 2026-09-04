@@ -21,17 +21,6 @@ export const ENV_FILE_PATH = path.resolve(process.cwd(), process.env.ENV_FILE?.t
 const ENV_PATH = ENV_FILE_PATH;
 const ENV_TEMP_PATH = `${ENV_FILE_PATH}.tmp`;
 
-// Einstellungen sind standardmäßig nur von derselben Maschine erreichbar.
-// Für Server-Deployments kann ALLOW_REMOTE_SETTINGS=true gesetzt werden. Das
-// greift nur, wenn gleichzeitig Basic Auth (BASIC_AUTH_USER/-PASSWORD)
-// konfiguriert ist, damit Schlüssel nie ungeschützt über das Netz gesetzt werden.
-export function isBasicAuthConfigured(): boolean {
-  return Boolean(process.env.BASIC_AUTH_USER?.trim() && process.env.BASIC_AUTH_PASSWORD);
-}
-
-export function isRemoteSettingsAllowed(): boolean {
-  return process.env.ALLOW_REMOTE_SETTINGS?.trim().toLowerCase() === "true" && isBasicAuthConfigured();
-}
 const SUPPORTED_KEYS = [
   "YOUTUBE_API_KEY",
   "GEMINI_API_KEY",
@@ -120,7 +109,6 @@ export function isTrustedLocalSettingsMetadata(input: LocalSettingsRequestMetada
 }
 
 export function isLocalSettingsRequest(req: Request): boolean {
-  if (isRemoteSettingsAllowed()) return true;
   return isTrustedLocalSettingsMetadata({
     remoteAddress: req.socket.remoteAddress,
     host: req.get("host"),

@@ -38,8 +38,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, FileText, Play, Settings, Rocket, Check, ArrowRight, Image, History, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Search, FileText, Play, Settings, Rocket, Check, ArrowRight, Image, History, Loader2, MoreHorizontal, Pencil, Trash2, ShieldCheck } from "lucide-react";
 import { useWorkflow } from "@/lib/workflow-context";
+import { useAuth } from "@/lib/auth-context";
+import { UserMenu } from "@/components/user-menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNowStrict } from "date-fns";
 import { de } from "date-fns/locale";
@@ -95,6 +97,8 @@ export function AppSidebar() {
     removeWorkflow,
     goToStep,
   } = useWorkflow();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const queryClient = useQueryClient();
   const [openingWorkflowId, setOpeningWorkflowId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
@@ -363,20 +367,35 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={location === "/settings"}>
-              <Link
-                href="/settings"
-                aria-current={location === "/settings" ? "page" : undefined}
-                data-testid="link-settings"
-              >
-                <Settings className={location === "/settings" ? "text-primary" : ""} aria-hidden="true" />
-                <span>Einstellungen</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        {isAdmin && (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={location === "/admin"}>
+                <Link
+                  href="/admin"
+                  aria-current={location === "/admin" ? "page" : undefined}
+                  data-testid="link-admin"
+                >
+                  <ShieldCheck className={location === "/admin" ? "text-primary" : ""} aria-hidden="true" />
+                  <span>Admin</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={location === "/settings"}>
+                <Link
+                  href="/settings"
+                  aria-current={location === "/settings" ? "page" : undefined}
+                  data-testid="link-settings"
+                >
+                  <Settings className={location === "/settings" ? "text-primary" : ""} aria-hidden="true" />
+                  <span>Einstellungen</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        )}
+        <UserMenu />
       </SidebarFooter>
 
       <Dialog open={Boolean(renameTarget)} onOpenChange={(open) => { if (!open && !savingName) setRenameTarget(null); }}>

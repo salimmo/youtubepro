@@ -2,8 +2,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { loadEnvFile } from "node:process";
-import { timingSafeEqual } from "node:crypto";
-import { ENV_FILE_PATH, isBasicAuthConfigured } from "./settings";
+import { ENV_FILE_PATH } from "./settings";
+import { closeDatabase, getDatabaseError, initializeDatabase, isDatabaseConfigured, isDatabaseReady } from "./db";
+import { attachSession, bootstrapAdmin, cleanupExpiredSessions, rejectCrossOriginMutations, requireAuth } from "./auth";
 
 // Die .env-Datei ergänzt nur fehlende Variablen. Bereits gesetzte
 // Umgebungsvariablen (z. B. aus Coolify) haben Vorrang.
@@ -29,49 +30,19 @@ if (trustProxy) {
   else if (trustProxy !== "false") app.set("trust proxy", trustProxy);
 }
 
-// Health-Check für Coolify/Docker. Absichtlich vor der Authentifizierung.
+// Health-Check für Coolify/Docker. Absichtlich ohne Anmeldung erreichbar.
+// Antwortet auch bei fehlender Datenbank mit 200, damit Coolify den Container
+// nicht in eine Neustart-Schleife schickt; der DB-Status steht im Body.
 app.get("/api/health", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
-  res.json({ status: "ok", uptime: Math.round(process.uptime()) });
+  res.json({
+    status: "ok",
+    uptime: Math.round(process.uptime()),
+    database: isDatabaseReady() ? "ok" : isDatabaseConfigured() ? "connecting" : "not_configured",
+    databaseError: isDatabaseReady() ? null : getDatabaseError(),
+  });
 });
 
-// Optionaler Basisschutz für öffentlich erreichbare Deployments. Die App hat
-// keinen eigenen Login, hält aber kostenpflichtige API-Schlüssel. Sobald
-// BASIC_AUTH_USER und BASIC_AUTH_PASSWORD gesetzt sind, wird jede Anfrage
-// außer /api/health per HTTP Basic Auth geschützt.
-const basicAuthUser = process.env.BASIC_AUTH_USER?.trim() || "";
-const basicAuthPassword = process.env.BASIC_AUTH_PASSWORD || "";
-const basicAuthEnabled = isBasicAuthConfigured();
-
-function safeEqual(a: string, b: string): boolean {
-  const bufferA = Buffer.from(a, "utf8");
-  const bufferB = Buffer.from(b, "utf8");
-  if (bufferA.length !== bufferB.length) {
-    timingSafeEqual(bufferA, bufferA);
-    return false;
-  }
-  return timingSafeEqual(bufferA, bufferB);
-}
-
-if (basicAuthEnabled) {
-  app.use((req, res, next) => {
-    const header = req.get("authorization") || "";
-    if (header.startsWith("Basic ")) {
-      const decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
-      const separator = decoded.indexOf(":");
-      if (separator > 0) {
-        const user = decoded.slice(0, separator);
-        const password = decoded.slice(separator + 1);
-        if (safeEqual(user, basicAuthUser) && safeEqual(password, basicAuthPassword)) {
-          return next();
-        }
-      }
-    }
-    res.setHeader("WWW-Authenticate", 'Basic realm="YouTube Pro", charset="UTF-8"');
-    res.setHeader("Cache-Control", "no-store");
-    return res.status(401).json({ error: "Anmeldung erforderlich." });
-  });
-}
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -125,6 +96,19 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Session aus dem Cookie lesen (blockiert nicht) und Cross-Site-Mutationen abweisen.
+  app.use(attachSession);
+  app.use("/api", rejectCrossOriginMutations);
+
+  // Login-Routen sind ohne Session erreichbar, alles andere unter /api braucht
+  // eine gültige Anmeldung. /api/health wurde bereits oben registriert.
+  const { registerAuthRoutes } = await import("./auth-routes");
+  registerAuthRoutes(app);
+  app.use("/api", (req, res, next) => {
+    if (req.path === "/health" || req.path === "/auth/login" || req.path === "/auth/logout") return next();
+    return requireAuth(req, res, next);
+  });
+
   const { registerRoutes } = await import("./routes");
   await registerRoutes(httpServer, app);
 
@@ -175,19 +159,27 @@ app.use((req, res, next) => {
       host,
     },
     () => {
-      log(`serving on ${host}:${port}${basicAuthEnabled ? " (Basic Auth aktiv)" : ""}`);
-      if (host !== "127.0.0.1" && host !== "localhost" && host !== "::1" && !basicAuthEnabled) {
-        log(
-          "WARNUNG: Der Server ist nicht nur auf Loopback gebunden und hat keinen Basic-Auth-Schutz. Setze BASIC_AUTH_USER und BASIC_AUTH_PASSWORD oder schütze den Zugang am Reverse-Proxy.",
-        );
-      }
+      log(`serving on ${host}:${port}`);
     },
   );
+
+  // Datenbank im Hintergrund verbinden, Schema anlegen, ersten Admin anlegen.
+  // Der HTTP-Server läuft schon, damit /api/health sofort antwortet.
+  void initializeDatabase({
+    log: (message) => log(message, "db"),
+    onReady: async () => {
+      await bootstrapAdmin((message) => log(message, "db"));
+      await cleanupExpiredSessions();
+      setInterval(() => void cleanupExpiredSessions(), 60 * 60 * 1000).unref();
+    },
+  });
 
   // Sauberes Herunterfahren bei `docker stop` bzw. Coolify-Redeploys.
   const shutdown = (signal: NodeJS.Signals) => {
     log(`${signal} received, shutting down`);
-    httpServer.close(() => process.exit(0));
+    httpServer.close(() => {
+      void closeDatabase().finally(() => process.exit(0));
+    });
     setTimeout(() => process.exit(0), 5_000).unref();
   };
   process.on("SIGTERM", shutdown);

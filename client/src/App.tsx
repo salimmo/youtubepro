@@ -9,7 +9,11 @@ import { ControllerGuide } from "@/components/controller-guide";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { WorkflowProvider, useWorkflow } from "@/lib/workflow-context";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { Loader2 } from "lucide-react";
 import NotFound from "@/pages/not-found";
+import AdminPage from "@/pages/admin";
+import LoginPage from "@/pages/login";
 import ResearchDashboard from "@/pages/research";
 import ScriptPage from "@/pages/script";
 import SettingsPage from "@/pages/settings";
@@ -17,6 +21,8 @@ import ThumbnailPage from "@/pages/thumbnail";
 
 function Router() {
   const { state } = useWorkflow();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   return (
     <Switch key={state.id || "workflow-loading"}>
       <Route path="/" component={ResearchDashboard} />
@@ -25,7 +31,8 @@ function Router() {
       </Route>
       <Route path="/script" component={ScriptPage} />
       <Route path="/thumbnail" component={ThumbnailPage} />
-      <Route path="/settings" component={SettingsPage} />
+      <Route path="/settings" component={isAdmin ? SettingsPage : NotFound} />
+      <Route path="/admin" component={isAdmin ? AdminPage : NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -74,14 +81,36 @@ function AppLayout() {
   );
 }
 
+function AuthLoadingScreen() {
+  return (
+    <div className="flex min-h-dvh w-full items-center justify-center bg-background" role="status" aria-live="polite">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        <span>Sitzung wird geprüft …</span>
+      </div>
+    </div>
+  );
+}
+
+function AuthGate() {
+  const { user, loading } = useAuth();
+  if (loading) return <AuthLoadingScreen />;
+  if (user === null) return <LoginPage />;
+  return (
+    <WorkflowProvider>
+      <AppLayout />
+    </WorkflowProvider>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
-          <WorkflowProvider>
-            <AppLayout />
-          </WorkflowProvider>
+          <AuthProvider>
+            <AuthGate />
+          </AuthProvider>
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>

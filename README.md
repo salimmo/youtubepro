@@ -63,6 +63,7 @@ Jeder Klick auf **Neuer Workflow** erstellt ein separates lokales Projekt. Die S
 ## Anforderungen
 
 - Node.js 22.12 oder neuer. CI prüft Node.js 22.12 und die aktuelle Node.js-24-LTS-Linie.
+- Eine PostgreSQL-Datenbank (Version 14 oder neuer) für Login, Benutzer und Aktivitätsprotokoll. Lokal reicht `docker compose up postgres`.
 - Ein YouTube Data API v3-Schlüssel für die Recherche.
 - Ein Gemini-API-Schlüssel für Insights, Ideen, Skripte und Thumbnails.
 
@@ -74,9 +75,24 @@ npm install
 npm run dev
 ```
 
-Der Server lauscht standardmäßig auf `127.0.0.1:5000`. Öffne `http://127.0.0.1:5000`.
+Der Server lauscht standardmäßig auf `127.0.0.1:5000`. Öffne `http://127.0.0.1:5000` und melde dich mit dem Admin-Konto aus `ADMIN_USER` und `ADMIN_PASSWORD` an.
 
-Du kannst stattdessen auch ohne Schlüssel starten und sie in den **Einstellungen** eingeben. Die Einstellungen schreiben Ersetzungen in die ignorierte `.env`-Datei mit Berechtigungen nur für den Besitzer. Gespeicherte Werte werden nie an den Browser zurückgegeben. Die Einstellungen akzeptieren standardmäßig ausschließlich direkte Loopback-Anfragen vom selben Ursprung (Same-Origin) und lehnen weitergeleitete oder Reverse-Proxy-Anfragen ab. Für Server-Deployments siehe `ALLOW_REMOTE_SETTINGS` im Abschnitt [Deployment mit Coolify](#deployment-mit-coolify).
+Du kannst auch ohne API-Schlüssel starten und sie als Admin in den **Einstellungen** eingeben. Die Einstellungen schreiben Ersetzungen in die ignorierte `.env`-Datei mit Berechtigungen nur für den Besitzer. Gespeicherte Werte werden nie an den Browser zurückgegeben.
+
+## Login, Rollen und Aktivitätsprotokoll
+
+Die App hat ein eigenes Login mit zwei Rollen. Alle Daten dazu liegen in PostgreSQL.
+
+- **Admin**: Darf alles benutzen, verwaltet Benutzer, sieht die Einstellungen und den Admin-Bereich mit dem kompletten Aktivitätsprotokoll aller Benutzer.
+- **Benutzer**: Darf Recherche, Skript-Writer und Thumbnail-Creator uneingeschränkt benutzen, kann sein Passwort ändern, sieht aber weder Einstellungen noch Admin-Bereich noch das Protokoll.
+
+Der erste Admin wird beim Start aus `ADMIN_USER` und `ADMIN_PASSWORD` angelegt, solange die Datenbank noch keine Benutzer enthält. Weitere Konten legt der Admin unter **Admin → Benutzer** mit Startpasswort an. Es gibt keine öffentliche Registrierung. Konten lassen sich deaktivieren, Passwörter zurücksetzen und Rollen ändern.
+
+Das Aktivitätsprotokoll unter **Admin → Aktivitäten** speichert pro Aktion Zeitpunkt, Benutzer, Aktion, Zusammenfassung, Status, Dauer und Client-Adresse. Zusätzlich werden die erzeugten Inhalte gespeichert und sind dort direkt einsehbar: Recherche-Snapshots mit Videoliste, KI-Insights, Ideen, komplette Skripte, neu generierte Abschnitte und Absätze, Titelvorschläge, Sprechtexte und Thumbnails als Bild. Auch Anmeldungen, fehlgeschlagene Anmeldungen, Abmeldungen, Passwortänderungen und Admin-Aktionen werden protokolliert.
+
+Technik: Passwörter werden mit scrypt gehasht. Die Sitzung läuft über ein `HttpOnly`-Cookie mit `SameSite=Lax`, hinter HTTPS zusätzlich `Secure`, und verlängert sich bei Nutzung (Standard 30 Tage, `SESSION_TTL_HOURS`). Login-Versuche sind auf 10 pro Adresse und 10 Minuten begrenzt. Verändernde Anfragen mit fremdem `Origin` werden abgelehnt.
+
+Hinweis: Wer Kolleginnen und Kollegen ein Konto gibt, sollte sie über das Protokoll informieren. In Deutschland gelten dafür Datenschutz- und gegebenenfalls Mitbestimmungsregeln.
 
 ## Konfiguration
 
@@ -87,47 +103,54 @@ Du kannst stattdessen auch ohne Schlüssel starten und sie in den **Einstellunge
 | `GEMINI_TEXT_MODEL` | Modell für Recherche, Ideen, Skript und Neugenerierung | `gemini-3.7-flash` |
 | `GEMINI_IMAGE_MODEL` | Modell für die Thumbnail-Generierung | `gemini-3.1-flash-image` |
 | `OUTPUT_LANGUAGE` | Sprache der KI-generierten Inhalte (Insights, Ideen, Skripte, Thumbnail-Text) | `German (Deutsch)` |
+| `DATABASE_URL` | PostgreSQL-Verbindung für Login, Benutzer und Protokoll | Erforderlich |
+| `DATABASE_SSL` | `true` erzwingt TLS zur Datenbank | `false` |
+| `ADMIN_USER`, `ADMIN_PASSWORD`, `ADMIN_DISPLAY_NAME` | Erster Admin, nur bei leerer Benutzertabelle | leer |
+| `SESSION_TTL_HOURS` | Gültigkeit einer Anmeldung in Stunden | `720` |
 | `PORT` | Lokaler HTTP-Port | `5000` |
 | `HOST` | Bind-Adresse | `127.0.0.1` (im Docker-Image `0.0.0.0`) |
 | `TRUST_PROXY` | Anzahl vertrauenswürdiger Proxy-Hops für `X-Forwarded-For` | leer (im Docker-Image `1`) |
-| `BASIC_AUTH_USER`, `BASIC_AUTH_PASSWORD` | Aktivieren HTTP Basic Auth für die gesamte App außer `/api/health` | leer (deaktiviert) |
-| `ALLOW_REMOTE_SETTINGS` | Erlaubt die Einstellungen-Seite über das Netz, nur zusammen mit Basic Auth | `false` |
 | `ENV_FILE` | Pfad der `.env`-Datei, in die die Einstellungen-Seite schreibt | `.env` (im Docker-Image `/app/data/.env`) |
 
 Die Einstellungsseite zeigt die Server-Allowlist und deren aktuelle Beschreibungen an. Modelle sind nicht im Client fest kodiert. Eine Änderung der Allowlist in `server/gemini-models.ts` ändert die verfügbaren Optionen in den Einstellungen.
 
 ## Deployment mit Coolify
 
-Das Repository enthält ein produktionsfertiges [`Dockerfile`](Dockerfile) (mehrstufiger Build, Node 22 Alpine, läuft als unprivilegierter Benutzer `node`), eine [`docker-compose.yml`](docker-compose.yml) und einen Health-Check unter `/api/health`.
+Das Repository enthält ein produktionsfertiges [`Dockerfile`](Dockerfile) (mehrstufiger Build, Node 22 Alpine, läuft als unprivilegierter Benutzer `node`), eine [`docker-compose.yml`](docker-compose.yml) mit PostgreSQL und einen Health-Check unter `/api/health`. Der Health-Check antwortet auch ohne Datenbank mit `200` und meldet den Datenbankstatus im Body, damit Coolify den Container beim Datenbankstart nicht neu startet.
 
 ### Schritt für Schritt
 
 1. **Repository pushen**: Dieses Repository in ein Git-Remote (GitHub, GitLab, Gitea) pushen, auf das Coolify zugreifen kann.
-2. **Neue Ressource anlegen**: In Coolify *New Resource → Application* wählen, das Repository und den Branch (`main`) angeben.
-3. **Build-Pack**: *Dockerfile* wählen (Coolify erkennt die Datei im Root automatisch). Alternativ *Docker Compose* mit `docker-compose.yml`.
-4. **Port**: Unter *Ports Exposes* den Wert `5000` eintragen.
-5. **Umgebungsvariablen** setzen (siehe Tabelle unten). Mindestens `YOUTUBE_API_KEY`, `GEMINI_API_KEY`, `BASIC_AUTH_USER` und `BASIC_AUTH_PASSWORD`.
-6. **Persistenz (optional)**: Unter *Storages* ein Volume auf `/app/data` mounten, wenn die Einstellungen-Seite Schlüssel serverseitig speichern soll (`ALLOW_REMOTE_SETTINGS=true`).
-7. **Health-Check (optional)**: In Coolify den Health-Check auf Pfad `/api/health`, Port `5000` setzen. Das Docker-Image bringt zusätzlich einen eigenen `HEALTHCHECK` mit.
-8. **Domain** zuweisen und *Deploy* klicken. Coolify stellt über Traefik automatisch HTTPS bereit.
+2. **PostgreSQL anlegen**: In Coolify *New Resource → Database → PostgreSQL* im selben Projekt anlegen und starten. Die *Internal URL* (Form `postgres://postgres:PASSWORT@HOSTNAME:5432/postgres`) kopieren.
+3. **Anwendung anlegen**: *New Resource → Application* wählen, das Repository und den Branch (`main`) angeben.
+4. **Build-Pack**: *Dockerfile* wählen (Coolify erkennt die Datei im Root automatisch). Alternativ *Docker Compose* mit `docker-compose.yml`, dann bringt die Compose-Datei ihre eigene PostgreSQL-Instanz mit.
+5. **Port**: Unter *Ports Exposes* den Wert `5000` eintragen.
+6. **Umgebungsvariablen** setzen (siehe Tabelle unten). Mindestens `DATABASE_URL`, `ADMIN_USER`, `ADMIN_PASSWORD`, `YOUTUBE_API_KEY` und `GEMINI_API_KEY`.
+7. **Persistenz (optional)**: Unter *Storages* ein Volume auf `/app/data` mounten, wenn Admins Schlüssel über die Einstellungen-Seite speichern sollen. Wer die Schlüssel in Coolify pflegt, braucht das nicht.
+8. **Health-Check (optional)**: In Coolify den Health-Check auf Pfad `/api/health`, Port `5000` setzen. Das Docker-Image bringt zusätzlich einen eigenen `HEALTHCHECK` mit.
+9. **Domain** zuweisen und *Deploy* klicken. Coolify stellt über Traefik automatisch HTTPS bereit. Danach mit `ADMIN_USER` und `ADMIN_PASSWORD` anmelden und unter **Admin → Benutzer** weitere Konten anlegen.
 
 ### Umgebungsvariablen für Coolify
 
 | Variable | Pflicht | Beschreibung |
 | --- | --- | --- |
+| `DATABASE_URL` | ja | Interne PostgreSQL-URL aus Coolify |
+| `ADMIN_USER` / `ADMIN_PASSWORD` | ja (erster Start) | Erster Admin, Passwort mindestens 8 Zeichen. Wird nur angelegt, solange keine Benutzer existieren. |
 | `YOUTUBE_API_KEY` | ja | YouTube Data API v3 |
 | `GEMINI_API_KEY` | ja | Gemini Text- und Bildgenerierung |
-| `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` | dringend empfohlen | Aktiviert HTTP Basic Auth für die gesamte App (außer `/api/health`). Ohne Login sind deine kostenpflichtigen Schlüssel für jeden nutzbar, der die URL kennt. |
+| `ADMIN_DISPLAY_NAME` | nein | Anzeigename des ersten Admins |
 | `GEMINI_TEXT_MODEL` / `GEMINI_IMAGE_MODEL` | nein | Modellauswahl, Standard `gemini-3.7-flash` / `gemini-3.1-flash-image` |
 | `OUTPUT_LANGUAGE` | nein | Sprache der KI-Ausgaben, Standard `German (Deutsch)` |
-| `ALLOW_REMOTE_SETTINGS` | nein | `true` erlaubt Speichern über die Einstellungen-Seite. Wirkt nur mit Basic Auth. Braucht ein Volume auf `/app/data`. |
+| `SESSION_TTL_HOURS` | nein | Gültigkeit einer Anmeldung, Standard `720` |
+| `DATABASE_SSL` | nein | `true` für TLS zu einer externen Datenbank |
 | `TRUST_PROXY` | nein | Im Image bereits `1` (ein Proxy-Hop, Traefik). |
 | `HOST` / `PORT` | nein | Im Image bereits `0.0.0.0` / `5000`. |
 | `ENV_FILE` | nein | Im Image bereits `/app/data/.env`. |
 
 Hinweise:
 
-- In Coolify gesetzte Umgebungsvariablen haben Vorrang vor Werten, die die Einstellungen-Seite in die `.env`-Datei schreibt. Wer die Schlüssel in Coolify pflegt, kann `ALLOW_REMOTE_SETTINGS` weglassen.
+- In Coolify gesetzte Umgebungsvariablen haben Vorrang vor Werten, die die Einstellungen-Seite in die `.env`-Datei schreibt.
+- Ohne erreichbare Datenbank startet der Container, zeigt aber nur die Login-Seite mit Fehlermeldung. Der Server versucht die Verbindung beim Start bis zu 30-mal mit steigender Wartezeit.
 - Das Ratenlimit (10 kostenpflichtige Anfragen pro Client-Adresse und Minute) nutzt hinter Traefik den `X-Forwarded-For`-Header. Bei mehr als einem Proxy-Hop `TRUST_PROXY` anpassen.
 - Der Server beendet sich bei `SIGTERM` sauber, sodass Redeploys in Coolify ohne hängende Container ablaufen.
 
@@ -152,12 +175,12 @@ Anschließend `http://localhost:5000` öffnen. Die Variablen aus `.env` werden v
 
 ## Datenschutz- und Zugriffsmodell
 
-- Es gibt keinen eigenen Login-Bildschirm, kein Initialpasswort, keine Thumbnail-Freischaltung und keine Pro-Script-Studio-Sperre. Für öffentliche Deployments lässt sich optional HTTP Basic Auth über `BASIC_AUTH_USER` und `BASIC_AUTH_PASSWORD` aktivieren.
-- API-Schlüssel bleiben serverseitig und `.env` wird ignoriert.
+- Jede Nutzung erfordert ein Login. Konten werden ausschließlich von Admins angelegt, siehe [Login, Rollen und Aktivitätsprotokoll](#login-rollen-und-aktivitätsprotokoll).
+- API-Schlüssel bleiben serverseitig, `.env` wird ignoriert und die Einstellungen-Seite ist Admins vorbehalten.
 - Der Verlauf der letzten Workflows bleibt im aktuellen Browserprofil. Er wird nicht an einen separaten Verlaufsdienst gesendet und enthält nie API-Schlüssel.
-- Anfrage- und Antwort-Bodies werden nicht protokolliert.
+- Anfrage- und Antwort-Bodies werden nicht in Server-Logs geschrieben. Erzeugte Inhalte und Aktionen werden in der Datenbank protokolliert und sind nur für Admins einsehbar.
 - Die Anwendung bindet sich an Loopback, sofern `HOST` nicht ausdrücklich geändert wird.
-- Setze den Server nie ohne Schutz dem Internet aus. Aktiviere für Fernzugriff Basic Auth oder eine Authentifizierung am Reverse-Proxy. Die Einstellungen-Seite bleibt ohne `ALLOW_REMOTE_SETTINGS` auf Loopback beschränkt.
+- Für öffentliche Deployments HTTPS verwenden (Coolify macht das über Traefik), damit das Session-Cookie als `Secure` gesetzt wird.
 - Der In-Memory-Ratenlimiter arbeitet pro Prozess. Er eignet sich für diesen Local-first-Standard und ein einzelnes Coolify-Container-Deployment, nicht für ein horizontal skaliertes Deployment. Hinter einem Proxy muss `TRUST_PROXY` gesetzt sein, sonst teilen sich alle Nutzer ein Limit.
 
 Gemini-Bildausgaben enthalten Googles unsichtbare SynthID-Herkunftskennzeichnung. Die Anwendung fügt kein sichtbares Wasserzeichen hinzu und behauptet nicht, dass SynthID deaktiviert werden kann.
@@ -180,7 +203,8 @@ Die Continuous Integration führt bei jedem Pull Request und jedem Push auf `mai
 - Express 5
 - Google Gemini über `@google/genai`
 - YouTube Data API v3
-- Keine serverseitige Laufzeitdatenbank, kein Session-Store, keine Passport-Authentifizierung und kein von Replit verwalteter KI-Proxy
+- PostgreSQL über `pg` für Benutzer, Sessions, Aktivitätsprotokoll und gespeicherte Inhalte
+- Eigenes Cookie-Login mit scrypt-Passwort-Hashing, ohne Passport und ohne externen Identitätsanbieter
 
 ## Kontingente und Kosten
 

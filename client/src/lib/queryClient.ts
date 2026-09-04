@@ -1,7 +1,23 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+const UNAUTHORIZED_EVENT = "yp:unauthorized";
+// Für diese Pfade kein globales Abmelde-Event auslösen (sonst Endlosschleife).
+const UNAUTHORIZED_EVENT_EXCLUDED_PATHS = ["/api/auth/me", "/api/auth/login"];
+
+function notifyUnauthorized(url: string) {
+  let pathname = url;
+  try {
+    pathname = new URL(url, window.location.origin).pathname;
+  } catch {
+    // Ungültige URL: Rohwert vergleichen.
+  }
+  if (UNAUTHORIZED_EVENT_EXCLUDED_PATHS.includes(pathname)) return;
+  window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
+    if (res.status === 401) notifyUnauthorized(res.url);
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
@@ -35,11 +51,13 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const url = queryKey.join("/") as string;
+    const res = await fetch(url, {
       credentials: "include",
     });
 
     if (res.status === 401) {
+      notifyUnauthorized(url);
       if (unauthorizedBehavior === "returnNull") {
         return null;
       }

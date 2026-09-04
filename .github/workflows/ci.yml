@@ -70,7 +70,7 @@ jobs:
         run: |
           docker run -d --name youtube-pro -p 5000:5000 youtube-pro:ci
           for i in $(seq 1 20); do
-            if curl -fsS http://127.0.0.1:5000/api/health; then echo; echo "healthy"; exit 0; fi
+            if curl -fsS http://127.0.0.1:5000/api/health | grep -q '"status":"ok"'; then echo "healthy"; exit 0; fi
             sleep 2
           done
           echo "Health-Check fehlgeschlagen"; docker logs youtube-pro; exit 1
