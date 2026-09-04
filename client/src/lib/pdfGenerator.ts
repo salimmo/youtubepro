@@ -1,6 +1,16 @@
 import { jsPDF } from "jspdf";
 import type { ResearchReportData } from "@/lib/research-export";
 import { safeExportStem } from "@/lib/research-export";
+import {
+  CONFIDENCE_LABELS,
+  DIFFICULTY_LABELS,
+  DISCOVERY_SURFACE_LABELS,
+  ENRICHMENT_STAGE_LABELS,
+  ENRICHMENT_STATUS_LABELS,
+  EVIDENCE_CLASS_LABELS,
+  IDEA_FORMAT_LABELS,
+  labelFor,
+} from "@/lib/labels";
 
 const INK: [number, number, number] = [35, 35, 35];
 const MUTED: [number, number, number] = [102, 102, 102];
@@ -14,23 +24,23 @@ const GOLD: [number, number, number] = [204, 161, 85];
 const PURPLE: [number, number, number] = [142, 118, 177];
 
 function formatNumber(value: number): string {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(value);
 }
 
 function formatCompact(value: number): string {
-  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat("de-DE", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
 function readableDate(value: string): string {
   const date = new Date(value);
   return Number.isFinite(date.getTime())
-    ? date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })
+    ? date.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })
     : value;
 }
 
 function text(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "N/A";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (value === null || value === undefined || value === "") return "k. A.";
+  if (typeof value === "boolean") return value ? "Ja" : "Nein";
   return String(value).replace(/\s+/g, " ").trim();
 }
 
@@ -55,7 +65,7 @@ export function buildResearchPDF(data: ResearchReportData): jsPDF {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
       pdf.setTextColor(...MUTED);
-      pdf.text("YOUTUBE PRO  /  RESEARCH REPORT", margin, 11);
+      pdf.text("YOUTUBE PRO  /  RECHERCHE-BERICHT", margin, 11);
       pdf.setDrawColor(...BORDER);
       pdf.line(margin, 14, pageWidth - margin, 14);
       y = 21;
@@ -248,110 +258,110 @@ export function buildResearchPDF(data: ResearchReportData): jsPDF {
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(22);
   pdf.setTextColor(...INK);
-  pdf.text("YouTube Research Report", margin, y + 7);
+  pdf.text("YouTube-Recherche-Bericht", margin, y + 7);
   y += 14;
-  addWrapped(`Research snapshot for "${data.query}"`, { size: 11, color: MUTED, gapAfter: 2 });
-  addWrapped(`Retrieved ${readableDate(data.retrievedAt)}  |  ${data.videos.length} returned videos  |  ${data.analytics.uniqueChannels} channels`, {
+  addWrapped(`Recherche-Snapshot für "${data.query}"`, { size: 11, color: MUTED, gapAfter: 2 });
+  addWrapped(`Abgerufen am ${readableDate(data.retrievedAt)}  |  ${data.videos.length} zurückgegebene Videos  |  ${data.analytics.uniqueChannels} Kanäle`, {
     size: 8,
     color: MUTED,
     gapAfter: 5,
   });
 
-  addSection("Executive Summary");
+  addSection("Zusammenfassung");
   addWrapped(data.insights.summary, { size: 10, lineHeight: 5, gapAfter: 4 });
-  addWrapped(`Viewer need: ${data.insights.queryIntent.viewerNeed}`, { size: 9, bold: true });
-  addWrapped(`Credibility note: ${data.insights.queryIntent.credibilityNote}`, { size: 8.5, color: MUTED, gapAfter: 4 });
+  addWrapped(`Zuschauerbedürfnis: ${data.insights.queryIntent.viewerNeed}`, { size: 9, bold: true });
+  addWrapped(`Hinweis zur Glaubwürdigkeit: ${data.insights.queryIntent.credibilityNote}`, { size: 8.5, color: MUTED, gapAfter: 4 });
 
   addMetricCards([
-    { label: "Sample views", value: formatCompact(data.analytics.totalViews), note: "Sum across returned videos" },
-    { label: "Median views", value: formatCompact(data.analytics.medianViews), note: "Less distorted by viral outliers" },
-    { label: "Median views per day", value: formatCompact(data.analytics.medianDailyViews), note: "Age-adjusted directional momentum" },
-    { label: "Visible interaction rate", value: data.analytics.avgEngagement === "N/A" ? "N/A" : `${data.analytics.avgEngagement}%`, note: "Likes plus comments per covered view" },
-    { label: "Average views", value: formatCompact(data.analytics.avgViews), note: "Use with median to assess skew" },
-    { label: "Videos analyzed", value: formatNumber(data.analytics.totalVideos), note: "Maximum 50 per search call" },
+    { label: "Aufrufe der Stichprobe", value: formatCompact(data.analytics.totalViews), note: "Summe über alle zurückgegebenen Videos" },
+    { label: "Median der Aufrufe", value: formatCompact(data.analytics.medianViews), note: "Weniger durch virale Ausreißer verzerrt" },
+    { label: "Median der Aufrufe pro Tag", value: formatCompact(data.analytics.medianDailyViews), note: "Altersbereinigtes, richtungsweisendes Momentum" },
+    { label: "Sichtbare Interaktionsrate", value: data.analytics.avgEngagement === "N/A" ? "k. A." : `${data.analytics.avgEngagement}%`, note: "Likes plus Kommentare pro erfasstem Aufruf" },
+    { label: "Durchschnittliche Aufrufe", value: formatCompact(data.analytics.avgViews), note: "Zusammen mit dem Median zur Beurteilung der Schiefe nutzen" },
+    { label: "Analysierte Videos", value: formatNumber(data.analytics.totalVideos), note: "Maximal 50 pro Suchanfrage" },
   ]);
 
-  addSection("Key Findings With Visual Evidence", "Public YouTube Data API metadata for this returned sample, not channel-owner Analytics.");
+  addSection("Wichtigste Erkenntnisse mit visueller Evidenz", "Öffentliche Metadaten der YouTube Data API für diese Stichprobe, keine Analytics des Kanalinhabers.");
   addBarChart(
-    "Top videos by views",
+    "Top-Videos nach Aufrufen",
     data.analytics.topVideosList.map((video) => ({ label: video.title, value: video.viewCount || 0 })),
-    "Absolute public views in the returned sample",
+    "Absolute öffentliche Aufrufe in der zurückgegebenen Stichprobe",
   );
   addBarChart(
-    "Momentum leaders",
+    "Momentum-Spitzenreiter",
     data.analytics.velocityLeaders.map(({ video, viewsPerDay }) => ({ label: video.title, value: Math.round(viewsPerDay) })),
-    "Views per day normalizes for video age; it is not real-time velocity",
+    "Aufrufe pro Tag gleichen das Videoalter aus; das ist keine Echtzeit-Geschwindigkeit",
     [BLUE],
   );
   addBarChart(
-    "Breakout versus current subscribers",
+    "Breakout im Verhältnis zu aktuellen Abonnenten",
     data.analytics.breakoutLeaders.map(({ video, viewsPerSubscriber }) => ({ label: video.title, value: Number(viewsPerSubscriber.toFixed(2)) })),
-    "Uses current rounded public subscriber counts; it is directional, not publication-time performance",
+    "Nutzt aktuelle, gerundete öffentliche Abonnentenzahlen; richtungsweisend, nicht die Leistung zum Veröffentlichungszeitpunkt",
     [PURPLE],
   );
   addBarChart(
-    "Recurring public tags",
+    "Wiederkehrende öffentliche Tags",
     data.analytics.topTags.map((item) => ({ label: item.label, value: item.count })),
-    "Count of distinct returned videos using each available public tag",
+    "Anzahl der verschiedenen zurückgegebenen Videos je verfügbarem öffentlichen Tag",
     [GOLD],
   );
-  addBarChart("Video duration distribution", data.analytics.durationData.map((item) => ({ label: item.name, value: item.value })), "Count of returned videos", [PRIMARY, BLUE, GOLD]);
-  addBarChart("Publication recency", data.analytics.recencyData.map((item) => ({ label: item.name, value: item.value })), "Freshness mix, not proof of topic growth", [BLUE, TEAL, PURPLE, GOLD]);
+  addBarChart("Verteilung der Videodauer", data.analytics.durationData.map((item) => ({ label: item.name, value: item.value })), "Anzahl der zurückgegebenen Videos", [PRIMARY, BLUE, GOLD]);
+  addBarChart("Aktualität der Veröffentlichung", data.analytics.recencyData.map((item) => ({ label: item.name, value: item.value })), "Aktualitätsmix, kein Beleg für Themenwachstum", [BLUE, TEAL, PURPLE, GOLD]);
   addBarChart(
-    "Public data coverage",
+    "Abdeckung öffentlicher Daten",
     [
-      { label: "Views", value: data.analytics.coverage.views },
-      { label: "Complete engagement", value: data.analytics.coverage.engagement },
-      { label: "Public subscribers", value: data.analytics.coverage.subscribers },
-      { label: "Captions available", value: data.analytics.coverage.captions },
-      { label: "Public tags", value: data.analytics.coverage.tags },
-      { label: "HD definition", value: data.analytics.coverage.hd },
+      { label: "Aufrufe", value: data.analytics.coverage.views },
+      { label: "Vollständiges Engagement", value: data.analytics.coverage.engagement },
+      { label: "Öffentliche Abonnenten", value: data.analytics.coverage.subscribers },
+      { label: "Untertitel verfügbar", value: data.analytics.coverage.captions },
+      { label: "Öffentliche Tags", value: data.analytics.coverage.tags },
+      { label: "HD-Auflösung", value: data.analytics.coverage.hd },
     ],
-    `Covered records out of ${data.analytics.totalVideos}; unavailable fields are not converted to zero`,
+    `Erfasste Datensätze von ${data.analytics.totalVideos}; nicht verfügbare Felder werden nicht zu null umgewandelt`,
     [TEAL],
   );
 
-  addSection("Audience And Packaging Interpretation");
-  addLabelValue("Primary intent", data.insights.queryIntent.primaryIntent);
-  addLabelValue("Likely discovery surface", data.insights.queryIntent.discoverySurface);
-  addLabelValue("Audience hypothesis", `${data.insights.targetAudience.primaryDemographic}. Age range hypothesis: ${data.insights.targetAudience.ageRange}.`);
-  addLabelValue("Interests", data.insights.targetAudience.interests.join("; "));
-  addLabelValue("Pain points", data.insights.targetAudience.painPoints.join("; "));
-  addLabelValue("Content preferences", data.insights.targetAudience.contentPreferences.join("; "));
-  addLabelValue("Competition", data.insights.nicheAnalysis.competitionLevel);
-  addLabelValue("Growth interpretation", data.insights.nicheAnalysis.growthTrend);
-  addLabelValue("Recommended formats", data.insights.nicheAnalysis.recommendedFormats.join("; "));
-  addLabelValue("Monetization hypothesis", data.insights.nicheAnalysis.monetizationPotential);
+  addSection("Interpretation von Zielgruppe und Packaging");
+  addLabelValue("Primäre Absicht", data.insights.queryIntent.primaryIntent);
+  addLabelValue("Wahrscheinliche Discovery-Surface", labelFor(DISCOVERY_SURFACE_LABELS, data.insights.queryIntent.discoverySurface));
+  addLabelValue("Zielgruppen-Hypothese", `${data.insights.targetAudience.primaryDemographic}. Hypothese zur Altersspanne: ${data.insights.targetAudience.ageRange}.`);
+  addLabelValue("Interessen", data.insights.targetAudience.interests.join("; "));
+  addLabelValue("Schmerzpunkte", data.insights.targetAudience.painPoints.join("; "));
+  addLabelValue("Content-Vorlieben", data.insights.targetAudience.contentPreferences.join("; "));
+  addLabelValue("Wettbewerb", data.insights.nicheAnalysis.competitionLevel);
+  addLabelValue("Wachstumsinterpretation", data.insights.nicheAnalysis.growthTrend);
+  addLabelValue("Empfohlene Formate", data.insights.nicheAnalysis.recommendedFormats.join("; "));
+  addLabelValue("Monetarisierungs-Hypothese", data.insights.nicheAnalysis.monetizationPotential);
 
-  addSection("Content Opportunities And Packaging Inputs");
-  addLabelValue("Content gaps", data.insights.contentGaps.map((value, index) => `${index + 1}. ${value}`).join("; "));
-  addLabelValue("Subtopics", data.insights.trendingSubtopics.join("; "));
-  addLabelValue("Posting-time hypotheses", data.insights.nicheAnalysis.bestPostingTimes.join("; "));
+  addSection("Content-Chancen und Packaging-Impulse");
+  addLabelValue("Content-Lücken", data.insights.contentGaps.map((value, index) => `${index + 1}. ${value}`).join("; "));
+  addLabelValue("Unterthemen", data.insights.trendingSubtopics.join("; "));
+  addLabelValue("Hypothesen zur Veröffentlichungszeit", data.insights.nicheAnalysis.bestPostingTimes.join("; "));
 
-  addSection("Observed, Inferred, And Studio-Only Signals");
+  addSection("Beobachtete, abgeleitete und nur in Studio verfügbare Signale");
   ([
-    ["Observed in this public sample", data.insights.evidenceSignals.observed],
-    ["Inferred hypotheses", data.insights.evidenceSignals.inferred],
-    ["Requires private YouTube Studio data", data.insights.evidenceSignals.requiresStudio],
+    ["In dieser öffentlichen Stichprobe beobachtet", data.insights.evidenceSignals.observed],
+    ["Abgeleitete Hypothesen", data.insights.evidenceSignals.inferred],
+    ["Erfordert private YouTube-Studio-Daten", data.insights.evidenceSignals.requiresStudio],
   ] as const).forEach(([label, values]) => {
     addWrapped(label, { size: 9, bold: true, color: PRIMARY, gapAfter: 1 });
     values.forEach((value, index) => addWrapped(`${index + 1}. ${value}`, { size: 8.5, x: margin + 3, width: contentWidth - 3, gapAfter: 1.5 }));
     y += 2;
   });
 
-  addSection("Recommended Next Steps");
+  addSection("Empfohlene nächste Schritte");
   data.insights.recommendedActions.forEach((action, index) => {
     addWrapped(`${index + 1}. ${action.title}`, { size: 9.5, bold: true, gapAfter: 1 });
     addWrapped(`${action.rationale} Format: ${action.format}.`, { size: 8.5, color: MUTED, x: margin + 3, width: contentWidth - 3, gapAfter: 3 });
   });
 
-  addSection("Further Questions");
+  addSection("Weitere Fragen");
   data.insights.peopleAlsoAsk.forEach((item, index) => {
     addWrapped(`${index + 1}. ${item.question}`, { size: 9, bold: true, gapAfter: 1 });
     addWrapped(item.answer, { size: 8.3, color: MUTED, x: margin + 3, width: contentWidth - 3, gapAfter: 3 });
   });
 
-  addSection("Grounded Idea Packages", "Each package is tied to evidence claim IDs from this snapshot and includes a private-Studio validation rule.");
+  addSection("Fundierte Ideenpakete", "Jedes Paket ist an Evidenz-Claim-IDs aus diesem Snapshot gebunden und enthält eine Validierungsregel für das private YouTube Studio.");
   data.ideas.forEach((idea, index) => {
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(9.5);
@@ -364,52 +374,52 @@ export function buildResearchPDF(data: ResearchReportData): jsPDF {
     pdf.setTextColor(...INK);
     titleLines.forEach((line, lineIndex) => pdf.text(line, margin + 3, y + 5.2 + lineIndex * 4.2));
     y += titleHeight + 4;
-    addLabelValue("Package", `${idea.format}  |  ${idea.difficulty}  |  ${idea.discoverySurface}`);
-    addLabelValue("Description", idea.description);
+    addLabelValue("Paket", `${labelFor(IDEA_FORMAT_LABELS, idea.format)}  |  ${labelFor(DIFFICULTY_LABELS, idea.difficulty)}  |  ${labelFor(DISCOVERY_SURFACE_LABELS, idea.discoverySurface)}`);
+    addLabelValue("Beschreibung", idea.description);
     addLabelValue("Keywords", idea.keywords.join(", "));
-    addLabelValue("Honest promise", idea.honestPromise);
+    addLabelValue("Ehrliches Versprechen", idea.honestPromise);
     addLabelValue("Payoff", idea.payoff);
-    addLabelValue("Thumbnail concept", idea.thumbnailConcept);
-    addLabelValue("Studio validation", `${idea.studioMetric} Experiment rule: ${idea.experimentRule}`);
-    addLabelValue("Evidence claim IDs", idea.evidenceClaims.map((claim) => claim.id).join(", "));
+    addLabelValue("Thumbnail-Konzept", idea.thumbnailConcept);
+    addLabelValue("Studio-Validierung", `${idea.studioMetric} Experiment-Regel: ${idea.experimentRule}`);
+    addLabelValue("Evidenz-Claim-IDs", idea.evidenceClaims.map((claim) => claim.id).join(", "));
     y += 3;
   });
 
-  addSection("Evidence Ledger", "Observed claims cite source videos. Inferences and Studio-only checks remain labeled as such.");
+  addSection("Evidenz-Protokoll", "Beobachtete Claims verweisen auf Quellvideos. Ableitungen und reine Studio-Prüfungen bleiben als solche gekennzeichnet.");
   data.insights.evidenceClaims.forEach((claim, index) => {
     ensure(24);
-    addWrapped(`${index + 1}. ${claim.id}  |  ${claim.evidenceClass.replace("_", " ")}  |  ${claim.confidence} confidence`, {
+    addWrapped(`${index + 1}. ${claim.id}  |  ${labelFor(EVIDENCE_CLASS_LABELS, claim.evidenceClass)}  |  Konfidenz: ${labelFor(CONFIDENCE_LABELS, claim.confidence)}`, {
       size: 9,
       bold: true,
       color: PRIMARY,
       gapAfter: 1,
     });
     addWrapped(claim.claim, { size: 8.5, x: margin + 3, width: contentWidth - 3, gapAfter: 1 });
-    addWrapped(`Sources: ${claim.sourceVideoIds.join(", ") || "N/A"}`, { size: 7.5, color: MUTED, x: margin + 3, width: contentWidth - 3, gapAfter: 1 });
-    addWrapped(`Limitations: ${claim.limitations.join("; ")}`, { size: 7.5, color: MUTED, x: margin + 3, width: contentWidth - 3, gapAfter: 3 });
+    addWrapped(`Quellen: ${claim.sourceVideoIds.join(", ") || "k. A."}`, { size: 7.5, color: MUTED, x: margin + 3, width: contentWidth - 3, gapAfter: 1 });
+    addWrapped(`Einschränkungen: ${claim.limitations.join("; ")}`, { size: 7.5, color: MUTED, x: margin + 3, width: contentWidth - 3, gapAfter: 3 });
   });
 
-  addSection("Video Results Appendix", "Exact public values for the ordered source sample. Detailed descriptions and every available metadata field are included in the XLS and CSV exports.");
+  addSection("Anhang: Videoergebnisse", "Exakte öffentliche Werte für die geordnete Quellstichprobe. Ausführliche Beschreibungen und alle verfügbaren Metadatenfelder sind in den XLS- und CSV-Exporten enthalten.");
   addTable(
     [
       { label: "#", width: 8 },
-      { label: "Video and channel", width: 85 },
-      { label: "Published", width: 28 },
-      { label: "Views", width: 22 },
-      { label: "Likes / comments", width: 27 },
-      { label: "Duration", width: 12 },
+      { label: "Video und Kanal", width: 85 },
+      { label: "Veröffentlicht", width: 28 },
+      { label: "Aufrufe", width: 22 },
+      { label: "Likes / Kommentare", width: 27 },
+      { label: "Dauer", width: 12 },
     ],
     data.videos.map((video, index) => [
       index + 1,
       `${video.title}\n${video.channelTitle}\nhttps://www.youtube.com/watch?v=${video.id}`,
       readableDate(video.publishedAt).replace(/, \d{1,2}:.*$/, ""),
-      video.viewCount === undefined ? "N/A" : formatNumber(video.viewCount),
-      `${video.likeCount === undefined ? "N/A" : formatNumber(video.likeCount)} / ${video.commentCount === undefined ? "N/A" : formatNumber(video.commentCount)}`,
-      video.duration || "N/A",
+      video.viewCount === undefined ? "k. A." : formatNumber(video.viewCount),
+      `${video.likeCount === undefined ? "k. A." : formatNumber(video.likeCount)} / ${video.commentCount === undefined ? "k. A." : formatNumber(video.commentCount)}`,
+      video.duration || "k. A.",
     ]),
   );
 
-  addSection("Detailed Video Metadata", "Complete public fields returned for each ordered source record. Missing values remain N/A.");
+  addSection("Detaillierte Video-Metadaten", "Vollständige öffentliche Felder für jeden geordneten Quelldatensatz. Fehlende Werte bleiben als k. A. gekennzeichnet.");
   data.videos.forEach((video, index) => {
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(9.5);
@@ -422,43 +432,43 @@ export function buildResearchPDF(data: ResearchReportData): jsPDF {
     pdf.setTextColor(...INK);
     headerLines.forEach((line, lineIndex) => pdf.text(line, margin + 3, y + 5.2 + lineIndex * 4.2));
     y += headerHeight + 4;
-    addLabelValue("Video identity", `Video ID: ${video.id}; URL: https://www.youtube.com/watch?v=${video.id}`);
-    addLabelValue("Channel", `${video.channelTitle}; channel ID: ${video.channelId}`);
-    addLabelValue("Published and duration", `${readableDate(video.publishedAt)}; duration: ${video.duration || "N/A"}`);
-    addLabelValue("Public performance", `Views: ${text(video.viewCount)}; likes: ${text(video.likeCount)}; comments: ${text(video.commentCount)}`);
-    addLabelValue("Content metadata", `Category: ${text(video.categoryId)}; live status: ${text(video.liveBroadcastContent)}; definition: ${text(video.definition)}; captions: ${text(video.hasCaptions)}; default language: ${text(video.defaultLanguage)}; audio language: ${text(video.defaultAudioLanguage)}`);
-    addLabelValue("Public status fields", `Licensed: ${text(video.licensedContent)}; embeddable: ${text(video.embeddable)}; made for kids: ${text(video.madeForKids)}; paid product placement: ${text(video.hasPaidProductPlacement)}`);
-    addLabelValue("Tags", video.tags?.join(", ") || "N/A");
-    addLabelValue("Topic categories", video.topicCategories?.join("; ") || "N/A");
-    addLabelValue("Live details", video.liveStreamingDetails
+    addLabelValue("Video-Identität", `Video-ID: ${video.id}; URL: https://www.youtube.com/watch?v=${video.id}`);
+    addLabelValue("Kanal", `${video.channelTitle}; Kanal-ID: ${video.channelId}`);
+    addLabelValue("Veröffentlichung und Dauer", `${readableDate(video.publishedAt)}; Dauer: ${video.duration || "k. A."}`);
+    addLabelValue("Öffentliche Performance", `Aufrufe: ${text(video.viewCount)}; Likes: ${text(video.likeCount)}; Kommentare: ${text(video.commentCount)}`);
+    addLabelValue("Content-Metadaten", `Kategorie: ${text(video.categoryId)}; Live-Status: ${text(video.liveBroadcastContent)}; Auflösung: ${text(video.definition)}; Untertitel: ${text(video.hasCaptions)}; Standardsprache: ${text(video.defaultLanguage)}; Audiosprache: ${text(video.defaultAudioLanguage)}`);
+    addLabelValue("Öffentliche Statusfelder", `Lizenziert: ${text(video.licensedContent)}; einbettbar: ${text(video.embeddable)}; für Kinder: ${text(video.madeForKids)}; bezahlte Produktplatzierung: ${text(video.hasPaidProductPlacement)}`);
+    addLabelValue("Tags", video.tags?.join(", ") || "k. A.");
+    addLabelValue("Themenkategorien", video.topicCategories?.join("; ") || "k. A.");
+    addLabelValue("Live-Details", video.liveStreamingDetails
       ? Object.entries(video.liveStreamingDetails).map(([key, value]) => `${key}: ${text(value)}`).join("; ")
-      : "N/A");
-    addLabelValue("Video description", video.description || "N/A");
+      : "k. A.");
+    addLabelValue("Videobeschreibung", video.description || "k. A.");
     addLabelValue("Thumbnail", video.thumbnailUrl);
     const channel = video.channelStatistics;
-    addLabelValue("Channel statistics", channel
-      ? `Subscribers: ${text(channel.subscriberCount)}; hidden subscribers: ${text(channel.hiddenSubscriberCount)}; videos: ${text(channel.videoCount)}; views: ${text(channel.viewCount)}; published: ${text(channel.publishedAt)}; country: ${text(channel.country)}; custom URL: ${text(channel.customUrl)}; default language: ${text(channel.defaultLanguage)}`
-      : "N/A");
-    addLabelValue("Channel keywords", channel?.keywords || "N/A");
-    addLabelValue("Channel topic categories", channel?.topicCategories?.join("; ") || "N/A");
-    addLabelValue("Channel description", channel?.description || "N/A");
-    addLabelValue("Channel thumbnail", channel?.thumbnailUrl || "N/A");
+    addLabelValue("Kanalstatistiken", channel
+      ? `Abonnenten: ${text(channel.subscriberCount)}; verborgene Abonnenten: ${text(channel.hiddenSubscriberCount)}; Videos: ${text(channel.videoCount)}; Aufrufe: ${text(channel.viewCount)}; erstellt: ${text(channel.publishedAt)}; Land: ${text(channel.country)}; benutzerdefinierte URL: ${text(channel.customUrl)}; Standardsprache: ${text(channel.defaultLanguage)}`
+      : "k. A.");
+    addLabelValue("Kanal-Keywords", channel?.keywords || "k. A.");
+    addLabelValue("Kanal-Themenkategorien", channel?.topicCategories?.join("; ") || "k. A.");
+    addLabelValue("Kanalbeschreibung", channel?.description || "k. A.");
+    addLabelValue("Kanal-Thumbnail", channel?.thumbnailUrl || "k. A.");
     y += 5;
   });
 
-  addSection("Caveats, Coverage, And Source Context");
-  addLabelValue("Method", data.insights.methodology.basis);
-  addLabelValue("Sample", `${data.insights.methodology.sampleSize} returned videos. YouTube's estimated match count was ${formatNumber(data.totalResults)}${data.totalResultsIsApproximate ? " and is approximate" : ""}.`);
+  addSection("Vorbehalte, Abdeckung und Quellenkontext");
+  addLabelValue("Methode", data.insights.methodology.basis);
+  addLabelValue("Stichprobe", `${data.insights.methodology.sampleSize} zurückgegebene Videos. Die von YouTube geschätzte Trefferzahl lag bei ${formatNumber(data.totalResults)}${data.totalResultsIsApproximate ? " (Näherungswert)" : ""}.`);
   data.insights.methodology.limitations.forEach((limitation, index) => addWrapped(`${index + 1}. ${limitation}`, { size: 8.5, gapAfter: 2 }));
-  addLabelValue("Provider", data.provenance.provider);
-  addLabelValue("Filters", `Upload date: ${data.filters.uploadDate}; duration: ${data.filters.duration}; sort: ${data.filters.sortBy}.`);
-  addLabelValue("Snapshot ID", data.snapshotId);
-  addLabelValue("Search response", `Results per page: ${text(data.resultsPerPage)}; region code: ${text(data.regionCode)}; next-page token: ${text(data.nextPageToken)}`);
-  addLabelValue("Enrichment", Object.entries(data.enrichment).map(([stage, detail]) => `${stage}: ${detail.status} (${detail.returned}/${detail.requested})`).join("; "));
+  addLabelValue("Anbieter", data.provenance.provider);
+  addLabelValue("Filter", `Upload-Datum: ${data.filters.uploadDate}; Dauer: ${data.filters.duration}; Sortierung: ${data.filters.sortBy}.`);
+  addLabelValue("Snapshot-ID", data.snapshotId);
+  addLabelValue("Suchantwort", `Ergebnisse pro Seite: ${text(data.resultsPerPage)}; Regionscode: ${text(data.regionCode)}; Token für nächste Seite: ${text(data.nextPageToken)}`);
+  addLabelValue("Anreicherung", Object.entries(data.enrichment).map(([stage, detail]) => `${labelFor(ENRICHMENT_STAGE_LABELS, stage)}: ${labelFor(ENRICHMENT_STATUS_LABELS, detail.status)} (${detail.returned}/${detail.requested})`).join("; "));
   if (data.warnings.length > 0) {
     data.warnings.forEach((warning, index) => addWrapped(`${index + 1}. ${warning.stage}: ${warning.message}`, { size: 8.5, color: MUTED, gapAfter: 2 }));
   } else {
-    addWrapped("No provider enrichment warnings were reported for this snapshot.", { size: 8.5, color: MUTED });
+    addWrapped("Für diesen Snapshot wurden keine Anreicherungswarnungen des Anbieters gemeldet.", { size: 8.5, color: MUTED });
   }
 
   const totalPages = pdf.getNumberOfPages();
@@ -469,8 +479,8 @@ export function buildResearchPDF(data: ResearchReportData): jsPDF {
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(7);
     pdf.setTextColor(...MUTED);
-    pdf.text("Public YouTube metadata plus labeled AI interpretation", margin, pageHeight - 7);
-    pdf.text(`Page ${page} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: "right" });
+    pdf.text("Öffentliche YouTube-Metadaten plus gekennzeichnete KI-Interpretation", margin, pageHeight - 7);
+    pdf.text(`Seite ${page} von ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: "right" });
   }
 
   return pdf;

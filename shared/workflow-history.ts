@@ -35,7 +35,7 @@ export function deriveWorkflowTitle(signals: WorkflowTitleSignals): string {
     signals.thumbnailTopic,
   ];
   const selected = candidates.find((candidate) => candidate?.trim())?.trim();
-  if (!selected) return "Untitled workflow";
+  if (!selected) return "Unbenannter Workflow";
   return selected.length > WORKFLOW_TITLE_LIMIT
     ? `${selected.slice(0, WORKFLOW_TITLE_LIMIT - 1).trimEnd()}…`
     : selected;

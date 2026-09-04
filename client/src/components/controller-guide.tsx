@@ -11,29 +11,29 @@ import {
 
 const guideItems = [
   {
-    label: "Research",
+    label: "Recherche",
     icon: Search,
-    description: "Search YouTube, compare public video data, generate grounded AI insights, and choose an idea.",
+    description: "Durchsuche YouTube, vergleiche öffentliche Videodaten, generiere fundierte KI-Insights und wähle eine Idee.",
   },
   {
-    label: "Script Writer",
+    label: "Skript-Writer",
     icon: FileText,
-    description: "Turn an idea into a script, then read it in the built-in teleprompter with play, speed, and text-size controls.",
+    description: "Mach aus einer Idee ein Skript und lies es im integrierten Teleprompter mit Wiedergabe-, Tempo- und Textgrößen-Steuerung ab.",
   },
   {
-    label: "Thumbnail Creator",
+    label: "Thumbnail-Creator",
     icon: Image,
-    description: "Create a thumbnail from one visual brief, an optional preset, and permitted reference images.",
+    description: "Erstelle ein Thumbnail aus einem visuellen Briefing, einer optionalen Vorlage und zulässigen Referenzbildern.",
   },
   {
-    label: "Settings",
+    label: "Einstellungen",
     icon: Settings,
-    description: "Connect local API keys and choose the Gemini text and image models.",
+    description: "Hinterlege lokale API-Schlüssel und wähle die Gemini-Modelle für Text und Bild.",
   },
   {
-    label: "New Workflow",
+    label: "Neuer Workflow",
     icon: Rocket,
-    description: "Clear the current session after confirmation and begin again from Research.",
+    description: "Leert die aktuelle Sitzung nach Bestätigung und beginnt wieder bei der Recherche.",
   },
 ] as const;
 
@@ -44,8 +44,8 @@ export function ControllerGuide() {
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Open controller guide"
-          title="Controller guide"
+          aria-label="Bedienungshilfe öffnen"
+          title="Bedienungshilfe"
           data-testid="button-controller-guide"
         >
           <Gamepad2 className="h-5 w-5" aria-hidden="true" />
@@ -55,14 +55,14 @@ export function ControllerGuide() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Gamepad2 className="h-5 w-5 text-primary" aria-hidden="true" />
-            YouTube Pro controller note
+            YouTube Pro Bedienungshinweis
           </DialogTitle>
           <DialogDescription>
-            Use the sidebar labels below to navigate the workspace.
+            Nutze die folgenden Seitenleisten-Bezeichnungen, um dich im Arbeitsbereich zu bewegen.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-2" aria-label="YouTube Pro navigation guide">
+        <div className="grid gap-2" aria-label="YouTube Pro Navigationshilfe">
           {guideItems.map((item) => (
             <section key={item.label} className="flex gap-3 rounded-lg border border-border bg-card p-3">
               <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -77,7 +77,7 @@ export function ControllerGuide() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Recommended order: Research, Script Writer, then Thumbnail Creator.
+          Empfohlene Reihenfolge: Recherche, Skript-Writer, dann Thumbnail-Creator.
         </p>
       </DialogContent>
     </Dialog>

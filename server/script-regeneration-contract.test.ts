@@ -46,8 +46,8 @@ describe("script regeneration contracts", () => {
       sectionName: "Hook",
       sectionContent: "Here is the current hook.",
       topic: "Tutorial topic",
-      format: "Tutorial/How-to",
-      audience: "General Audience",
+      format: "Tutorial/Anleitung",
+      audience: "Allgemeines Publikum",
       evidenceContext,
     }).success, true);
     assert.equal(paragraphRegenerationRequestSchema.safeParse({
@@ -55,8 +55,8 @@ describe("script regeneration contracts", () => {
       paragraphId: "paragraph-1",
       paragraphContent: "Here is the current paragraph.",
       topic: "Tutorial topic",
-      format: "Tutorial/How-to",
-      audience: "General Audience",
+      format: "Tutorial/Anleitung",
+      audience: "Allgemeines Publikum",
       evidenceContext,
     }).success, true);
   });
@@ -66,16 +66,16 @@ describe("script regeneration contracts", () => {
       sectionName: "Hook",
       sectionContent: "",
       topic: "Tutorial topic",
-      format: "Tutorial/How-to",
-      audience: "General Audience",
+      format: "Tutorial/Anleitung",
+      audience: "Allgemeines Publikum",
     }).success, false);
     assert.equal(paragraphRegenerationRequestSchema.safeParse({
       sectionName: "Hook",
       paragraphId: "paragraph-1",
       paragraphContent: "Current paragraph.",
       topic: "Tutorial topic",
-      format: "Tutorial/How-to",
-      audience: "General Audience",
+      format: "Tutorial/Anleitung",
+      audience: "Allgemeines Publikum",
       model: "client-controlled-model",
     }).success, false);
   });
@@ -89,8 +89,8 @@ describe("script regeneration contracts", () => {
       sectionName: "Hook",
       sectionContent: "Current hook.",
       topic: "Tutorial topic",
-      format: "Tutorial/How-to",
-      audience: "General Audience",
+      format: "Tutorial/Anleitung",
+      audience: "Allgemeines Publikum",
       evidenceContext: invalidContext,
     }).success, false);
   });

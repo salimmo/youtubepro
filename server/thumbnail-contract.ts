@@ -139,12 +139,12 @@ const thumbnailImageDataUrlSchema = z.string().superRefine((value, ctx) => {
   if (!image) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Reference image must be a valid PNG or JPEG data URL",
+      message: "Referenzbild muss eine gültige PNG- oder JPEG-Data-URL sein",
     });
     return;
   }
   if (image.bytes > THUMBNAIL_MAX_IMAGE_BYTES) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Reference image exceeds 5 MB" });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Referenzbild ist größer als 5 MB" });
   }
   if (
     image.width < THUMBNAIL_MIN_IMAGE_DIMENSION
@@ -154,7 +154,7 @@ const thumbnailImageDataUrlSchema = z.string().superRefine((value, ctx) => {
   ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Reference image dimensions must be between 128 and 4096 pixels",
+      message: "Referenzbild-Abmessungen müssen zwischen 128 und 4096 Pixeln liegen",
     });
   }
 });
@@ -187,7 +187,7 @@ export const thumbnailGenerationRequestSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["referenceRightsConfirmed"],
-      message: "Confirm that you have permission to use every reference image",
+      message: "Bestätige, dass du alle Referenzbilder verwenden darfst",
     });
   }
 
@@ -198,21 +198,21 @@ export const thumbnailGenerationRequestSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["referenceImages"],
-      message: "Reference images exceed the 12 MB combined limit",
+      message: "Referenzbilder überschreiten das Gesamtlimit von 12 MB",
     });
   }
   if (request.mode === "variation" && !request.variationDirection) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["variationDirection"],
-      message: "Describe the requested variation",
+      message: "Beschreibe die gewünschte Variante",
     });
   }
   if (request.textPosition === "none" && (request.mainText || request.subText)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["textPosition"],
-      message: "No text space cannot be combined with supplied thumbnail text",
+      message: "Ohne Textbereich kann kein Thumbnail-Text angegeben werden",
     });
   }
 });

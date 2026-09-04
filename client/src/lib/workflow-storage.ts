@@ -14,21 +14,21 @@ export interface StoredWorkflowRecord<T> {
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("Workflow storage request failed"));
+    request.onerror = () => reject(request.error || new Error("Anfrage an den Workflow-Speicher fehlgeschlagen"));
   });
 }
 
 function transactionComplete(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error || new Error("Workflow storage transaction failed"));
-    transaction.onabort = () => reject(transaction.error || new Error("Workflow storage transaction was aborted"));
+    transaction.onerror = () => reject(transaction.error || new Error("Transaktion im Workflow-Speicher fehlgeschlagen"));
+    transaction.onabort = () => reject(transaction.error || new Error("Transaktion im Workflow-Speicher wurde abgebrochen"));
   });
 }
 
 function openDatabase(): Promise<IDBDatabase> {
   if (typeof indexedDB === "undefined") {
-    return Promise.reject(new Error("IndexedDB is unavailable in this browser"));
+    return Promise.reject(new Error("IndexedDB ist in diesem Browser nicht verfügbar"));
   }
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
@@ -40,7 +40,7 @@ function openDatabase(): Promise<IDBDatabase> {
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("Workflow storage could not be opened"));
+    request.onerror = () => reject(request.error || new Error("Workflow-Speicher konnte nicht geöffnet werden"));
   });
 }
 

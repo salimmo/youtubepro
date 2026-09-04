@@ -18,26 +18,26 @@ interface SearchFiltersProps {
 }
 
 const uploadDateOptions = [
-  { value: UploadDateFilter.ANY, label: "Any time" },
-  { value: UploadDateFilter.HOUR, label: "Last hour" },
-  { value: UploadDateFilter.TODAY, label: "Today" },
-  { value: UploadDateFilter.WEEK, label: "This week" },
-  { value: UploadDateFilter.MONTH, label: "This month" },
-  { value: UploadDateFilter.YEAR, label: "This year" },
+  { value: UploadDateFilter.ANY, label: "Beliebig" },
+  { value: UploadDateFilter.HOUR, label: "Letzte Stunde" },
+  { value: UploadDateFilter.TODAY, label: "Heute" },
+  { value: UploadDateFilter.WEEK, label: "Diese Woche" },
+  { value: UploadDateFilter.MONTH, label: "Dieser Monat" },
+  { value: UploadDateFilter.YEAR, label: "Dieses Jahr" },
 ];
 
 const durationOptions = [
-  { value: DurationFilter.ANY, label: "Any duration" },
-  { value: DurationFilter.SHORT, label: "Short (< 4 min)" },
-  { value: DurationFilter.MEDIUM, label: "Medium (4-20 min)" },
-  { value: DurationFilter.LONG, label: "Long (> 20 min)" },
+  { value: DurationFilter.ANY, label: "Beliebige Dauer" },
+  { value: DurationFilter.SHORT, label: "Kurz (< 4 Min.)" },
+  { value: DurationFilter.MEDIUM, label: "Mittel (4–20 Min.)" },
+  { value: DurationFilter.LONG, label: "Lang (> 20 Min.)" },
 ];
 
 const sortByOptions = [
-  { value: SortBy.RELEVANCE, label: "Relevance" },
-  { value: SortBy.DATE, label: "Upload date" },
-  { value: SortBy.VIEW_COUNT, label: "View count" },
-  { value: SortBy.RATING, label: "Rating" },
+  { value: SortBy.RELEVANCE, label: "Relevanz" },
+  { value: SortBy.DATE, label: "Upload-Datum" },
+  { value: SortBy.VIEW_COUNT, label: "Aufrufe" },
+  { value: SortBy.RATING, label: "Bewertung" },
 ];
 
 export function SearchFilters({
@@ -51,7 +51,7 @@ export function SearchFilters({
   return (
     <div className="flex flex-wrap items-center gap-4">
       <div className="space-y-1.5">
-        <Label htmlFor="filter-upload-date" className="text-xs text-muted-foreground">Upload date</Label>
+        <Label htmlFor="filter-upload-date" className="text-xs text-muted-foreground">Upload-Datum</Label>
         <Select value={uploadDate} onValueChange={onUploadDateChange}>
           <SelectTrigger id="filter-upload-date" className="w-[140px]" data-testid="select-upload-date">
             <SelectValue />
@@ -67,7 +67,7 @@ export function SearchFilters({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="filter-duration" className="text-xs text-muted-foreground">Duration</Label>
+        <Label htmlFor="filter-duration" className="text-xs text-muted-foreground">Dauer</Label>
         <Select value={duration} onValueChange={onDurationChange}>
           <SelectTrigger id="filter-duration" className="w-[150px]" data-testid="select-duration">
             <SelectValue />
@@ -83,7 +83,7 @@ export function SearchFilters({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="filter-sort-by" className="text-xs text-muted-foreground">Sort by</Label>
+        <Label htmlFor="filter-sort-by" className="text-xs text-muted-foreground">Sortieren nach</Label>
         <Select value={sortBy} onValueChange={onSortByChange}>
           <SelectTrigger id="filter-sort-by" className="w-[130px]" data-testid="select-sort-by">
             <SelectValue />

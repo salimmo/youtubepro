@@ -1,4 +1,4 @@
-import { chmod, readFile, rename, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Request } from "express";
 import { z } from "zod";
@@ -14,8 +14,24 @@ import {
   type GeminiTextModel,
 } from "./gemini-models";
 
-const ENV_PATH = path.resolve(process.cwd(), ".env");
-const ENV_TEMP_PATH = path.resolve(process.cwd(), ".env.tmp");
+// Pfad der .env-Datei. In Containern (Coolify) auf ein persistentes Volume
+// legen, z. B. ENV_FILE=/app/data/.env, sonst gehen Settings-Änderungen beim
+// nächsten Deploy verloren.
+export const ENV_FILE_PATH = path.resolve(process.cwd(), process.env.ENV_FILE?.trim() || ".env");
+const ENV_PATH = ENV_FILE_PATH;
+const ENV_TEMP_PATH = `${ENV_FILE_PATH}.tmp`;
+
+// Einstellungen sind standardmäßig nur von derselben Maschine erreichbar.
+// Für Server-Deployments kann ALLOW_REMOTE_SETTINGS=true gesetzt werden. Das
+// greift nur, wenn gleichzeitig Basic Auth (BASIC_AUTH_USER/-PASSWORD)
+// konfiguriert ist, damit Schlüssel nie ungeschützt über das Netz gesetzt werden.
+export function isBasicAuthConfigured(): boolean {
+  return Boolean(process.env.BASIC_AUTH_USER?.trim() && process.env.BASIC_AUTH_PASSWORD);
+}
+
+export function isRemoteSettingsAllowed(): boolean {
+  return process.env.ALLOW_REMOTE_SETTINGS?.trim().toLowerCase() === "true" && isBasicAuthConfigured();
+}
 const SUPPORTED_KEYS = [
   "YOUTUBE_API_KEY",
   "GEMINI_API_KEY",
@@ -35,8 +51,8 @@ export interface ApiKeySettings {
 export const apiKeySettingsSchema = z.object({
   youtubeApiKey: z.string().trim().min(8).max(512).optional(),
   geminiApiKey: z.string().trim().min(8).max(512).optional(),
-  geminiTextModel: z.string().refine(isGeminiTextModel, "Select a supported Gemini text model.").optional(),
-  geminiImageModel: z.string().refine(isGeminiImageModel, "Select a supported Gemini image model.").optional(),
+  geminiTextModel: z.string().refine(isGeminiTextModel, "Wähle ein unterstütztes Gemini-Textmodell.").optional(),
+  geminiImageModel: z.string().refine(isGeminiImageModel, "Wähle ein unterstütztes Gemini-Bildmodell.").optional(),
 }).strict();
 
 function isLoopbackAddress(address: string | undefined): boolean {
@@ -104,6 +120,7 @@ export function isTrustedLocalSettingsMetadata(input: LocalSettingsRequestMetada
 }
 
 export function isLocalSettingsRequest(req: Request): boolean {
+  if (isRemoteSettingsAllowed()) return true;
   return isTrustedLocalSettingsMetadata({
     remoteAddress: req.socket.remoteAddress,
     host: req.get("host"),
@@ -140,16 +157,16 @@ export function getApiKeyStatus() {
 function validateApiKey(value: unknown, label: string): string | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== "string") {
-    throw new Error(`${label} must be a string.`);
+    throw new Error(`${label} muss eine Zeichenkette sein.`);
   }
 
   const trimmed = value.trim();
   if (!trimmed) return undefined;
   if (trimmed.length < 8 || trimmed.length > 512) {
-    throw new Error(`${label} must be between 8 and 512 characters.`);
+    throw new Error(`${label} muss zwischen 8 und 512 Zeichen lang sein.`);
   }
   if (/\r|\n|\0/.test(trimmed)) {
-    throw new Error(`${label} contains unsupported characters.`);
+    throw new Error(`${label} enthält nicht unterstützte Zeichen.`);
   }
   return trimmed;
 }
@@ -170,8 +187,8 @@ function setEnvValue(contents: string, key: SupportedKey, value: string): string
 }
 
 export async function saveApiKeySettings(input: ApiKeySettings) {
-  const youtubeApiKey = validateApiKey(input.youtubeApiKey, "YouTube API key");
-  const geminiApiKey = validateApiKey(input.geminiApiKey, "Gemini API key");
+  const youtubeApiKey = validateApiKey(input.youtubeApiKey, "YouTube-API-Schlüssel");
+  const geminiApiKey = validateApiKey(input.geminiApiKey, "Gemini-API-Schlüssel");
   const currentStatus = getApiKeyStatus();
   const textModel = input.geminiTextModel ?? currentStatus.models.text;
   const imageModel = input.geminiImageModel ?? currentStatus.models.image;
@@ -179,14 +196,14 @@ export async function saveApiKeySettings(input: ApiKeySettings) {
   if (!youtubeApiKey && !geminiApiKey
     && input.geminiTextModel === undefined
     && input.geminiImageModel === undefined) {
-    throw new Error("Enter a replacement key or select a model to save.");
+    throw new Error("Gib einen neuen Schlüssel ein oder wähle ein Modell aus, um zu speichern.");
   }
 
   if (!isGeminiTextModel(textModel)) {
-    throw new Error("Select a supported Gemini text model.");
+    throw new Error("Wähle ein unterstütztes Gemini-Textmodell.");
   }
   if (!isGeminiImageModel(imageModel)) {
-    throw new Error("Select a supported Gemini image model.");
+    throw new Error("Wähle ein unterstütztes Gemini-Bildmodell.");
   }
 
   let contents = "";
@@ -205,6 +222,7 @@ export async function saveApiKeySettings(input: ApiKeySettings) {
   contents = setEnvValue(contents, "GEMINI_TEXT_MODEL", textModel);
   contents = setEnvValue(contents, "GEMINI_IMAGE_MODEL", imageModel);
 
+  await mkdir(path.dirname(ENV_PATH), { recursive: true });
   await writeFile(ENV_TEMP_PATH, contents, { encoding: "utf8", mode: 0o600 });
   await rename(ENV_TEMP_PATH, ENV_PATH);
   await chmod(ENV_PATH, 0o600);

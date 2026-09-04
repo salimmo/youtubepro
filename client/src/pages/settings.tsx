@@ -44,18 +44,22 @@ interface KeyFieldProps {
   children?: ReactNode;
 }
 
+const REMOTE_SETTINGS_HINT =
+  "Die Einstellungen sind nur lokal erreichbar, also direkt auf dem Rechner, auf dem der Server läuft. "
+  + "Bei einem Server-Deployment (z. B. über Coolify) legst du die API-Schlüssel stattdessen als Umgebungsvariablen an.";
+
 const COMMUNITIES = [
   {
     id: "free",
     title: "AI Marketing Hub",
-    tier: "Free community",
+    tier: "Kostenlose Community",
     url: "https://www.skool.com/ai-marketing-hub",
     colors: ["#F1B43C", "#3D8FD1", "#D64A43"],
   },
   {
     id: "pro",
     title: "AI Marketing Hub Pro",
-    tier: "Pro community",
+    tier: "Pro-Community",
     url: "https://www.skool.com/ai-marketing-hub-pro",
     colors: ["#D64A43", "#E2A33A", "#4D9B65"],
   },
@@ -109,7 +113,7 @@ function KeyField({
             ? "border-green-500/40 bg-green-500/10 text-green-500"
             : "text-muted-foreground"}
         >
-          {configured ? "Configured" : "Not configured"}
+          {configured ? "Konfiguriert" : "Nicht konfiguriert"}
         </Badge>
       </div>
 
@@ -121,7 +125,7 @@ function KeyField({
           type={showKey ? "text" : "password"}
           autoComplete="off"
           spellCheck={false}
-          placeholder={configured ? "Enter a replacement key" : "Paste API key"}
+          placeholder={configured ? "Neuen Schlüssel eingeben" : "API-Schlüssel einfügen"}
           className="pr-11 font-mono"
           data-testid={`input-${id}`}
         />
@@ -131,7 +135,7 @@ function KeyField({
           size="icon"
           className="absolute right-0 top-0"
           onClick={() => setShowKey((visible) => !visible)}
-          aria-label={showKey ? `Hide ${label}` : `Show ${label}`}
+          aria-label={showKey ? `${label} verbergen` : `${label} anzeigen`}
         >
           {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </Button>
@@ -172,13 +176,14 @@ export default function SettingsPage() {
       try {
         const response = await fetch("/api/settings/status", { cache: "no-store" });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Unable to load settings.");
+        if (response.status === 403) throw new Error(REMOTE_SETTINGS_HINT);
+        if (!response.ok) throw new Error(data.error || "Einstellungen konnten nicht geladen werden.");
         const nextStatus = data as ApiKeyStatus;
         setStatus(nextStatus);
         setGeminiTextModel(nextStatus.models.text);
         setGeminiImageModel(nextStatus.models.image);
       } catch (error: any) {
-        setLoadError(error?.message || "Unable to load settings.");
+        setLoadError(error?.message || "Einstellungen konnten nicht geladen werden.");
       } finally {
         setIsLoading(false);
       }
@@ -196,8 +201,8 @@ export default function SettingsPage() {
 
     if (!youtubeApiKey && !geminiApiKey && !modelsChanged) {
       toast({
-        title: "No changes to save",
-        description: "Enter a replacement key or choose a different model.",
+        title: "Keine Änderungen zum Speichern",
+        description: "Gib einen neuen Schlüssel ein oder wähle ein anderes Modell.",
       });
       return;
     }
@@ -217,13 +222,15 @@ export default function SettingsPage() {
       if (youtubeKeyRef.current) youtubeKeyRef.current.value = "";
       if (geminiKeyRef.current) geminiKeyRef.current.value = "";
       toast({
-        title: "API settings saved",
-        description: "The local server is using the updated provider settings.",
+        title: "API-Einstellungen gespeichert",
+        description: "Der lokale Server verwendet jetzt die aktualisierten Anbieter-Einstellungen.",
       });
     } catch (error: any) {
       toast({
-        title: "Could not save settings",
-        description: error?.message || "Check the key and try again.",
+        title: "Einstellungen konnten nicht gespeichert werden",
+        description: typeof error?.message === "string" && error.message.startsWith("403")
+          ? REMOTE_SETTINGS_HINT
+          : (error?.message || "Prüfe den Schlüssel und versuche es erneut."),
         variant: "destructive",
       });
     } finally {
@@ -236,71 +243,72 @@ export default function SettingsPage() {
       <div>
         <div className="flex items-center gap-2 text-primary">
           <KeyRound className="h-5 w-5" />
-          <span className="text-sm font-medium">Local connections</span>
+          <span className="text-sm font-medium">Lokale Verbindungen</span>
         </div>
-        <h1 className="mt-2 text-3xl font-bold">Settings</h1>
+        <h1 className="mt-2 text-3xl font-bold">Einstellungen</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          Connect the providers used for YouTube research and AI generation.
+          Verbinde die Anbieter, die für die YouTube-Recherche und die KI-Generierung genutzt werden.
         </p>
       </div>
 
       <Alert>
         <ShieldCheck className="h-4 w-4" />
-        <AlertTitle>Stored locally</AlertTitle>
+        <AlertTitle>Lokal gespeichert</AlertTitle>
         <AlertDescription>
-          Keys are written to the server's ignored <code>.env</code> file with
-          owner-only permissions. Saved values are never returned to the browser
-          and the input fields are cleared after saving. Settings changes are
-          accepted only from this machine.
+          Schlüssel werden in die von Git ignorierte <code>.env</code>-Datei des
+          Servers geschrieben, lesbar nur für den Besitzer. Gespeicherte Werte werden
+          nie an den Browser zurückgegeben, und die Eingabefelder werden nach dem
+          Speichern geleert. Änderungen an den Einstellungen werden nur von diesem
+          Rechner aus akzeptiert.
         </AlertDescription>
       </Alert>
 
       {loadError && (
         <Alert variant="destructive">
-          <AlertTitle>Settings unavailable</AlertTitle>
+          <AlertTitle>Einstellungen nicht verfügbar</AlertTitle>
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle>API connections</CardTitle>
+          <CardTitle>API-Verbindungen</CardTitle>
           <CardDescription>
-            Leave a configured field blank to keep its current value.
+            Lass ein konfiguriertes Feld leer, um den aktuellen Wert beizubehalten.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex min-h-48 items-center justify-center text-muted-foreground">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Loading connection status
+              Verbindungsstatus wird geladen …
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <KeyField
                 id="youtube-api-key"
                 label="YouTube Data API"
-                description="Required for video search and research data."
+                description="Erforderlich für die Videosuche und Recherchedaten."
                 configured={status.youtube}
                 inputRef={youtubeKeyRef}
                 providerUrl="https://console.cloud.google.com/apis/credentials"
-                providerLabel="Open Google Cloud credentials"
+                providerLabel="Google-Cloud-Anmeldedaten öffnen"
               />
               <KeyField
                 id="gemini-api-key"
                 label="Gemini API"
-                description="Required for research insights, ideas, scripts, and thumbnail generation."
+                description="Erforderlich für Recherche-Insights, Ideen, Skripte und die Thumbnail-Generierung."
                 configured={status.gemini}
                 inputRef={geminiKeyRef}
                 providerUrl="https://aistudio.google.com/apikey"
-                providerLabel="Open Google AI Studio"
+                providerLabel="Google AI Studio öffnen"
               >
                 <div className="grid gap-4 border-t border-border pt-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="gemini-text-model">Research and writing model</Label>
+                    <Label htmlFor="gemini-text-model">Modell für Recherche und Texte</Label>
                     <Select value={geminiTextModel} onValueChange={setGeminiTextModel}>
                       <SelectTrigger id="gemini-text-model" data-testid="select-gemini-text-model">
-                        <SelectValue placeholder="Choose a model" />
+                        <SelectValue placeholder="Modell auswählen" />
                       </SelectTrigger>
                       <SelectContent>
                         {status.models.textOptions.map((model) => (
@@ -316,10 +324,10 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="gemini-image-model">Thumbnail image model</Label>
+                    <Label htmlFor="gemini-image-model">Bildmodell für Thumbnails</Label>
                     <Select value={geminiImageModel} onValueChange={setGeminiImageModel}>
                       <SelectTrigger id="gemini-image-model" data-testid="select-gemini-image-model">
-                        <SelectValue placeholder="Choose a model" />
+                        <SelectValue placeholder="Modell auswählen" />
                       </SelectTrigger>
                       <SelectContent>
                         {status.models.imageOptions.map((model) => (
@@ -341,7 +349,7 @@ export default function SettingsPage() {
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline"
                 >
-                  Review the official Gemini model catalog
+                  Offiziellen Gemini-Modellkatalog ansehen
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </KeyField>
@@ -353,7 +361,7 @@ export default function SettingsPage() {
                   ) : (
                     <Save className="mr-2 h-4 w-4" />
                   )}
-                  Save and apply
+                  Speichern und anwenden
                 </Button>
               </div>
             </form>
@@ -364,10 +372,10 @@ export default function SettingsPage() {
       <Card aria-labelledby="community-heading">
         <CardHeader>
           <CardTitle id="community-heading" className="text-lg">
-            Join the community
+            Tritt der Community bei
           </CardTitle>
           <CardDescription>
-            Connect with AI marketers, share what you learn, and get support.
+            Vernetze dich mit KI-Marketern, teile, was du lernst, und hol dir Unterstützung.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -377,7 +385,7 @@ export default function SettingsPage() {
               href={community.url}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`Join ${community.title}, ${community.tier}`}
+              aria-label={`${community.title} beitreten, ${community.tier}`}
               className="group flex min-w-0 items-center gap-3 rounded-lg border border-border bg-background/50 p-3 transition-colors hover:border-primary/40 hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               data-testid={`link-community-${community.id}`}
             >

@@ -83,36 +83,36 @@ export function normalizeProviderError(error: unknown, context: ProviderErrorCon
 export function providerErrorPayload(error: ProviderError, contextLabel: string): ProviderErrorResponse {
   const copy: Record<ProviderErrorCategory, { error: string; suggestion: string }> = {
     missing_key: {
-      error: `${contextLabel} is not configured`,
-      suggestion: "Add the provider API key in Settings, then try again.",
+      error: `${contextLabel} ist nicht konfiguriert`,
+      suggestion: "Füge den API-Schlüssel des Anbieters in den Einstellungen hinzu und versuche es dann erneut.",
     },
     invalid_key: {
-      error: `${contextLabel} rejected the configured API key`,
-      suggestion: "Replace the API key in Settings and verify its provider restrictions.",
+      error: `${contextLabel} hat den konfigurierten API-Schlüssel abgelehnt`,
+      suggestion: "Ersetze den API-Schlüssel in den Einstellungen und prüfe seine Einschränkungen beim Anbieter.",
     },
     quota: {
-      error: `${contextLabel} quota is unavailable`,
-      suggestion: "Wait for quota to reset or review the provider quota before retrying.",
+      error: `Kontingent für ${contextLabel} nicht verfügbar`,
+      suggestion: "Warte, bis das Kontingent zurückgesetzt wird, oder prüfe das Kontingent beim Anbieter, bevor du es erneut versuchst.",
     },
     timeout: {
-      error: `${contextLabel} timed out`,
-      suggestion: "Check the connection and retry. Repeated timeouts may indicate a provider incident.",
+      error: `Zeitüberschreitung bei ${contextLabel}`,
+      suggestion: "Prüfe die Verbindung und versuche es erneut. Wiederholte Zeitüberschreitungen können auf eine Störung beim Anbieter hindeuten.",
     },
     network: {
-      error: `${contextLabel} could not be reached`,
-      suggestion: "Check the server network connection and retry.",
+      error: `${contextLabel} ist nicht erreichbar`,
+      suggestion: "Prüfe die Netzwerkverbindung des Servers und versuche es erneut.",
     },
     provider_server: {
-      error: `${contextLabel} returned a server error`,
-      suggestion: "Retry after a short delay. If it continues, check the provider status page.",
+      error: `${contextLabel} hat einen Serverfehler zurückgegeben`,
+      suggestion: "Versuche es nach einer kurzen Wartezeit erneut. Wenn das Problem anhält, prüfe die Statusseite des Anbieters.",
     },
     invalid_response: {
-      error: `${contextLabel} returned an invalid response`,
-      suggestion: "Retry once. If it continues, choose another supported model or report the response contract failure.",
+      error: `${contextLabel} hat eine ungültige Antwort zurückgegeben`,
+      suggestion: "Versuche es einmal erneut. Wenn das Problem anhält, wähle ein anderes unterstütztes Modell oder melde den Fehler im Antwortformat.",
     },
     unknown: {
-      error: `${contextLabel} encountered an issue`,
-      suggestion: "Retry once. If it continues, inspect the server logs for the provider error code.",
+      error: `${contextLabel} ist auf ein Problem gestoßen`,
+      suggestion: "Versuche es einmal erneut. Wenn das Problem anhält, prüfe die Server-Logs auf den Fehlercode des Anbieters.",
     },
   };
 

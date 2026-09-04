@@ -63,16 +63,16 @@ export function calculateYouTubeAnalytics(videos: Video[], now = Date.now()) {
 
   const durationSeconds = videos.map((video) => parseIsoDurationSeconds(video.duration));
   const durationData = [
-    { name: "Under 4 min", value: durationSeconds.filter((seconds) => seconds !== null && seconds < 240).length },
-    { name: "4 to 20 min", value: durationSeconds.filter((seconds) => seconds !== null && seconds >= 240 && seconds <= 1200).length },
-    { name: "Over 20 min", value: durationSeconds.filter((seconds) => seconds !== null && seconds > 1200).length },
+    { name: "Unter 4 Min.", value: durationSeconds.filter((seconds) => seconds !== null && seconds < 240).length },
+    { name: "4 bis 20 Min.", value: durationSeconds.filter((seconds) => seconds !== null && seconds >= 240 && seconds <= 1200).length },
+    { name: "Über 20 Min.", value: durationSeconds.filter((seconds) => seconds !== null && seconds > 1200).length },
   ];
 
   const recencyData = [
-    { name: "Last 7 days", value: 0 },
-    { name: "8-30 days", value: 0 },
-    { name: "1-12 months", value: 0 },
-    { name: "Over 1 year", value: 0 },
+    { name: "Letzte 7 Tage", value: 0 },
+    { name: "8–30 Tage", value: 0 },
+    { name: "1–12 Monate", value: 0 },
+    { name: "Über 1 Jahr", value: 0 },
   ];
   for (const video of videos) {
     const age = ageInDays(video.publishedAt, now);

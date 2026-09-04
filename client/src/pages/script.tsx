@@ -39,36 +39,37 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkflow } from "@/lib/workflow-context";
 import { StarryBackground } from "@/components/ui/starry-background";
+import { DISCOVERY_SURFACE_LABELS, labelFor } from "@/lib/labels";
 import { VideoFormat, TargetAudience, CreatorPersona, scriptInputSchema, type ScriptInput, type ScriptResult } from "@shared/schema";
 
 const formatOptions = [
-  { value: VideoFormat.SHORT, label: "YouTube Short (< 60 sec)", icon: "60s" },
-  { value: VideoFormat.LONG_FORM, label: "Long-form Video (8-15 min)", icon: "15m" },
-  { value: VideoFormat.TUTORIAL, label: "Tutorial/How-to", icon: "EDU" },
-  { value: VideoFormat.REVIEW, label: "Product Review", icon: "REV" },
-  { value: VideoFormat.VLOG, label: "Vlog Style", icon: "VLG" },
+  { value: VideoFormat.SHORT, label: "YouTube Short (< 60 Sek.)", icon: "60s" },
+  { value: VideoFormat.LONG_FORM, label: "Langform-Video (8–15 Min.)", icon: "15m" },
+  { value: VideoFormat.TUTORIAL, label: "Tutorial/Anleitung", icon: "EDU" },
+  { value: VideoFormat.REVIEW, label: "Produkt-Review", icon: "REV" },
+  { value: VideoFormat.VLOG, label: "Vlog-Stil", icon: "VLG" },
 ];
 
 const audienceOptions = [
-  { value: TargetAudience.GENERAL, label: "General Audience" },
-  { value: TargetAudience.TECH_SAVVY, label: "Tech-Savvy Viewers" },
-  { value: TargetAudience.BEGINNERS, label: "Beginners" },
-  { value: TargetAudience.PROFESSIONALS, label: "Industry Professionals" },
+  { value: TargetAudience.GENERAL, label: "Allgemeines Publikum" },
+  { value: TargetAudience.TECH_SAVVY, label: "Technikaffine Zuschauer" },
+  { value: TargetAudience.BEGINNERS, label: "Einsteiger" },
+  { value: TargetAudience.PROFESSIONALS, label: "Branchenprofis" },
 ];
 
 const personaOptions = [
-  { value: CreatorPersona.NONE, label: "No specific style", description: "Default AI writing style" },
-  { value: CreatorPersona.EINSTEIN, label: "The Curious Thinker", description: "Thought-provoking, uses analogies" },
-  { value: CreatorPersona.NATE_HERK, label: "The Energizer", description: "Energetic, motivational, action-oriented" },
-  { value: CreatorPersona.NEIL_PATEL, label: "The Data Expert", description: "Data-driven, SEO-focused, practical tips" },
-  { value: CreatorPersona.GARY_VEE, label: "The Hustler", description: "High energy, hustle culture, motivational" },
-  { value: CreatorPersona.BRITNEY_SPEARS, label: "The Entertainer", description: "Fun, pop culture, entertaining" },
-  { value: CreatorPersona.BRUCE_LEE, label: "The Philosopher", description: "Philosophical, wise, mindful" },
-  { value: CreatorPersona.MR_BEAST, label: "The Challenger", description: "Exciting, challenge-driven, high engagement" },
-  { value: CreatorPersona.MORGAN_FREEMAN, label: "The Storyteller", description: "Calm, authoritative, storytelling voice" },
-  { value: CreatorPersona.ALEX_HORMOZI, label: "The Business Pro", description: "Business-focused, value-driven, direct" },
-  { value: CreatorPersona.TONY_ROBBINS, label: "The Motivator", description: "Empowering, motivational, high energy" },
-  { value: CreatorPersona.OTHER, label: "Custom Persona", description: "Enter your own persona" },
+  { value: CreatorPersona.NONE, label: "Kein bestimmter Stil", description: "Standard-Schreibstil der KI" },
+  { value: CreatorPersona.EINSTEIN, label: "Der neugierige Denker", description: "Regt zum Nachdenken an, nutzt Analogien" },
+  { value: CreatorPersona.NATE_HERK, label: "Der Energizer", description: "Energiegeladen, motivierend, handlungsorientiert" },
+  { value: CreatorPersona.NEIL_PATEL, label: "Der Datenexperte", description: "Datengetrieben, SEO-fokussiert, praktische Tipps" },
+  { value: CreatorPersona.GARY_VEE, label: "Der Hustler", description: "Viel Energie, Hustle-Kultur, motivierend" },
+  { value: CreatorPersona.BRITNEY_SPEARS, label: "Der Entertainer", description: "Spaßig, Popkultur, unterhaltsam" },
+  { value: CreatorPersona.BRUCE_LEE, label: "Der Philosoph", description: "Philosophisch, weise, achtsam" },
+  { value: CreatorPersona.MR_BEAST, label: "Der Herausforderer", description: "Spannend, Challenge-getrieben, hohes Engagement" },
+  { value: CreatorPersona.MORGAN_FREEMAN, label: "Der Geschichtenerzähler", description: "Ruhige, souveräne Erzählstimme" },
+  { value: CreatorPersona.ALEX_HORMOZI, label: "Der Business-Profi", description: "Businessorientiert, wertgetrieben, direkt" },
+  { value: CreatorPersona.TONY_ROBBINS, label: "Der Motivator", description: "Bestärkend, motivierend, viel Energie" },
+  { value: CreatorPersona.OTHER, label: "Eigene Persona", description: "Eigene Persona eingeben" },
 ];
 
 interface ScriptParagraph {
@@ -99,19 +100,19 @@ function providerAwareScriptError(error: unknown, fallback: string): string {
   const message = error instanceof Error ? error.message : String(error || "");
   const normalized = message.toLowerCase();
   if (normalized.includes("quota") || normalized.includes("rate limit") || normalized.includes("too many")) {
-    return "Gemini usage is temporarily limited. Wait for the provider window to reset, then retry.";
+    return "Die Gemini-Nutzung ist vorübergehend eingeschränkt. Warte, bis das Kontingent des Anbieters zurückgesetzt wird, und versuche es dann erneut.";
   }
   if (normalized.includes("api key") || normalized.includes("unauthorized") || normalized.includes("authentication")) {
-    return "Gemini could not authenticate. Check the configured key in Settings, then retry.";
+    return "Gemini konnte sich nicht authentifizieren. Prüfe den hinterlegten Schlüssel in den Einstellungen und versuche es dann erneut.";
   }
   if (normalized.includes("timeout") || normalized.includes("timed out")) {
-    return "Gemini took too long to respond. Your current script is unchanged. Retry when ready.";
+    return "Gemini hat zu lange für die Antwort gebraucht. Dein aktuelles Skript ist unverändert. Versuche es erneut, wenn du bereit bist.";
   }
   if (normalized.includes("network") || normalized.includes("fetch") || normalized.includes("offline")) {
-    return "The provider could not be reached. Check your connection, then retry.";
+    return "Der Anbieter war nicht erreichbar. Prüfe deine Verbindung und versuche es dann erneut.";
   }
   if (normalized.includes("schema") || normalized.includes("invalid") || normalized.includes("evidence")) {
-    return "Gemini returned an unsafe or malformed revision. Your current script is unchanged. Retry to request a corrected response.";
+    return "Gemini hat eine unsichere oder fehlerhafte Überarbeitung geliefert. Dein aktuelles Skript ist unverändert. Versuche es erneut, um eine korrigierte Antwort anzufordern.";
   }
   return message || fallback;
 }
@@ -152,7 +153,7 @@ function stripMarkdown(text: string): string {
     .replace(/^\s*\d+\.\s+/gm, '')
     .replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, '');
 
-  if (result.match(/^(HOOK|INTRO|INTRODUCTION|MAIN|CONTENT|BODY|CTA|CALL|OUTRO|CONCLUSION|SCRIPT|CLOSING|SOLUTION)/i)) {
+  if (result.match(/^(HOOK|INTRO|INTRODUCTION|MAIN|CONTENT|BODY|CTA|CALL|OUTRO|CONCLUSION|SCRIPT|CLOSING|SOLUTION|EINLEITUNG|HAUPTTEIL|SKRIPT|ABSCHLUSS|SCHLUSS|FAZIT|HANDLUNGSAUFFORDERUNG|PAYOFF|EINSTIEG)/i)) {
     return '';
   }
 
@@ -163,10 +164,10 @@ function isSectionHeader(line: string): { isHeader: boolean; name: string; times
   const trimmed = line.trim();
 
   const sectionKeywords = [
-    { patterns: [/HOOK/i, /\bOPENING\b/i], name: "HOOK" },
-    { patterns: [/INTRO/i, /INTRODUCTION/i, /SOLUTION\s*PROMISE/i], name: "INTRODUCTION" },
-    { patterns: [/MAIN\s*CONTENT/i, /\bBODY\b/i, /\bCONTENT\b/i, /\bSTEP/i], name: "MAIN CONTENT" },
-    { patterns: [/CALL[\s-]*TO[\s-]*ACTION/i, /\bCTA\b/i, /OUTRO/i, /CONCLUSION/i, /CLOSING/i], name: "CALL-TO-ACTION" },
+    { patterns: [/HOOK/i, /\bOPENING\b/i, /\bEINSTIEG\b/i], name: "HOOK" },
+    { patterns: [/INTRO/i, /INTRODUCTION/i, /SOLUTION\s*PROMISE/i, /EINLEITUNG/i, /VERSPRECHEN/i], name: "EINLEITUNG" },
+    { patterns: [/MAIN\s*CONTENT/i, /\bBODY\b/i, /\bCONTENT\b/i, /\bSTEP/i, /HAUPTTEIL/i, /\bSCHRITT/i, /PAYOFF/i], name: "HAUPTTEIL" },
+    { patterns: [/CALL[\s-]*TO[\s-]*ACTION/i, /\bCTA\b/i, /OUTRO/i, /CONCLUSION/i, /CLOSING/i, /ABSCHLUSS/i, /\bSCHLUSS\b/i, /FAZIT/i, /HANDLUNGSAUFFORDERUNG/i], name: "CALL-TO-ACTION" },
   ];
 
   const isHeading = /^#{1,6}\s/.test(trimmed) || /^\[?\d{1,2}:\d{2}/.test(trimmed);
@@ -292,7 +293,7 @@ function parseScriptIntoSections(script: string): ScriptSection[] {
       const paragraph = parseParagraph(line, paragraphIndex++);
       if (paragraph) {
         if (!currentSection) {
-          currentSection = { name: "SCRIPT", paragraphs: [] };
+          currentSection = { name: "SKRIPT", paragraphs: [] };
         }
         currentSection.paragraphs.push(paragraph);
       }
@@ -310,7 +311,7 @@ function parseScriptIntoSections(script: string): ScriptSection[] {
       if (p) paragraphs.push(p);
     });
     if (paragraphs.length > 0) {
-      sections.push({ name: "FULL SCRIPT", paragraphs });
+      sections.push({ name: "GESAMTES SKRIPT", paragraphs });
     }
   }
 
@@ -330,7 +331,7 @@ function ParagraphRenderer({ paragraph, onRegenerate, isRegenerating, onEdit }: 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await navigator.clipboard.writeText(paragraph.content);
-    toast({ title: "Copied to clipboard" });
+    toast({ title: "In die Zwischenablage kopiert" });
   };
 
   const handleStartEdit = (e: React.MouseEvent) => {
@@ -373,7 +374,7 @@ function ParagraphRenderer({ paragraph, onRegenerate, isRegenerating, onEdit }: 
       case 'stage-direction':
         return (
           <div className="flex items-start gap-2 bg-muted/40 px-4 py-2 rounded-lg">
-            <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide mt-0.5">Direction:</span>
+            <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide mt-0.5">Regie:</span>
             <p className="text-sm italic text-muted-foreground flex-1">{paragraph.content}</p>
           </div>
         );
@@ -413,10 +414,10 @@ function ParagraphRenderer({ paragraph, onRegenerate, isRegenerating, onEdit }: 
         />
         <div className="flex gap-2 justify-end">
           <Button size="sm" variant="ghost" onClick={handleCancelEdit} data-testid="button-cancel-edit">
-            Cancel
+            Abbrechen
           </Button>
           <Button size="sm" onClick={handleSaveEdit} data-testid="button-save-edit">
-            Save
+            Speichern
           </Button>
         </div>
       </div>
@@ -434,11 +435,11 @@ function ParagraphRenderer({ paragraph, onRegenerate, isRegenerating, onEdit }: 
             variant="ghost"
             className="h-8 px-2 text-xs"
             onClick={handleCopy}
-            aria-label="Copy paragraph"
+            aria-label="Absatz kopieren"
             data-testid="button-copy-paragraph"
           >
             <Copy className="h-3 w-3 mr-1" />
-            Copy
+            Kopieren
           </Button>
           {onEdit && (
             <Button
@@ -447,11 +448,11 @@ function ParagraphRenderer({ paragraph, onRegenerate, isRegenerating, onEdit }: 
               variant="ghost"
               className="h-8 px-2 text-xs"
               onClick={handleStartEdit}
-              aria-label="Edit paragraph"
+              aria-label="Absatz bearbeiten"
               data-testid="button-edit-paragraph"
             >
               <Type className="h-3 w-3 mr-1" />
-              Edit
+              Bearbeiten
             </Button>
           )}
           {onRegenerate && (
@@ -461,11 +462,11 @@ function ParagraphRenderer({ paragraph, onRegenerate, isRegenerating, onEdit }: 
               variant="ghost"
               className="h-8 px-2 text-xs"
               onClick={() => onRegenerate(paragraph.content)}
-              aria-label="Rewrite paragraph with grounded evidence"
+              aria-label="Absatz mit fundierter Evidenz neu schreiben"
               data-testid="button-rewrite-paragraph"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
-              Rewrite
+              Neu schreiben
             </Button>
           )}
         </div>
@@ -473,7 +474,7 @@ function ParagraphRenderer({ paragraph, onRegenerate, isRegenerating, onEdit }: 
       {isRegenerating && (
         <div className="flex items-center justify-end gap-2 border-t border-border/50 pt-2 text-xs text-muted-foreground" role="status" aria-live="polite">
           <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
-          Rewriting paragraph...
+          Absatz wird neu geschrieben …
         </div>
       )}
     </div>
@@ -511,14 +512,14 @@ function SectionRenderer({ section, onRegenerateSection, onRegenerateParagraph, 
             disabled={isRegenerating}
             className="h-7 text-xs"
             data-testid={`button-regenerate-section-${section.name.toLowerCase().replace(/\s+/g, '-')}`}
-            aria-label={`Regenerate ${section.name} with grounded evidence`}
+            aria-label={`${section.name} mit fundierter Evidenz neu generieren`}
           >
             {isRegenerating ? (
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
             ) : (
               <RefreshCw className="h-3 w-3 mr-1" />
             )}
-            Regenerate
+            Neu generieren
           </Button>
         </div>
       </CardHeader>
@@ -548,13 +549,13 @@ interface FlowingScriptElement {
 function cleanSpeechContent(text: string): string {
   let content = text;
 
-  content = content.replace(/^\*\*(SPEAKER|HOST|VO|NARRATOR|VOICE|CREATOR):\*\*\s*/i, '');
-  content = content.replace(/^(SPEAKER|HOST|VO|NARRATOR|VOICE|CREATOR):\s*/i, '');
+  content = content.replace(/^\*\*(SPEAKER|HOST|VO|NARRATOR|VOICE|CREATOR|SPRECHER|SPRECHERIN|ERZÄHLER|ERZÄHLERIN|MODERATOR|MODERATORIN|STIMME):\*\*\s*/i, '');
+  content = content.replace(/^(SPEAKER|HOST|VO|NARRATOR|VOICE|CREATOR|SPRECHER|SPRECHERIN|ERZÄHLER|ERZÄHLERIN|MODERATOR|MODERATORIN|STIMME):\s*/i, '');
 
   content = content.replace(/\[(\d{1,2}:\d{2}(?::\d{2})?(?:\s*-\s*\d{1,2}:\d{2}(?::\d{2})?)?)\]\s*/g, '');
   content = content.replace(/\((\d{1,2}:\d{2}(?::\d{2})?(?:\s*-\s*\d{1,2}:\d{2}(?::\d{2})?)?)\)\s*/g, '');
 
-  content = content.replace(/\([^)]*(?:camera|shot|close-up|wide|zoom|pan|transition|overlay|screen|visual)[^)]*\)/gi, '');
+  content = content.replace(/\([^)]*(?:camera|shot|close-up|wide|zoom|pan|transition|overlay|screen|visual|kamera|schnitt|nahaufnahme|totale|schwenk|übergang|einblendung|bildschirm|visuell)[^)]*\)/gi, '');
 
   return stripMarkdown(content).trim();
 }
@@ -585,6 +586,14 @@ function isDirectionContent(text: string): boolean {
     lower.includes('on screen') ||
     lower.includes('graphic') ||
     lower.includes('animation') ||
+    lower.includes('kamera') ||
+    lower.includes('schnitt') ||
+    lower.includes('einblendung') ||
+    lower.includes('übergang') ||
+    lower.includes('bildschirm') ||
+    lower.includes('visuell') ||
+    lower.includes('grafik') ||
+    lower.includes('aufnahme') ||
     (text.startsWith('[') && (lower.includes('open') || lower.includes('shot') || lower.includes('close')))
   );
 }
@@ -600,7 +609,12 @@ function isToneOrPersonaLine(text: string): boolean {
       lower.includes('persona') ||
       lower.includes('storyteller') ||
       lower.includes('delivery') ||
-      lower.includes('style')
+      lower.includes('style') ||
+      lower.includes('stimme') ||
+      lower.includes('tonfall') ||
+      lower.includes('tonlage') ||
+      lower.includes('stil') ||
+      lower.includes('vortrag')
     )
   );
 }
@@ -621,7 +635,7 @@ function parseScriptToFlowingElements(script: string): FlowingScriptElement[] {
     if (trimmed === '---' || /^-{3,}$/.test(trimmed) || /^\*{3,}$/.test(trimmed)) continue;
     if (/^#{1,6}\s/.test(trimmed)) continue;
 
-    const sectionKeywords = /^(HOOK|INTRO|INTRODUCTION|MAIN|CONTENT|BODY|CTA|CALL|OUTRO|CONCLUSION|SCRIPT|CLOSING|SOLUTION|OPENING)(?:\s*[:\-]|\s*$)/i;
+    const sectionKeywords = /^(HOOK|INTRO|INTRODUCTION|MAIN|CONTENT|BODY|CTA|CALL|OUTRO|CONCLUSION|SCRIPT|CLOSING|SOLUTION|OPENING|EINLEITUNG|HAUPTTEIL|SKRIPT|GESAMTES|ABSCHLUSS|SCHLUSS|FAZIT|HANDLUNGSAUFFORDERUNG|PAYOFF|EINSTIEG)(?:\s*[:\-]|\s*$)/i;
     if (sectionKeywords.test(trimmed.replace(/[#*[\]]/g, ''))) continue;
 
     const timestamp = extractTimestamp(trimmed) || undefined;
@@ -673,13 +687,13 @@ function FlowingScriptRenderer({ script }: { script: string }) {
 
   const handleCopyElement = async (content: string) => {
     await navigator.clipboard.writeText(content);
-    toast({ title: "Copied to clipboard" });
+    toast({ title: "In die Zwischenablage kopiert" });
   };
 
   if (elements.length === 0) {
     return (
       <div className="text-muted-foreground text-center py-8">
-        No script content to display
+        Kein Skriptinhalt zum Anzeigen
       </div>
     );
   }
@@ -713,7 +727,7 @@ function FlowingScriptRenderer({ script }: { script: string }) {
             <div className="bg-muted/60 rounded-lg px-4 py-3 border-l-4 border-muted-foreground/30">
               <div className="flex items-start gap-3">
                 <span className="text-muted-foreground text-sm font-semibold uppercase tracking-wide shrink-0">
-                  DIRECTION:
+                  REGIE:
                 </span>
                 <p className="text-sm italic text-muted-foreground flex-1">
                   {element.content}
@@ -728,11 +742,11 @@ function FlowingScriptRenderer({ script }: { script: string }) {
             variant="ghost"
             className="ml-auto flex h-8 px-2 text-xs"
             onClick={() => handleCopyElement(element.content)}
-            aria-label="Copy script block"
+            aria-label="Skriptblock kopieren"
             data-testid={`button-copy-element-${element.id}`}
           >
             <Copy className="h-3 w-3 mr-1" />
-            Copy
+            Kopieren
           </Button>
         </div>
       ))}
@@ -902,47 +916,47 @@ function Teleprompter({ script, onSave }: { script: string; onSave: (script: str
             data-testid="button-teleprompter-play"
           >
             {isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Play className="mr-2 h-5 w-5" />}
-            {isPlaying ? "Pause" : "Play"}
+            {isPlaying ? "Pause" : "Abspielen"}
           </Button>
-          <Button type="button" size="icon" variant="outline" onClick={restart} aria-label="Restart teleprompter" data-testid="button-teleprompter-restart">
+          <Button type="button" size="icon" variant="outline" onClick={restart} aria-label="Teleprompter neu starten" data-testid="button-teleprompter-restart">
             <SkipBack className="h-4 w-4" />
           </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Select value={speed} onValueChange={setSpeed} disabled={isEditing}>
-            <SelectTrigger className="h-10 w-[116px]" aria-label="Reading speed" data-testid="select-teleprompter-speed">
+            <SelectTrigger className="h-10 w-[116px]" aria-label="Lesegeschwindigkeit" data-testid="select-teleprompter-speed">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="100">100 wpm</SelectItem>
-              <SelectItem value="125">125 wpm</SelectItem>
-              <SelectItem value="150">150 wpm</SelectItem>
-              <SelectItem value="175">175 wpm</SelectItem>
-              <SelectItem value="200">200 wpm</SelectItem>
+              <SelectItem value="100">100 WpM</SelectItem>
+              <SelectItem value="125">125 WpM</SelectItem>
+              <SelectItem value="150">150 WpM</SelectItem>
+              <SelectItem value="175">175 WpM</SelectItem>
+              <SelectItem value="200">200 WpM</SelectItem>
             </SelectContent>
           </Select>
           <div className="flex items-center rounded-md border border-border">
-            <Button type="button" size="icon" variant="ghost" className="rounded-r-none" onClick={() => setFontSize((size) => Math.max(24, size - 2))} disabled={isEditing || fontSize <= 24} aria-label="Decrease text size">
+            <Button type="button" size="icon" variant="ghost" className="rounded-r-none" onClick={() => setFontSize((size) => Math.max(24, size - 2))} disabled={isEditing || fontSize <= 24} aria-label="Textgröße verkleinern">
               <Minus className="h-4 w-4" />
             </Button>
             <span className="min-w-12 text-center text-xs text-muted-foreground" aria-live="polite">{fontSize}px</span>
-            <Button type="button" size="icon" variant="ghost" className="rounded-l-none" onClick={() => setFontSize((size) => Math.min(48, size + 2))} disabled={isEditing || fontSize >= 48} aria-label="Increase text size">
+            <Button type="button" size="icon" variant="ghost" className="rounded-l-none" onClick={() => setFontSize((size) => Math.min(48, size + 2))} disabled={isEditing || fontSize >= 48} aria-label="Textgröße vergrößern">
               <Plus className="h-4 w-4" />
             </Button>
           </div>
           {!isEditing && <>
             <div className="flex items-center rounded-md border border-border">
-              <Button type="button" size="icon" variant="ghost" className="rounded-r-none" onClick={undoSavedEdit} disabled={undoStack.length === 0} aria-label="Undo saved script edit" title="Undo saved edit"><Undo2 className="h-4 w-4" /></Button>
-              <Button type="button" size="icon" variant="ghost" className="rounded-l-none" onClick={redoSavedEdit} disabled={redoStack.length === 0} aria-label="Redo saved script edit" title="Redo saved edit"><Redo2 className="h-4 w-4" /></Button>
+              <Button type="button" size="icon" variant="ghost" className="rounded-r-none" onClick={undoSavedEdit} disabled={undoStack.length === 0} aria-label="Gespeicherte Skriptänderung rückgängig machen" title="Änderung rückgängig"><Undo2 className="h-4 w-4" /></Button>
+              <Button type="button" size="icon" variant="ghost" className="rounded-l-none" onClick={redoSavedEdit} disabled={redoStack.length === 0} aria-label="Gespeicherte Skriptänderung wiederholen" title="Änderung wiederholen"><Redo2 className="h-4 w-4" /></Button>
             </div>
-            <Button type="button" size="icon" variant="outline" className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => setShowCues((visible) => !visible)} aria-label={showCues ? "Hide production cues" : "Show production cues"} title={showCues ? "Hide cues" : "Show cues"}>
+            <Button type="button" size="icon" variant="outline" className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => setShowCues((visible) => !visible)} aria-label={showCues ? "Produktionsmarker ausblenden" : "Produktionsmarker einblenden"} title={showCues ? "Marker ausblenden" : "Marker einblenden"}>
               {showCues ? <Captions className="h-4 w-4" /> : <CaptionsOff className="h-4 w-4" />}
             </Button>
-            <Button type="button" size="icon" variant="outline" className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => void toggleFullscreen()} aria-label={isFullscreen ? "Exit fullscreen teleprompter" : "Open fullscreen teleprompter"} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
+            <Button type="button" size="icon" variant="outline" className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => void toggleFullscreen()} aria-label={isFullscreen ? "Teleprompter-Vollbild beenden" : "Teleprompter im Vollbild öffnen"} title={isFullscreen ? "Vollbild beenden" : "Vollbild"}>
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
-            <Button type="button" variant="outline" onClick={beginEditing} data-testid="button-edit-script"><Pencil className="mr-2 h-4 w-4" />Edit</Button>
+            <Button type="button" variant="outline" onClick={beginEditing} data-testid="button-edit-script"><Pencil className="mr-2 h-4 w-4" />Bearbeiten</Button>
           </>}
         </div>
       </div>
@@ -953,14 +967,14 @@ function Teleprompter({ script, onSave }: { script: string; onSave: (script: str
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             className="min-h-[min(65vh,680px)] resize-y font-sans text-lg leading-8"
-            aria-label="Edit full script"
+            aria-label="Gesamtes Skript bearbeiten"
             data-testid="textarea-edit-full-script"
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button type="button" variant="ghost" onClick={() => { setDraft(script); setIsEditing(false); }}><ArrowLeft className="mr-2 h-4 w-4" />Back without saving</Button>
+            <Button type="button" variant="ghost" onClick={() => { setDraft(script); setIsEditing(false); }}><ArrowLeft className="mr-2 h-4 w-4" />Zurück ohne Speichern</Button>
             <div className="flex flex-wrap items-center justify-end gap-3">
-              <span className="text-xs text-muted-foreground">Ctrl+Z undoes typing. Ctrl+Shift+Z redoes it.</span>
-              <Button type="button" onClick={saveEdit} disabled={!draft.trim()} data-testid="button-save-full-script"><Save className="mr-2 h-4 w-4" />Save script</Button>
+              <span className="text-xs text-muted-foreground">Strg+Z macht Eingaben rückgängig, Strg+Umschalt+Z wiederholt sie.</span>
+              <Button type="button" onClick={saveEdit} disabled={!draft.trim()} data-testid="button-save-full-script"><Save className="mr-2 h-4 w-4" />Skript speichern</Button>
             </div>
           </div>
         </div>
@@ -983,7 +997,7 @@ function Teleprompter({ script, onSave }: { script: string; onSave: (script: str
             }
           }}
           tabIndex={0}
-          aria-label="Teleprompter script. Press Space to play or pause."
+          aria-label="Teleprompter-Skript. Leertaste zum Abspielen oder Pausieren."
           data-testid="teleprompter-viewport"
         >
           <div className="mx-auto max-w-5xl space-y-12 pb-[58vh] pt-[32vh]">
@@ -995,7 +1009,7 @@ function Teleprompter({ script, onSave }: { script: string; onSave: (script: str
             ) : showCues ? (
               <p key={element.id} className="mx-auto max-w-3xl rounded-lg border border-amber-300/15 bg-amber-200/[0.04] px-4 py-3 text-center text-base italic text-amber-100/65">{element.content}</p>
             ) : null) : (
-              <p className="text-center text-white/55">No readable script content was found.</p>
+              <p className="text-center text-white/55">Kein lesbarer Skriptinhalt gefunden.</p>
             )}
           </div>
         </div>
@@ -1055,7 +1069,7 @@ export default function ScriptPage() {
   const [, setLocation] = useLocation();
 
   const reportActionError = (title: string, error: unknown, retry: () => void) => {
-    const message = providerAwareScriptError(error, "The script action failed. Your existing work is unchanged.");
+    const message = providerAwareScriptError(error, "Die Skript-Aktion ist fehlgeschlagen. Deine bisherige Arbeit ist unverändert.");
     retryActionRef.current = retry;
     setActionError({ title, message });
     toast({ title, description: message, variant: "destructive" });
@@ -1119,20 +1133,20 @@ export default function ScriptPage() {
 
       const notesSections: string[] = [];
 
-      notesSections.push(`**SELECTED PACKAGE:**\n${idea.description}`);
-      notesSections.push(`**HONEST PROMISE:** ${idea.honestPromise}`);
-      notesSections.push(`**DISCOVERY SURFACE:** ${idea.discoverySurface}`);
+      notesSections.push(`**AUSGEWÄHLTES PAKET:**\n${idea.description}`);
+      notesSections.push(`**EHRLICHES VERSPRECHEN:** ${idea.honestPromise}`);
+      notesSections.push(`**DISCOVERY-SURFACE:** ${labelFor(DISCOVERY_SURFACE_LABELS, idea.discoverySurface)}`);
       notesSections.push(`**PAYOFF:** ${idea.payoff}`);
-      notesSections.push(`**THUMBNAIL CONCEPT:** ${idea.thumbnailConcept}`);
-      notesSections.push(`**STUDIO VALIDATION:** ${idea.studioMetric}`);
-      notesSections.push(`**EXPERIMENT RULE:** ${idea.experimentRule}`);
-      notesSections.push(`**FOCUS TOPICS:** ${idea.keywords.join(", ")}`);
+      notesSections.push(`**THUMBNAIL-KONZEPT:** ${idea.thumbnailConcept}`);
+      notesSections.push(`**STUDIO-VALIDIERUNG:** ${idea.studioMetric}`);
+      notesSections.push(`**EXPERIMENT-REGEL:** ${idea.experimentRule}`);
+      notesSections.push(`**FOKUSTHEMEN:** ${idea.keywords.join(", ")}`);
 
       form.setValue("additionalNotes", notesSections.join("\n\n"));
 
       toast({
-        title: "Idea Loaded",
-        description: `"${idea.title}" has been loaded with research insights. Ready to generate your script!`,
+        title: "Idee geladen",
+        description: `"${idea.title}" wurde mit Recherche-Insights geladen. Du kannst jetzt dein Skript generieren.`,
       });
     }
   }, [workflowState.isWorkflowActive, workflowState.idea, form, toast]);
@@ -1175,12 +1189,12 @@ export default function ScriptPage() {
       });
 
       toast({
-        title: "Script Generated",
-        description: `Your ${form.getValues("format")} script is ready!`,
+        title: "Skript generiert",
+        description: `Dein Skript (${form.getValues("format")}) ist fertig.`,
       });
     },
     onError: (error: Error, variables) => {
-      reportActionError("Script generation failed", error, () => generateMutation.mutate(variables));
+      reportActionError("Skript-Generierung fehlgeschlagen", error, () => generateMutation.mutate(variables));
     },
   });
 
@@ -1200,8 +1214,8 @@ export default function ScriptPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast({
-        title: "Copied to clipboard",
-        description: "Script has been copied to your clipboard.",
+        title: "In die Zwischenablage kopiert",
+        description: "Das Skript wurde in deine Zwischenablage kopiert.",
       });
     }
   };
@@ -1248,11 +1262,11 @@ export default function ScriptPage() {
         result: updatedResult,
       });
       toast({
-        title: "Titles Regenerated",
-        description: "New title suggestions are ready!",
+        title: "Titel neu generiert",
+        description: "Neue Titelvorschläge sind fertig.",
       });
     } catch (error: unknown) {
-      reportActionError("Title regeneration failed", error, () => void handleRegenerateTitles());
+      reportActionError("Titel-Generierung fehlgeschlagen", error, () => void handleRegenerateTitles());
     } finally {
       setRegeneratingTitles(false);
     }
@@ -1306,8 +1320,8 @@ export default function ScriptPage() {
     persistScriptRevision(updatedScript);
 
     toast({
-      title: "Paragraph Updated",
-      description: "Your edit has been saved.",
+      title: "Absatz aktualisiert",
+      description: "Deine Änderung wurde gespeichert.",
     });
   };
 
@@ -1351,11 +1365,11 @@ export default function ScriptPage() {
       persistScriptRevision(updatedScript);
 
       toast({
-        title: "Section Regenerated",
-        description: `${sectionName} section has been updated!`,
+        title: "Abschnitt neu generiert",
+        description: `Der Abschnitt ${sectionName} wurde aktualisiert.`,
       });
     } catch (error: unknown) {
-      reportActionError(`Could not regenerate ${sectionName}`, error, () => void handleRegenerateSection(sectionName));
+      reportActionError(`${sectionName} konnte nicht neu generiert werden`, error, () => void handleRegenerateSection(sectionName));
     } finally {
       setRegeneratingSection(null);
     }
@@ -1395,11 +1409,11 @@ export default function ScriptPage() {
       persistScriptRevision(updatedScript);
 
       toast({
-        title: "Paragraph Rewritten",
-        description: "The paragraph has been updated!",
+        title: "Absatz neu geschrieben",
+        description: "Der Absatz wurde aktualisiert.",
       });
     } catch (error: unknown) {
-      reportActionError("Could not rewrite paragraph", error, () => void handleRegenerateParagraph(sectionName, paragraphId, content));
+      reportActionError("Absatz konnte nicht neu geschrieben werden", error, () => void handleRegenerateParagraph(sectionName, paragraphId, content));
     } finally {
       setRegeneratingParagraph(null);
     }
@@ -1434,11 +1448,11 @@ export default function ScriptPage() {
     pdf.setTextColor(255, 255, 255);
     pdf.setFontSize(18);
     pdf.setFont("helvetica", "bold");
-    pdf.text("YouTube Script", margin, 16);
+    pdf.text("YouTube-Skript", margin, 16);
 
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "normal");
-    const date = new Date().toLocaleDateString("en-US", {
+    const date = new Date().toLocaleDateString("de-DE", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -1461,7 +1475,7 @@ export default function ScriptPage() {
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "normal");
     pdf.setTextColor(100, 100, 100);
-    pdf.text(`${result.metadata.wordCount} words • ${result.metadata.estimatedDuration}`, margin, y);
+    pdf.text(`${result.metadata.wordCount.toLocaleString("de-DE")} Wörter • ${result.metadata.estimatedDuration}`, margin, y);
     y += 10;
 
     if (result.titles && result.titles.length > 0) {
@@ -1471,7 +1485,7 @@ export default function ScriptPage() {
       pdf.setTextColor(30, 30, 30);
       pdf.setFontSize(11);
       pdf.setFont("helvetica", "bold");
-      pdf.text("Suggested Titles", margin + 3, y + 5.5);
+      pdf.text("Vorgeschlagene Titel", margin + 3, y + 5.5);
       y += 12;
 
       result.titles.forEach((title, i) => {
@@ -1527,7 +1541,7 @@ export default function ScriptPage() {
             pdf.setFontSize(9);
             pdf.setFont("helvetica", "italic");
             pdf.setTextColor(100, 100, 100);
-            const directionLines = pdf.splitTextToSize(`Direction: ${paragraph.content}`, contentWidth - 10);
+            const directionLines = pdf.splitTextToSize(`Regie: ${paragraph.content}`, contentWidth - 10);
             directionLines.forEach((line: string) => {
               pdf.text(line, margin + 5, y);
               y += 4.5;
@@ -1576,16 +1590,16 @@ export default function ScriptPage() {
       pdf.setPage(i);
       pdf.setTextColor(150, 150, 150);
       pdf.setFontSize(8);
-      pdf.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: "center" });
-      pdf.text("Generated by YouTube Research & Script Pro", margin, pageHeight - 8);
+      pdf.text(`Seite ${i} von ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: "center" });
+      pdf.text("Erstellt mit YouTube Research & Script Pro", margin, pageHeight - 8);
     }
 
     const filename = `script-${topic.replace(/[^a-z0-9]/gi, "-").toLowerCase().substring(0, 30)}-${Date.now()}.pdf`;
     pdf.save(filename);
 
     toast({
-      title: "PDF Downloaded",
-      description: "Your script has been saved as a PDF.",
+      title: "PDF heruntergeladen",
+      description: "Dein Skript wurde als PDF gespeichert.",
     });
   };
 
@@ -1600,11 +1614,11 @@ export default function ScriptPage() {
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-xl font-bold text-foreground">Script Writer</h1>
-                  <p className="text-sm text-muted-foreground">AI-powered script generation</p>
+                  <h1 className="text-xl font-bold text-foreground">Skript-Writer</h1>
+                  <p className="text-sm text-muted-foreground">KI-gestützte Skript-Generierung</p>
                 </div>
               </div>
-              {workflowState.isWorkflowActive && <Badge variant="outline" className="gap-1">Step 2 of 3</Badge>}
+              {workflowState.isWorkflowActive && <Badge variant="outline" className="gap-1">Schritt 2 von 3</Badge>}
             </div>
           </div>
 
@@ -1617,18 +1631,18 @@ export default function ScriptPage() {
                         <Check className="h-4 w-4 text-primary" />
                       </div>
                       <div className="min-w-0 flex-1 break-words">
-                        <p className="text-sm font-medium text-foreground">Selected Idea</p>
+                        <p className="text-sm font-medium text-foreground">Ausgewählte Idee</p>
                         <p className="text-xs text-muted-foreground line-clamp-2">
                           {workflowState.idea.selectedIdea.title}
                         </p>
                         <p className="mt-2 text-xs text-muted-foreground">
-                          Promise: {workflowState.idea.selectedIdea.honestPromise}
+                          Versprechen: {workflowState.idea.selectedIdea.honestPromise}
                         </p>
                         <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-                          <span>Surface: {workflowState.idea.selectedIdea.discoverySurface}</span>
+                          <span>Discovery-Surface: {labelFor(DISCOVERY_SURFACE_LABELS, workflowState.idea.selectedIdea.discoverySurface)}</span>
                           <span>Payoff: {workflowState.idea.selectedIdea.payoff}</span>
                           <span>Thumbnail: {workflowState.idea.selectedIdea.thumbnailConcept}</span>
-                          <span>Studio check: {workflowState.idea.selectedIdea.studioMetric}</span>
+                          <span>Studio-Check: {workflowState.idea.selectedIdea.studioMetric}</span>
                           <span>Experiment: {workflowState.idea.selectedIdea.experimentRule}</span>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-2">
@@ -1651,16 +1665,16 @@ export default function ScriptPage() {
                     name="topic"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Video Topic</FormLabel>
+                        <FormLabel>Videothema</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="e.g., How to build a React app from scratch"
+                            placeholder="z. B. Wie du eine React-App von Grund auf baust"
                             {...field}
                             data-testid="input-topic"
                           />
                         </FormControl>
                         <FormDescription>
-                          What is your video about?
+                          Worum geht es in deinem Video?
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -1672,11 +1686,11 @@ export default function ScriptPage() {
                     name="format"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Video Format</FormLabel>
+                        <FormLabel>Videoformat</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-format">
-                              <SelectValue placeholder="Select a format" />
+                              <SelectValue placeholder="Format auswählen" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1693,7 +1707,7 @@ export default function ScriptPage() {
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Choose the type of video you're creating
+                          Wähle die Art des Videos, das du erstellst
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -1705,11 +1719,11 @@ export default function ScriptPage() {
                     name="audience"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Target Audience</FormLabel>
+                        <FormLabel>Zielgruppe</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-audience">
-                              <SelectValue placeholder="Select target audience" />
+                              <SelectValue placeholder="Zielgruppe auswählen" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1721,7 +1735,7 @@ export default function ScriptPage() {
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Who are you making this video for?
+                          Für wen machst du dieses Video?
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -1733,11 +1747,11 @@ export default function ScriptPage() {
                     name="persona"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tone Traits</FormLabel>
+                        <FormLabel>Tonalität</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-persona">
-                              <SelectValue placeholder="Select a persona style" />
+                              <SelectValue placeholder="Persona-Stil auswählen" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1752,7 +1766,7 @@ export default function ScriptPage() {
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Choose abstract delivery traits. The script will not imitate a real person's voice.
+                          Wähle abstrakte Vortragsmerkmale. Das Skript imitiert nicht die Stimme einer realen Person.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -1765,16 +1779,16 @@ export default function ScriptPage() {
                       name="customPersona"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Custom Tone Traits</FormLabel>
+                          <FormLabel>Eigene Tonalität</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="e.g., calm, analytical, warm, concise"
+                              placeholder="z. B. ruhig, analytisch, warm, prägnant"
                               {...field}
                               data-testid="input-custom-persona"
                             />
                           </FormControl>
                           <FormDescription>
-                            Describe cadence, energy, vocabulary, and formality without naming a person.
+                            Beschreibe Sprechrhythmus, Energie, Wortschatz und Förmlichkeit, ohne eine Person zu nennen.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -1787,10 +1801,10 @@ export default function ScriptPage() {
                     name="additionalNotes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Additional Notes (Optional)</FormLabel>
+                        <FormLabel>Zusätzliche Hinweise (optional)</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Any specific points, style preferences, or requirements..."
+                            placeholder="Bestimmte Punkte, Stilvorlieben oder Anforderungen …"
                             className="min-h-[100px] resize-none"
                             {...field}
                             data-testid="input-notes"
@@ -1811,12 +1825,12 @@ export default function ScriptPage() {
                       {generateMutation.isPending ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Generating...
+                          Wird generiert …
                         </>
                       ) : (
                         <>
                           <Sparkles className="h-4 w-4 mr-2" />
-                          Generate Script
+                          Skript generieren
                         </>
                       )}
                     </Button>
@@ -1825,7 +1839,7 @@ export default function ScriptPage() {
                         type="button"
                         variant="outline"
                         onClick={handleReset}
-                        aria-label="Reset script form"
+                        aria-label="Skript-Formular zurücksetzen"
                         data-testid="button-reset"
                       >
                         <RotateCcw className="h-4 w-4" aria-hidden="true" />
@@ -1859,14 +1873,14 @@ export default function ScriptPage() {
                     data-testid="button-retry-script-action"
                   >
                     <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
-                    Retry
+                    Erneut versuchen
                   </Button>
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
                     onClick={clearActionError}
-                    aria-label="Dismiss script error"
+                    aria-label="Skript-Fehler schließen"
                     data-testid="button-dismiss-script-error"
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
@@ -1881,19 +1895,19 @@ export default function ScriptPage() {
                 <div className="h-20 w-20 rounded-full border-4 border-muted animate-pulse" />
                 <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 text-primary animate-bounce" />
               </div>
-              <p className="mt-6 text-lg font-medium text-foreground">Generating your script...</p>
-              <p className="mt-2 text-sm text-muted-foreground">This may take a few seconds</p>
+              <p className="mt-6 text-lg font-medium text-foreground">Dein Skript wird generiert …</p>
+              <p className="mt-2 text-sm text-muted-foreground">Das kann ein paar Sekunden dauern</p>
             </div>
           ) : result ? (
             <div className="mx-auto max-w-6xl space-y-5">
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium text-primary">Ready to read</p>
+                  <p className="text-sm font-medium text-primary">Bereit zum Ablesen</p>
                   <h2 className="mt-1 text-2xl font-semibold text-foreground">Teleprompter</h2>
                   <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Type className="h-4 w-4" />{result.metadata.wordCount} words</span>
+                    <span className="flex items-center gap-1.5"><Type className="h-4 w-4" />{result.metadata.wordCount.toLocaleString("de-DE")} Wörter</span>
                     <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" />{result.metadata.estimatedDuration}</span>
-                    <span>Press Space to play or pause</span>
+                    <span>Leertaste zum Abspielen oder Pausieren</span>
                   </div>
                 </div>
               </div>
@@ -1904,16 +1918,16 @@ export default function ScriptPage() {
                 <Card className="border-border/70">
                   <CollapsibleTrigger asChild>
                     <Button type="button" variant="ghost" className="h-auto w-full justify-between rounded-xl px-4 py-4" data-testid="button-script-details">
-                      <span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Script details and export</span>
+                      <span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Skript-Details und Export</span>
                       <ChevronDown className={`h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`} />
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <CardContent className="space-y-6 border-t border-border pt-5">
                       <div className="flex flex-wrap gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={handleDownloadPDF} data-testid="button-download-pdf"><Download className="mr-2 h-4 w-4" />Download PDF</Button>
+                        <Button type="button" variant="outline" size="sm" onClick={handleDownloadPDF} data-testid="button-download-pdf"><Download className="mr-2 h-4 w-4" />PDF herunterladen</Button>
                         <Button type="button" variant="outline" size="sm" onClick={handleCopy} data-testid="button-copy-script">
-                          {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}{copied ? "Copied" : "Copy full script"}
+                          {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}{copied ? "Kopiert" : "Gesamtes Skript kopieren"}
                         </Button>
                         <Button
                           type="button"
@@ -1922,15 +1936,15 @@ export default function ScriptPage() {
                           onClick={() => { goToStep("thumbnail"); setLocation("/thumbnail"); }}
                           data-testid="button-create-thumbnail"
                         >
-                          <Image className="mr-2 h-4 w-4" />Create thumbnail<ArrowRight className="ml-2 h-4 w-4" />
+                          <Image className="mr-2 h-4 w-4" />Thumbnail erstellen<ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </div>
 
                       {result.titles && result.titles.length > 0 && (
                         <section aria-labelledby="script-title-options">
                           <div className="flex items-center justify-between gap-3">
-                            <h3 id="script-title-options" className="text-sm font-semibold">Suggested titles</h3>
-                            <Button type="button" variant="ghost" size="icon" onClick={handleRegenerateTitles} disabled={regeneratingTitles} aria-label="Regenerate suggested titles" data-testid="button-regenerate-titles">
+                            <h3 id="script-title-options" className="text-sm font-semibold">Vorgeschlagene Titel</h3>
+                            <Button type="button" variant="ghost" size="icon" onClick={handleRegenerateTitles} disabled={regeneratingTitles} aria-label="Titelvorschläge neu generieren" data-testid="button-regenerate-titles">
                               {regeneratingTitles ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                             </Button>
                           </div>
@@ -1959,8 +1973,8 @@ export default function ScriptPage() {
                         </div>
                         <div className="space-y-3">
                           <div className="rounded-lg border border-border p-3"><p className="font-medium">Payoff</p><p className="mt-1 text-muted-foreground">{result.payoff}</p></div>
-                          <div className="rounded-lg border border-border p-3"><p className="font-medium">Primary CTA</p><p className="mt-1 text-muted-foreground">{result.primaryCta}</p></div>
-                          <div className="rounded-lg border border-border p-3"><p className="font-medium">Studio check</p><p className="mt-1 text-muted-foreground">{result.studioValidation}</p></div>
+                          <div className="rounded-lg border border-border p-3"><p className="font-medium">Primärer CTA</p><p className="mt-1 text-muted-foreground">{result.primaryCta}</p></div>
+                          <div className="rounded-lg border border-border p-3"><p className="font-medium">Studio-Check</p><p className="mt-1 text-muted-foreground">{result.studioValidation}</p></div>
                         </div>
                       </section>
                     </CardContent>
@@ -1971,8 +1985,8 @@ export default function ScriptPage() {
           ) : (
             <EmptyState
               icon={FileText}
-              title="Create Your Script"
-              description="Fill in the details on the left panel and let AI generate a professional script for your video."
+              title="Erstelle dein Skript"
+              description="Fülle die Angaben im linken Bereich aus und lass die KI ein professionelles Skript für dein Video generieren."
             />
           )}
         </div>

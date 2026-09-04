@@ -1,19 +1,19 @@
-# Contributing to YouTube Pro
+# Mitwirken an YouTube Pro
 
-YouTube Pro welcomes focused contributions that preserve the continuous workflow from Research to Insights to Ideas to Script Writer to Thumbnail Creator.
+YouTube Pro begrüßt fokussierte Beiträge, die den durchgehenden Workflow von Recherche über Insights, Ideen und Skript-Writer bis zum Thumbnail-Creator bewahren.
 
-## Local setup
+## Lokale Einrichtung
 
-1. Install Node.js 22.12 or newer.
-2. Run `npm install`.
-3. Copy `.env.example` to `.env` and add your own provider keys, or configure them through the local Settings page.
-4. Run `npm run dev` and open `http://127.0.0.1:5000`.
+1. Installiere Node.js 22.12 oder neuer.
+2. Führe `npm install` aus.
+3. Kopiere `.env.example` nach `.env` und trage deine eigenen Anbieter-Schlüssel ein, oder konfiguriere sie über die lokale Einstellungsseite.
+4. Führe `npm run dev` aus und öffne `http://127.0.0.1:5000`.
 
-Never commit `.env`, provider keys, generated private data, or exports containing private channel information.
+Committe niemals `.env`, Anbieter-Schlüssel, generierte private Daten oder Exporte mit privaten Kanalinformationen.
 
-## Required checks
+## Erforderliche Prüfungen
 
-Run all checks before opening a pull request:
+Führe alle Prüfungen aus, bevor du einen Pull Request eröffnest:
 
 ```bash
 npm test
@@ -21,17 +21,17 @@ npm run check
 npm run build
 ```
 
-The automated suite uses fixtures and mocks. It must not spend YouTube or Gemini quota.
+Die automatisierte Suite verwendet Fixtures und Mocks. Sie darf kein YouTube- oder Gemini-Kontingent verbrauchen.
 
-## Pull requests
+## Pull Requests
 
-- Keep each change focused and explain its user-facing effect.
-- Preserve snapshot IDs and source-video evidence through the Research, Insights, Ideas, and Script stages.
-- Keep provider credentials and paid calls on the server.
-- Add or update focused tests when changing request contracts, provider behavior, evidence rules, exports, or security boundaries.
-- Include screenshots for meaningful interface changes in both dark and light themes when practical.
-- State which checks were run and any acceptance work that remains.
+- Halte jede Änderung fokussiert und erläutere ihre Auswirkung für Nutzer.
+- Bewahre Snapshot-IDs und Quellvideo-Evidenz über die Phasen Recherche, Insights, Ideen und Skript hinweg.
+- Halte Anbieter-Zugangsdaten und kostenpflichtige Aufrufe auf dem Server.
+- Ergänze oder aktualisiere fokussierte Tests, wenn du Anfrage-Verträge, Anbieterverhalten, Evidenzregeln, Exporte oder Sicherheitsgrenzen änderst.
+- Füge bei wesentlichen Interface-Änderungen Screenshots im dunklen und hellen Design bei, wenn praktikabel.
+- Gib an, welche Prüfungen ausgeführt wurden und welche Abnahmearbeiten noch ausstehen.
 
-## License and contributions
+## Lizenz und Beiträge
 
-By contributing, you agree that your contributions will be licensed under the repository's [Apache License 2.0](LICENSE).
+Mit deinem Beitrag stimmst du zu, dass deine Beiträge unter der [Apache License 2.0](LICENSE) des Repositorys lizenziert werden.

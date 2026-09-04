@@ -5,6 +5,15 @@ import type {
   Video,
 } from "@shared/schema";
 import type { calculateYouTubeAnalytics } from "@/lib/youtube-analytics";
+import {
+  CONFIDENCE_LABELS,
+  DIFFICULTY_LABELS,
+  DISCOVERY_SURFACE_LABELS,
+  ENRICHMENT_STATUS_LABELS,
+  EVIDENCE_CLASS_LABELS,
+  IDEA_FORMAT_LABELS,
+  labelFor,
+} from "@/lib/labels";
 
 export type ResearchAnalytics = ReturnType<typeof calculateYouTubeAnalytics>;
 
@@ -40,17 +49,17 @@ interface ExportTable {
 }
 
 function readable(value: Cell): string {
-  if (value === null || value === undefined || value === "") return "N/A";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (value === null || value === undefined || value === "") return "k. A.";
+  if (typeof value === "boolean") return value ? "Ja" : "Nein";
   return String(value);
 }
 
 function joined(values?: readonly string[]): string {
-  return values && values.length > 0 ? values.join(" | ") : "N/A";
+  return values && values.length > 0 ? values.join(" | ") : "k. A.";
 }
 
 function videoInteractionRate(video: Video): string {
-  if (!video.viewCount || video.likeCount === undefined || video.commentCount === undefined) return "N/A";
+  if (!video.viewCount || video.likeCount === undefined || video.commentCount === undefined) return "k. A.";
   return `${(((video.likeCount + video.commentCount) / video.viewCount) * 100).toFixed(2)}%`;
 }
 
@@ -60,62 +69,62 @@ export function safeExportStem(query: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "research";
+    .slice(0, 60) || "recherche";
 }
 
 export function buildResearchExportTables(data: ResearchReportData): ExportTable[] {
   const { analytics, insights } = data;
   const summary: ExportTable = {
-    name: "Summary",
-    columns: ["Field", "Value"],
+    name: "Zusammenfassung",
+    columns: ["Feld", "Wert"],
     rows: [
-      ["Report", "YouTube Research Report"],
-      ["Query", data.query],
-      ["Retrieved", data.retrievedAt],
-      ["Snapshot ID", data.snapshotId],
-      ["Estimated matching results", data.totalResults],
-      ["Result count is approximate", data.totalResultsIsApproximate],
-      ["Results per page", data.resultsPerPage],
-      ["Region code", data.regionCode],
-      ["Next-page token", data.nextPageToken],
-      ["Videos analyzed", analytics.totalVideos],
-      ["Unique channels", analytics.uniqueChannels],
-      ["Sample views", analytics.totalViews],
-      ["Average views", analytics.avgViews],
-      ["Median views", analytics.medianViews],
-      ["Median views per day", analytics.medianDailyViews],
-      ["Visible interaction rate", analytics.avgEngagement === "N/A" ? "N/A" : `${analytics.avgEngagement}%`],
-      ["Upload-date filter", data.filters.uploadDate],
-      ["Duration filter", data.filters.duration],
-      ["Sort order", data.filters.sortBy],
-      ["Executive summary", insights.summary],
+      ["Bericht", "YouTube-Recherchebericht"],
+      ["Suchbegriff", data.query],
+      ["Abgerufen", data.retrievedAt],
+      ["Snapshot-ID", data.snapshotId],
+      ["Geschätzte passende Ergebnisse", data.totalResults],
+      ["Ergebniszahl ist ungefähr", data.totalResultsIsApproximate],
+      ["Ergebnisse pro Seite", data.resultsPerPage],
+      ["Regionscode", data.regionCode],
+      ["Token für nächste Seite", data.nextPageToken],
+      ["Analysierte Videos", analytics.totalVideos],
+      ["Eindeutige Kanäle", analytics.uniqueChannels],
+      ["Aufrufe in der Stichprobe", analytics.totalViews],
+      ["Durchschnittliche Aufrufe", analytics.avgViews],
+      ["Median der Aufrufe", analytics.medianViews],
+      ["Median der Aufrufe pro Tag", analytics.medianDailyViews],
+      ["Sichtbare Interaktionsrate", analytics.avgEngagement === "N/A" ? "k. A." : `${analytics.avgEngagement}%`],
+      ["Upload-Datum-Filter", data.filters.uploadDate],
+      ["Dauer-Filter", data.filters.duration],
+      ["Sortierung", data.filters.sortBy],
+      ["Kurzfassung", insights.summary],
     ],
   };
 
   const overview: ExportTable = {
-    name: "Overview",
-    columns: ["Section", "Label", "Value", "Definition"],
+    name: "Überblick",
+    columns: ["Abschnitt", "Bezeichnung", "Wert", "Definition"],
     rows: [
-      ...analytics.durationData.map((item) => ["Duration distribution", item.name, item.value, "Returned videos"]),
-      ...analytics.recencyData.map((item) => ["Publication recency", item.name, item.value, "Returned videos"]),
-      ...analytics.topTags.map((item) => ["Recurring tags", item.label, item.count, "Distinct returned videos using the public tag"]),
-      ["Data coverage", "Views", analytics.coverage.views, `of ${analytics.totalVideos}`],
-      ["Data coverage", "Complete engagement", analytics.coverage.engagement, `of ${analytics.totalVideos}`],
-      ["Data coverage", "Public subscribers", analytics.coverage.subscribers, `of ${analytics.totalVideos}`],
-      ["Data coverage", "Captions available", analytics.coverage.captions, `of ${analytics.totalVideos}`],
-      ["Data coverage", "Public tags", analytics.coverage.tags, `of ${analytics.totalVideos}`],
-      ["Data coverage", "HD definition", analytics.coverage.hd, `of ${analytics.totalVideos}`],
+      ...analytics.durationData.map((item) => ["Dauer-Verteilung", item.name, item.value, "Zurückgegebene Videos"]),
+      ...analytics.recencyData.map((item) => ["Aktualität der Veröffentlichung", item.name, item.value, "Zurückgegebene Videos"]),
+      ...analytics.topTags.map((item) => ["Wiederkehrende Tags", item.label, item.count, "Verschiedene zurückgegebene Videos mit diesem öffentlichen Tag"]),
+      ["Datenabdeckung", "Aufrufe", analytics.coverage.views, `von ${analytics.totalVideos}`],
+      ["Datenabdeckung", "Vollständiges Engagement", analytics.coverage.engagement, `von ${analytics.totalVideos}`],
+      ["Datenabdeckung", "Öffentliche Abonnenten", analytics.coverage.subscribers, `von ${analytics.totalVideos}`],
+      ["Datenabdeckung", "Untertitel verfügbar", analytics.coverage.captions, `von ${analytics.totalVideos}`],
+      ["Datenabdeckung", "Öffentliche Tags", analytics.coverage.tags, `von ${analytics.totalVideos}`],
+      ["Datenabdeckung", "HD-Auflösung", analytics.coverage.hd, `von ${analytics.totalVideos}`],
       ...analytics.velocityLeaders.map(({ video, viewsPerDay }, index) => [
-        "Momentum leaders",
+        "Momentum-Spitzenreiter",
         `${index + 1}. ${video.title}`,
         Math.round(viewsPerDay),
-        "Age-adjusted views per day, not real-time velocity",
+        "Altersbereinigte Aufrufe pro Tag, keine Echtzeit-Geschwindigkeit",
       ]),
       ...analytics.breakoutLeaders.map(({ video, viewsPerSubscriber }, index) => [
-        "Breakout versus subscribers",
+        "Breakout im Verhältnis zu Abonnenten",
         `${index + 1}. ${video.title}`,
         Number(viewsPerSubscriber.toFixed(2)),
-        "Views divided by current rounded public subscriber count",
+        "Aufrufe geteilt durch die aktuelle gerundete öffentliche Abonnentenzahl",
       ]),
     ],
   };
@@ -123,15 +132,15 @@ export function buildResearchExportTables(data: ResearchReportData): ExportTable
   const videos: ExportTable = {
     name: "Videos",
     columns: [
-      "Rank", "Video ID", "Title", "Channel", "Channel ID", "Published", "Duration",
-      "Views", "Likes", "Comments", "Visible interaction rate", "Tags", "Category ID",
-      "Live status", "Captions", "Definition", "Licensed content", "Embeddable",
-      "Made for kids", "Paid product placement", "Default language", "Audio language",
-      "Topic categories", "Live actual start", "Live actual end", "Live scheduled start",
-      "Live concurrent viewers", "Channel subscribers", "Subscribers hidden", "Channel videos",
-      "Channel views", "Channel published", "Channel country", "Channel custom URL",
-      "Channel default language", "Channel keywords", "Channel topic categories",
-      "Channel thumbnail URL", "Channel description", "Thumbnail URL", "YouTube URL", "Description",
+      "Rang", "Video-ID", "Titel", "Kanal", "Kanal-ID", "Veröffentlicht", "Dauer",
+      "Aufrufe", "Likes", "Kommentare", "Sichtbare Interaktionsrate", "Tags", "Kategorie-ID",
+      "Live-Status", "Untertitel", "Auflösung", "Lizenzierter Inhalt", "Einbettbar",
+      "Für Kinder", "Bezahlte Produktplatzierung", "Standardsprache", "Audiosprache",
+      "Themenkategorien", "Live: tatsächlicher Start", "Live: tatsächliches Ende", "Live: geplanter Start",
+      "Live: gleichzeitige Zuschauer", "Kanal-Abonnenten", "Abonnenten verborgen", "Kanal-Videos",
+      "Kanal-Aufrufe", "Kanal erstellt", "Kanal-Land", "Kanal-Custom-URL",
+      "Kanal-Standardsprache", "Kanal-Keywords", "Kanal-Themenkategorien",
+      "Kanal-Thumbnail-URL", "Kanalbeschreibung", "Thumbnail-URL", "YouTube-URL", "Beschreibung",
     ],
     rows: data.videos.map((video, index) => [
       index + 1,
@@ -180,52 +189,52 @@ export function buildResearchExportTables(data: ResearchReportData): ExportTable
   };
 
   const aiInsights: ExportTable = {
-    name: "AI Insights",
-    columns: ["Section", "Item", "Detail"],
+    name: "KI-Insights",
+    columns: ["Abschnitt", "Element", "Detail"],
     rows: [
-      ["Executive Summary", "Summary", insights.summary],
-      ["Query Intent", "Primary intent", insights.queryIntent.primaryIntent],
-      ["Query Intent", "Viewer need", insights.queryIntent.viewerNeed],
-      ["Query Intent", "Discovery surface", insights.queryIntent.discoverySurface],
-      ["Query Intent", "Credibility note", insights.queryIntent.credibilityNote],
-      ...insights.evidenceSignals.observed.map((value, index) => ["Evidence Signals", `Observed ${index + 1}`, value]),
-      ...insights.evidenceSignals.inferred.map((value, index) => ["Evidence Signals", `Inferred ${index + 1}`, value]),
-      ...insights.evidenceSignals.requiresStudio.map((value, index) => ["Evidence Signals", `Requires Studio ${index + 1}`, value]),
+      ["Kurzfassung", "Zusammenfassung", insights.summary],
+      ["Suchintention", "Primäre Intention", insights.queryIntent.primaryIntent],
+      ["Suchintention", "Zuschauerbedürfnis", insights.queryIntent.viewerNeed],
+      ["Suchintention", "Discovery-Oberfläche", insights.queryIntent.discoverySurface],
+      ["Suchintention", "Glaubwürdigkeitshinweis", insights.queryIntent.credibilityNote],
+      ...insights.evidenceSignals.observed.map((value, index) => ["Evidenz-Signale", `Beobachtet ${index + 1}`, value]),
+      ...insights.evidenceSignals.inferred.map((value, index) => ["Evidenz-Signale", `Abgeleitet ${index + 1}`, value]),
+      ...insights.evidenceSignals.requiresStudio.map((value, index) => ["Evidenz-Signale", `Erfordert Studio ${index + 1}`, value]),
       ...insights.peopleAlsoAsk.flatMap((item, index) => [
-        ["Viewer Questions", `Question ${index + 1}`, item.question],
-        ["Viewer Questions", `Answer ${index + 1}`, item.answer],
+        ["Zuschauerfragen", `Frage ${index + 1}`, item.question],
+        ["Zuschauerfragen", `Antwort ${index + 1}`, item.answer],
       ]),
-      ["Audience", "Primary demographic hypothesis", insights.targetAudience.primaryDemographic],
-      ["Audience", "Age-range hypothesis", insights.targetAudience.ageRange],
-      ["Audience", "Interests", joined(insights.targetAudience.interests)],
-      ["Audience", "Pain points", joined(insights.targetAudience.painPoints)],
-      ["Audience", "Content preferences", joined(insights.targetAudience.contentPreferences)],
-      ["Niche", "Competition level", insights.nicheAnalysis.competitionLevel],
-      ["Niche", "Growth trend", insights.nicheAnalysis.growthTrend],
-      ["Niche", "Posting-time hypotheses", joined(insights.nicheAnalysis.bestPostingTimes)],
-      ["Niche", "Recommended formats", joined(insights.nicheAnalysis.recommendedFormats)],
-      ["Niche", "Monetization hypothesis", insights.nicheAnalysis.monetizationPotential],
-      ...insights.contentGaps.map((value, index) => ["Content Gaps", `Gap ${index + 1}`, value]),
-      ...insights.trendingSubtopics.map((value, index) => ["Subtopics", `Subtopic ${index + 1}`, value]),
+      ["Zielgruppe", "Hypothese zur primären Demografie", insights.targetAudience.primaryDemographic],
+      ["Zielgruppe", "Hypothese zur Altersspanne", insights.targetAudience.ageRange],
+      ["Zielgruppe", "Interessen", joined(insights.targetAudience.interests)],
+      ["Zielgruppe", "Schmerzpunkte", joined(insights.targetAudience.painPoints)],
+      ["Zielgruppe", "Content-Präferenzen", joined(insights.targetAudience.contentPreferences)],
+      ["Nische", "Wettbewerbsniveau", insights.nicheAnalysis.competitionLevel],
+      ["Nische", "Wachstumstrend", insights.nicheAnalysis.growthTrend],
+      ["Nische", "Hypothesen zu Veröffentlichungszeiten", joined(insights.nicheAnalysis.bestPostingTimes)],
+      ["Nische", "Empfohlene Formate", joined(insights.nicheAnalysis.recommendedFormats)],
+      ["Nische", "Monetarisierungshypothese", insights.nicheAnalysis.monetizationPotential],
+      ...insights.contentGaps.map((value, index) => ["Content-Lücken", `Lücke ${index + 1}`, value]),
+      ...insights.trendingSubtopics.map((value, index) => ["Unterthemen", `Unterthema ${index + 1}`, value]),
       ...insights.recommendedActions.flatMap((item, index) => [
-        ["Recommended Actions", `Action ${index + 1}`, item.title],
-        ["Recommended Actions", `Rationale ${index + 1}`, item.rationale],
-        ["Recommended Actions", `Format ${index + 1}`, item.format],
+        ["Empfohlene Maßnahmen", `Maßnahme ${index + 1}`, item.title],
+        ["Empfohlene Maßnahmen", `Begründung ${index + 1}`, item.rationale],
+        ["Empfohlene Maßnahmen", `Format ${index + 1}`, item.format],
       ]),
-      ["Methodology", "Sample size", insights.methodology.sampleSize],
-      ["Methodology", "Basis", insights.methodology.basis],
-      ...insights.methodology.limitations.map((value, index) => ["Methodology", `Limitation ${index + 1}`, value]),
+      ["Methodik", "Stichprobengröße", insights.methodology.sampleSize],
+      ["Methodik", "Grundlage", insights.methodology.basis],
+      ...insights.methodology.limitations.map((value, index) => ["Methodik", `Einschränkung ${index + 1}`, value]),
     ],
   };
 
   const evidence: ExportTable = {
-    name: "Evidence",
-    columns: ["ID", "Class", "Claim", "Confidence", "Source video IDs", "Limitations", "Snapshot ID"],
+    name: "Evidenz",
+    columns: ["ID", "Klasse", "Aussage", "Konfidenz", "Quellvideo-IDs", "Einschränkungen", "Snapshot-ID"],
     rows: insights.evidenceClaims.map((claim) => [
       claim.id,
-      claim.evidenceClass,
+      labelFor(EVIDENCE_CLASS_LABELS, claim.evidenceClass),
       claim.claim,
-      claim.confidence,
+      labelFor(CONFIDENCE_LABELS, claim.confidence),
       joined(claim.sourceVideoIds),
       joined(claim.limitations),
       claim.snapshotId,
@@ -233,20 +242,20 @@ export function buildResearchExportTables(data: ResearchReportData): ExportTable
   };
 
   const ideas: ExportTable = {
-    name: "Ideas",
+    name: "Ideen",
     columns: [
-      "Idea", "Title", "Description", "Keywords", "Format", "Difficulty", "Discovery surface",
-      "Honest promise", "Payoff", "Thumbnail concept", "Studio metric", "Experiment rule",
-      "Evidence claim IDs", "Source video IDs",
+      "Idee", "Titel", "Beschreibung", "Keywords", "Format", "Schwierigkeit", "Discovery-Oberfläche",
+      "Ehrliches Versprechen", "Payoff", "Thumbnail-Konzept", "Studio-Metrik", "Experiment-Regel",
+      "Evidenz-Aussage-IDs", "Quellvideo-IDs",
     ],
     rows: data.ideas.map((idea, index) => [
       index + 1,
       idea.title,
       idea.description,
       joined(idea.keywords),
-      idea.format,
-      idea.difficulty,
-      idea.discoverySurface,
+      labelFor(IDEA_FORMAT_LABELS, idea.format),
+      labelFor(DIFFICULTY_LABELS, idea.difficulty),
+      labelFor(DISCOVERY_SURFACE_LABELS, idea.discoverySurface),
       idea.honestPromise,
       idea.payoff,
       idea.thumbnailConcept,
@@ -258,19 +267,19 @@ export function buildResearchExportTables(data: ResearchReportData): ExportTable
   };
 
   const provenance: ExportTable = {
-    name: "Coverage & Sources",
-    columns: ["Section", "Field", "Value"],
+    name: "Abdeckung & Quellen",
+    columns: ["Abschnitt", "Feld", "Wert"],
     rows: [
-      ["Provenance", "Provider", data.provenance.provider],
-      ["Provenance", "Query", data.provenance.query],
-      ["Provenance", "Ordered video IDs", joined(data.provenance.orderedVideoIds)],
+      ["Herkunft", "Anbieter", data.provenance.provider],
+      ["Herkunft", "Suchbegriff", data.provenance.query],
+      ["Herkunft", "Geordnete Video-IDs", joined(data.provenance.orderedVideoIds)],
       ...Object.entries(data.enrichment).flatMap(([stage, detail]) => [
-        ["Enrichment", `${stage} status`, detail.status],
-        ["Enrichment", `${stage} requested`, detail.requested],
-        ["Enrichment", `${stage} returned`, detail.returned],
+        ["Anreicherung", `${stage}: Status`, labelFor(ENRICHMENT_STATUS_LABELS, detail.status)],
+        ["Anreicherung", `${stage}: angefordert`, detail.requested],
+        ["Anreicherung", `${stage}: zurückgegeben`, detail.returned],
       ]),
       ...data.warnings.map((warning, index) => [
-        "Warnings",
+        "Warnungen",
         `${index + 1}. ${warning.code}`,
         `${warning.stage}: ${warning.message}`,
       ]),
@@ -286,7 +295,7 @@ function csvCell(value: Cell): string {
 }
 
 export function buildResearchCsv(data: ResearchReportData): string {
-  const rows: Cell[][] = [["Table", "Row", "Field", "Value"]];
+  const rows: Cell[][] = [["Tabelle", "Zeile", "Feld", "Wert"]];
   for (const table of buildResearchExportTables(data)) {
     table.rows.forEach((row, rowIndex) => {
       row.forEach((value, columnIndex) => {
@@ -341,7 +350,7 @@ export function downloadResearchCsv(data: ResearchReportData): void {
   download(
     buildResearchCsv(data),
     "text/csv;charset=utf-8",
-    `youtube-research-${safeExportStem(data.query)}.csv`,
+    `youtube-recherche-${safeExportStem(data.query)}.csv`,
   );
 }
 
@@ -349,6 +358,6 @@ export function downloadResearchXls(data: ResearchReportData): void {
   download(
     buildResearchXls(data),
     "application/vnd.ms-excel;charset=utf-8",
-    `youtube-research-${safeExportStem(data.query)}.xls`,
+    `youtube-recherche-${safeExportStem(data.query)}.xls`,
   );
 }

@@ -13,19 +13,19 @@ export default function NotFound() {
               <AlertCircle className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Error 404</p>
-              <h1 className="text-2xl font-bold text-foreground">Page not found</h1>
+              <p className="text-sm font-medium text-muted-foreground">Fehler 404</p>
+              <h1 className="text-2xl font-bold text-foreground">Seite nicht gefunden</h1>
             </div>
           </div>
 
           <p className="text-sm leading-relaxed text-muted-foreground">
-            This page may have moved, or the address may be incorrect. Return to Research to continue your workflow.
+            Diese Seite wurde möglicherweise verschoben oder die Adresse ist falsch. Kehre zur Recherche zurück, um deinen Workflow fortzusetzen.
           </p>
 
           <Button asChild>
             <Link href="/">
               <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-              Return to Research
+              Zurück zur Recherche
             </Link>
           </Button>
         </CardContent>

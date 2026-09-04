@@ -1,0 +1,36 @@
+# Docker-Compose-Definition für Coolify ("Docker Compose"-Build-Pack) oder
+# lokalen Betrieb. Bei Coolify die Umgebungsvariablen im Dashboard setzen;
+# sie überschreiben die Werte aus dieser Datei.
+services:
+  youtube-pro:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 5000
+      TRUST_PROXY: "1"
+      ENV_FILE: /app/data/.env
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_TEXT_MODEL: ${GEMINI_TEXT_MODEL:-gemini-3.7-flash}
+      GEMINI_IMAGE_MODEL: ${GEMINI_IMAGE_MODEL:-gemini-3.1-flash-image}
+      OUTPUT_LANGUAGE: ${OUTPUT_LANGUAGE:-German (Deutsch)}
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER:-}
+      BASIC_AUTH_PASSWORD: ${BASIC_AUTH_PASSWORD:-}
+      ALLOW_REMOTE_SETTINGS: ${ALLOW_REMOTE_SETTINGS:-false}
+    volumes:
+      - youtube-pro-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  youtube-pro-data:

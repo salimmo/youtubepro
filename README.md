@@ -5,68 +5,68 @@
 <h1 align="center">YouTube Pro</h1>
 
 <p align="center">
-  Research, understand, write, and package a YouTube video in one local-first workflow.
+  Recherchieren, verstehen, schreiben und ein YouTube-Video verpacken – in einem Local-first-Workflow.
 </p>
 
-YouTube Pro is an evidence-grounded workspace for YouTube research, idea selection, script writing, and thumbnail creation. It combines public YouTube Data API v3 records with Gemini analysis while keeping API keys on the server.
+YouTube Pro ist ein evidenzbasierter Arbeitsbereich für YouTube-Recherche, Ideenauswahl, Skript-Erstellung und Thumbnail-Erstellung. Es kombiniert öffentliche Datensätze der YouTube Data API v3 mit Gemini-Analysen, während API-Schlüssel auf dem Server bleiben.
 
-YouTube Pro is an independent project. It is not affiliated with, endorsed by, or sponsored by YouTube or Google. YouTube and Google product names are trademarks of their respective owners.
+YouTube Pro ist ein unabhängiges Projekt. Es steht in keiner Verbindung zu YouTube oder Google und wird von diesen weder unterstützt noch gesponsert. YouTube- und Google-Produktnamen sind Marken der jeweiligen Inhaber.
 
-## Product tour
+## Produkt-Tour
 
-### Research analytics
+### Recherche-Analytics
 
-Search a topic, inspect the returned public-data snapshot, compare momentum and publication patterns, review data coverage, and continue into AI-assisted insights and ideas.
+Suche ein Thema, prüfe den zurückgegebenen Snapshot öffentlicher Daten, vergleiche Momentum und Veröffentlichungsmuster, sieh dir die Datenabdeckung an und gehe weiter zu KI-gestützten Insights und Ideen.
 
 ![YouTube Pro research analytics with video performance, momentum, duration, and publication graphs](docs/images/research-analytics.png)
 
-### Source videos
+### Quellvideos
 
-Review every video included in the active public-data snapshot, with thumbnails, channel information, views, publication timing, likes, and comments visible in one grid.
+Prüfe jedes Video, das im aktiven Snapshot öffentlicher Daten enthalten ist – mit Thumbnails, Kanalinformationen, Aufrufen, Veröffentlichungszeitpunkt, Likes und Kommentaren in einem Raster.
 
 ![YouTube Pro source-video grid showing every video used in the research snapshot](docs/images/research-source-videos.png)
 
-### AI Insights
+### KI-Insights
 
-Turn the active snapshot into a scan-first research brief with audience questions, opportunity themes, recommended moves, and a clear separation between observed evidence, inference, and metrics that require YouTube Studio.
+Verwandle den aktiven Snapshot in ein schnell erfassbares Recherche-Briefing mit Zielgruppenfragen, Chancen-Themen, empfohlenen Schritten und einer klaren Trennung zwischen beobachteter Evidenz, Ableitung und Metriken, die YouTube Studio erfordern.
 
 ![YouTube Pro AI Insights with visual summaries, evidence balance, and an expandable evidence ledger](docs/images/research-ai-insights.png)
 
-### Script teleprompter
+### Skript-Teleprompter
 
-Turn a selected idea into an editable script, then read it in a focused teleprompter with pace, size, cue, undo, and playback controls.
+Verwandle eine ausgewählte Idee in ein bearbeitbares Skript und lies es dann in einem fokussierten Teleprompter mit Steuerung für Tempo, Größe, Marker, Rückgängig und Wiedergabe.
 
 ![YouTube Pro teleprompter with playback and reading controls](docs/images/script-teleprompter.png)
 
-### Thumbnail Creator
+### Thumbnail-Creator
 
-Describe the outcome once, add optional references or advanced controls, generate a readable 16:9 thumbnail, and create variations from the same workflow.
+Beschreibe das gewünschte Ergebnis einmal, füge optionale Referenzen oder erweiterte Steuerelemente hinzu, generiere ein gut lesbares 16:9-Thumbnail und erstelle Varianten aus demselben Workflow.
 
 ![YouTube Pro Thumbnail Creator with a generated thumbnail preview and minimal creation controls](docs/images/thumbnail-creator.png)
 
-These screenshots come from a live local development build using public YouTube metadata. They are not generated interface mockups.
+Diese Screenshots stammen aus einem laufenden lokalen Entwicklungs-Build mit öffentlichen YouTube-Metadaten. Es handelt sich nicht um generierte Interface-Mockups.
 
 ## Workflow
 
-The product follows one continuous workflow:
+Das Produkt folgt einem durchgehenden Workflow:
 
-1. **Research**: Search up to 50 public YouTube videos, review the overview, analytics, coverage, and every returned video.
-2. **AI Insights**: Gemini analyzes the exact active research snapshot. Claims retain their snapshot identity and source video IDs, or are explicitly labeled as aggregate inference or as requiring YouTube Studio.
-3. **Grounded Ideas**: Ideas generate automatically after valid Insights. Select one idea, then explicitly proceed to Script Writer.
-4. **Script Writer**: Generate and edit a script from the selected idea package and its evidence. Section and paragraph regeneration use the same bounded evidence context.
-5. **Thumbnail Creator**: Use the selected promise and thumbnail concept, outcome-oriented presets, editable controls, and up to three permitted references.
+1. **Recherche**: Suche bis zu 50 öffentliche YouTube-Videos und prüfe Überblick, Analytics, Abdeckung und jedes zurückgegebene Video.
+2. **KI-Insights**: Gemini analysiert exakt den aktiven Recherche-Snapshot. Aussagen behalten ihre Snapshot-Identität und die IDs der Quellvideos oder werden ausdrücklich als aggregierte Ableitung oder als "Erfordert YouTube Studio" gekennzeichnet.
+3. **Fundierte Ideen**: Ideen werden nach gültigen Insights automatisch generiert. Wähle eine Idee aus und gehe dann explizit weiter zum Skript-Writer.
+4. **Skript-Writer**: Generiere und bearbeite ein Skript aus dem ausgewählten Ideenpaket und dessen Evidenz. Die Neugenerierung von Abschnitten und Absätzen nutzt denselben begrenzten Evidenzkontext.
+5. **Thumbnail-Creator**: Nutze das ausgewählte Versprechen und Thumbnail-Konzept, ergebnisorientierte Vorlagen, bearbeitbare Steuerelemente und bis zu drei zulässige Referenzen.
 
-There is no standalone Ideas screen. The legacy `/ideas` path redirects to the Ideas section inside Research.
+Es gibt keinen eigenständigen Ideen-Bildschirm. Der alte Pfad `/ideas` leitet zum Ideen-Abschnitt innerhalb der Recherche weiter.
 
-Each press of **New Workflow** creates a separate local project. The sidebar keeps the eight most recent workflows in browser IndexedDB, lets the user rename or delete them, and reopens the last active Research, Script, or Thumbnail step. Research snapshots, generated ideas, editable scripts, thumbnail briefs, and generated thumbnail results are restored together. Uploaded reference images are intentionally not retained, so permission and file selection are fresh for every later generation.
+Jeder Klick auf **Neuer Workflow** erstellt ein separates lokales Projekt. Die Seitenleiste behält die acht zuletzt verwendeten Workflows in der IndexedDB des Browsers, erlaubt das Umbenennen oder Löschen und öffnet den zuletzt aktiven Schritt Recherche, Skript oder Thumbnail erneut. Recherche-Snapshots, generierte Ideen, bearbeitbare Skripte, Thumbnail-Briefings und generierte Thumbnail-Ergebnisse werden gemeinsam wiederhergestellt. Hochgeladene Referenzbilder werden absichtlich nicht gespeichert, sodass Berechtigung und Dateiauswahl bei jeder späteren Generierung neu erfolgen.
 
-## Requirements
+## Anforderungen
 
-- Node.js 22.12 or newer. CI verifies Node.js 22.12 and the current Node.js 24 LTS line.
-- A YouTube Data API v3 key for Research.
-- A Gemini API key for Insights, Ideas, scripts, and thumbnails.
+- Node.js 22.12 oder neuer. CI prüft Node.js 22.12 und die aktuelle Node.js-24-LTS-Linie.
+- Ein YouTube Data API v3-Schlüssel für die Recherche.
+- Ein Gemini-API-Schlüssel für Insights, Ideen, Skripte und Thumbnails.
 
-Copy the example configuration and fill it locally:
+Kopiere die Beispielkonfiguration und fülle sie lokal aus:
 
 ```bash
 cp .env.example .env
@@ -74,47 +74,95 @@ npm install
 npm run dev
 ```
 
-The server listens on `127.0.0.1:5000` by default. Open `http://127.0.0.1:5000`.
+Der Server lauscht standardmäßig auf `127.0.0.1:5000`. Öffne `http://127.0.0.1:5000`.
 
-You can instead start without keys and enter them in **Settings**. Settings writes replacements to the ignored `.env` file with owner-only permissions. Saved values are never returned to the browser. Settings accepts direct loopback, same-origin requests only and rejects normal forwarded or reverse-proxy requests.
+Du kannst stattdessen auch ohne Schlüssel starten und sie in den **Einstellungen** eingeben. Die Einstellungen schreiben Ersetzungen in die ignorierte `.env`-Datei mit Berechtigungen nur für den Besitzer. Gespeicherte Werte werden nie an den Browser zurückgegeben. Die Einstellungen akzeptieren standardmäßig ausschließlich direkte Loopback-Anfragen vom selben Ursprung (Same-Origin) und lehnen weitergeleitete oder Reverse-Proxy-Anfragen ab. Für Server-Deployments siehe `ALLOW_REMOTE_SETTINGS` im Abschnitt [Deployment mit Coolify](#deployment-mit-coolify).
 
-## Configuration
+## Konfiguration
 
-| Variable | Purpose | Default |
+| Variable | Zweck | Standard |
 | --- | --- | --- |
-| `YOUTUBE_API_KEY` | YouTube Data API v3 search and enrichment | Required for Research |
-| `GEMINI_API_KEY` | Gemini text and image generation | Required for AI features |
-| `GEMINI_TEXT_MODEL` | Research, Ideas, Script, and regeneration model | `gemini-3.7-flash` |
-| `GEMINI_IMAGE_MODEL` | Thumbnail generation model | `gemini-3.1-flash-image` |
-| `PORT` | Local HTTP port | `5000` |
-| `HOST` | Bind address | `127.0.0.1` |
+| `YOUTUBE_API_KEY` | Suche und Anreicherung über die YouTube Data API v3 | Erforderlich für die Recherche |
+| `GEMINI_API_KEY` | Gemini-Text- und Bildgenerierung | Erforderlich für KI-Funktionen |
+| `GEMINI_TEXT_MODEL` | Modell für Recherche, Ideen, Skript und Neugenerierung | `gemini-3.7-flash` |
+| `GEMINI_IMAGE_MODEL` | Modell für die Thumbnail-Generierung | `gemini-3.1-flash-image` |
+| `OUTPUT_LANGUAGE` | Sprache der KI-generierten Inhalte (Insights, Ideen, Skripte, Thumbnail-Text) | `German (Deutsch)` |
+| `PORT` | Lokaler HTTP-Port | `5000` |
+| `HOST` | Bind-Adresse | `127.0.0.1` (im Docker-Image `0.0.0.0`) |
+| `TRUST_PROXY` | Anzahl vertrauenswürdiger Proxy-Hops für `X-Forwarded-For` | leer (im Docker-Image `1`) |
+| `BASIC_AUTH_USER`, `BASIC_AUTH_PASSWORD` | Aktivieren HTTP Basic Auth für die gesamte App außer `/api/health` | leer (deaktiviert) |
+| `ALLOW_REMOTE_SETTINGS` | Erlaubt die Einstellungen-Seite über das Netz, nur zusammen mit Basic Auth | `false` |
+| `ENV_FILE` | Pfad der `.env`-Datei, in die die Einstellungen-Seite schreibt | `.env` (im Docker-Image `/app/data/.env`) |
 
-The Settings page exposes the server allowlist and its current descriptions. Models are not hardcoded by the client. Changing the allowlist in `server/gemini-models.ts` changes the available Settings options.
+Die Einstellungsseite zeigt die Server-Allowlist und deren aktuelle Beschreibungen an. Modelle sind nicht im Client fest kodiert. Eine Änderung der Allowlist in `server/gemini-models.ts` ändert die verfügbaren Optionen in den Einstellungen.
 
-## Data and request limits
+## Deployment mit Coolify
 
-- Research query: 1 to 200 characters.
-- Research sample: 1 to 50 videos per search request. YouTube's overall result count is approximate and is labeled separately from the returned sample.
-- Research enrichment: public video statistics, duration, captions, tags, language, topic categories, selected status fields, live-stream details, and public channel metadata when available. Missing or private public fields remain unavailable, never zero-filled.
-- AI evidence input: exactly the active ordered snapshot, at most 50 videos, its deterministic aggregate analytics, enrichment coverage, warnings, filters, query, retrieval time, and snapshot ID.
-- Script input: topic up to 500 characters, custom tone traits up to 300, notes up to 5,000, script or section content up to 80,000 where applicable.
-- Thumbnail references: PNG or JPEG, 128 to 4096 pixels, at most 5 MB after preparation per image, 12 MB decoded total, and no more than three references. The browser also rejects source files over 10 MB before preparation.
-- Global JSON body: 18 MB, needed for the bounded base64 thumbnail references. URL-encoded input is limited to 64 KB and 100 parameters.
-- Billable YouTube and Gemini routes: 10 requests per client address per 60 seconds in this single-process local server.
+Das Repository enthält ein produktionsfertiges [`Dockerfile`](Dockerfile) (mehrstufiger Build, Node 22 Alpine, läuft als unprivilegierter Benutzer `node`), eine [`docker-compose.yml`](docker-compose.yml) und einen Health-Check unter `/api/health`.
 
-## Privacy and access model
+### Schritt für Schritt
 
-- There is no login screen, initial password, Thumbnail unlock, or Pro Script Studio gate.
-- API keys stay server-side and `.env` is ignored.
-- Recent workflow history stays in the current browser profile. It is not sent to a separate history service and never contains API keys.
-- Request and response bodies are not logged.
-- The application binds to loopback unless `HOST` is explicitly changed.
-- Do not expose the server directly to the internet. If remote access is required, add authentication and rate limiting at a trusted gateway, and disable or separately protect local Settings.
-- The in-memory rate limiter is per process. It is suitable for this local-first default, not a distributed public deployment.
+1. **Repository pushen**: Dieses Repository in ein Git-Remote (GitHub, GitLab, Gitea) pushen, auf das Coolify zugreifen kann.
+2. **Neue Ressource anlegen**: In Coolify *New Resource → Application* wählen, das Repository und den Branch (`main`) angeben.
+3. **Build-Pack**: *Dockerfile* wählen (Coolify erkennt die Datei im Root automatisch). Alternativ *Docker Compose* mit `docker-compose.yml`.
+4. **Port**: Unter *Ports Exposes* den Wert `5000` eintragen.
+5. **Umgebungsvariablen** setzen (siehe Tabelle unten). Mindestens `YOUTUBE_API_KEY`, `GEMINI_API_KEY`, `BASIC_AUTH_USER` und `BASIC_AUTH_PASSWORD`.
+6. **Persistenz (optional)**: Unter *Storages* ein Volume auf `/app/data` mounten, wenn die Einstellungen-Seite Schlüssel serverseitig speichern soll (`ALLOW_REMOTE_SETTINGS=true`).
+7. **Health-Check (optional)**: In Coolify den Health-Check auf Pfad `/api/health`, Port `5000` setzen. Das Docker-Image bringt zusätzlich einen eigenen `HEALTHCHECK` mit.
+8. **Domain** zuweisen und *Deploy* klicken. Coolify stellt über Traefik automatisch HTTPS bereit.
 
-Gemini image outputs include Google's invisible SynthID provenance. The application does not add a visible watermark and does not claim SynthID can be disabled.
+### Umgebungsvariablen für Coolify
 
-## Commands
+| Variable | Pflicht | Beschreibung |
+| --- | --- | --- |
+| `YOUTUBE_API_KEY` | ja | YouTube Data API v3 |
+| `GEMINI_API_KEY` | ja | Gemini Text- und Bildgenerierung |
+| `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` | dringend empfohlen | Aktiviert HTTP Basic Auth für die gesamte App (außer `/api/health`). Ohne Login sind deine kostenpflichtigen Schlüssel für jeden nutzbar, der die URL kennt. |
+| `GEMINI_TEXT_MODEL` / `GEMINI_IMAGE_MODEL` | nein | Modellauswahl, Standard `gemini-3.7-flash` / `gemini-3.1-flash-image` |
+| `OUTPUT_LANGUAGE` | nein | Sprache der KI-Ausgaben, Standard `German (Deutsch)` |
+| `ALLOW_REMOTE_SETTINGS` | nein | `true` erlaubt Speichern über die Einstellungen-Seite. Wirkt nur mit Basic Auth. Braucht ein Volume auf `/app/data`. |
+| `TRUST_PROXY` | nein | Im Image bereits `1` (ein Proxy-Hop, Traefik). |
+| `HOST` / `PORT` | nein | Im Image bereits `0.0.0.0` / `5000`. |
+| `ENV_FILE` | nein | Im Image bereits `/app/data/.env`. |
+
+Hinweise:
+
+- In Coolify gesetzte Umgebungsvariablen haben Vorrang vor Werten, die die Einstellungen-Seite in die `.env`-Datei schreibt. Wer die Schlüssel in Coolify pflegt, kann `ALLOW_REMOTE_SETTINGS` weglassen.
+- Das Ratenlimit (10 kostenpflichtige Anfragen pro Client-Adresse und Minute) nutzt hinter Traefik den `X-Forwarded-For`-Header. Bei mehr als einem Proxy-Hop `TRUST_PROXY` anpassen.
+- Der Server beendet sich bei `SIGTERM` sauber, sodass Redeploys in Coolify ohne hängende Container ablaufen.
+
+### Lokal mit Docker testen
+
+```bash
+docker compose up --build
+```
+
+Anschließend `http://localhost:5000` öffnen. Die Variablen aus `.env` werden von Docker Compose automatisch eingelesen.
+
+## Daten- und Anfragelimits
+
+- Recherche-Suchbegriff: 1 bis 200 Zeichen.
+- Recherche-Stichprobe: 1 bis 50 Videos pro Suchanfrage. Die Gesamtergebniszahl von YouTube ist ein Näherungswert und wird getrennt von der zurückgegebenen Stichprobe gekennzeichnet.
+- Recherche-Anreicherung: öffentliche Videostatistiken, Dauer, Untertitel, Tags, Sprache, Themenkategorien, ausgewählte Statusfelder, Livestream-Details und öffentliche Kanal-Metadaten, sofern verfügbar. Fehlende oder private öffentliche Felder bleiben nicht verfügbar und werden nie mit Null aufgefüllt.
+- KI-Evidenz-Eingabe: exakt der aktive, geordnete Snapshot, höchstens 50 Videos, dessen deterministische aggregierte Analytics, Anreicherungsabdeckung, Warnungen, Filter, Suchbegriff, Abrufzeitpunkt und Snapshot-ID.
+- Skript-Eingabe: Thema bis 500 Zeichen, eigene Tonalitätsmerkmale bis 300, Notizen bis 5.000, Skript- oder Abschnittsinhalt bis 80.000, wo zutreffend.
+- Thumbnail-Referenzen: PNG oder JPEG, 128 bis 4096 Pixel, höchstens 5 MB nach Aufbereitung pro Bild, 12 MB dekodiert insgesamt und nicht mehr als drei Referenzen. Der Browser lehnt Quelldateien über 10 MB bereits vor der Aufbereitung ab.
+- Globaler JSON-Body: 18 MB, erforderlich für die begrenzten base64-kodierten Thumbnail-Referenzen. URL-kodierte Eingaben sind auf 64 KB und 100 Parameter begrenzt.
+- Kostenpflichtige YouTube- und Gemini-Routen: 10 Anfragen pro Client-Adresse pro 60 Sekunden in diesem lokalen Single-Process-Server.
+
+## Datenschutz- und Zugriffsmodell
+
+- Es gibt keinen eigenen Login-Bildschirm, kein Initialpasswort, keine Thumbnail-Freischaltung und keine Pro-Script-Studio-Sperre. Für öffentliche Deployments lässt sich optional HTTP Basic Auth über `BASIC_AUTH_USER` und `BASIC_AUTH_PASSWORD` aktivieren.
+- API-Schlüssel bleiben serverseitig und `.env` wird ignoriert.
+- Der Verlauf der letzten Workflows bleibt im aktuellen Browserprofil. Er wird nicht an einen separaten Verlaufsdienst gesendet und enthält nie API-Schlüssel.
+- Anfrage- und Antwort-Bodies werden nicht protokolliert.
+- Die Anwendung bindet sich an Loopback, sofern `HOST` nicht ausdrücklich geändert wird.
+- Setze den Server nie ohne Schutz dem Internet aus. Aktiviere für Fernzugriff Basic Auth oder eine Authentifizierung am Reverse-Proxy. Die Einstellungen-Seite bleibt ohne `ALLOW_REMOTE_SETTINGS` auf Loopback beschränkt.
+- Der In-Memory-Ratenlimiter arbeitet pro Prozess. Er eignet sich für diesen Local-first-Standard und ein einzelnes Coolify-Container-Deployment, nicht für ein horizontal skaliertes Deployment. Hinter einem Proxy muss `TRUST_PROXY` gesetzt sein, sonst teilen sich alle Nutzer ein Limit.
+
+Gemini-Bildausgaben enthalten Googles unsichtbare SynthID-Herkunftskennzeichnung. Die Anwendung fügt kein sichtbares Wasserzeichen hinzu und behauptet nicht, dass SynthID deaktiviert werden kann.
+
+## Befehle
 
 ```bash
 npm run dev       # development server
@@ -124,28 +172,28 @@ npm run build     # production client and server build
 npm start         # run the production build
 ```
 
-Continuous integration runs the test suite, TypeScript check, and production build on every pull request and push to `main`.
+Die Continuous Integration führt bei jedem Pull Request und jedem Push auf `main` die Test-Suite, die TypeScript-Prüfung und den Produktions-Build aus.
 
-## Technology
+## Technologie
 
-- React 18, TypeScript, Vite, Tailwind CSS, and shadcn/ui
+- React 18, TypeScript, Vite, Tailwind CSS und shadcn/ui
 - Express 5
-- Google Gemini through `@google/genai`
+- Google Gemini über `@google/genai`
 - YouTube Data API v3
-- No server-side runtime database, session store, Passport authentication, or Replit-managed AI proxy
+- Keine serverseitige Laufzeitdatenbank, kein Session-Store, keine Passport-Authentifizierung und kein von Replit verwalteter KI-Proxy
 
-## Quotas and costs
+## Kontingente und Kosten
 
-YouTube search is quota-expensive compared with video and channel enrichment. Gemini limits and pricing vary by model and account. Check the current official documentation before changing models or making the server remotely accessible:
+Die YouTube-Suche ist im Vergleich zur Video- und Kanal-Anreicherung kontingentintensiv. Gemini-Limits und -Preise variieren je nach Modell und Konto. Prüfe die aktuelle offizielle Dokumentation, bevor du Modelle änderst oder den Server aus der Ferne erreichbar machst:
 
 - [YouTube Data API quota costs](https://developers.google.com/youtube/v3/determine_quota_cost)
 - [Gemini pricing](https://ai.google.dev/pricing)
 - [Gemini image generation and SynthID](https://ai.google.dev/gemini-api/docs/image-generation)
 
-## License
+## Lizenz
 
-YouTube Pro is open source under the [Apache License 2.0](LICENSE).
+YouTube Pro ist Open Source unter der [Apache License 2.0](LICENSE).
 
-## Contributing and security
+## Mitwirken und Sicherheit
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the local quality gate. Report security issues privately according to [SECURITY.md](SECURITY.md), never in a public issue.
+Siehe [CONTRIBUTING.md](CONTRIBUTING.md) für das lokale Quality Gate. Melde Sicherheitsprobleme vertraulich gemäß [SECURITY.md](SECURITY.md), niemals in einem öffentlichen Issue.

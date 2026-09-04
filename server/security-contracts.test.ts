@@ -102,7 +102,7 @@ test("rate limiter permits the configured window and then returns 429", () => {
   assert.equal(statusCode, 429);
   assert.equal(headers.get("Retry-After"), "60");
   assert.deepEqual(payload, {
-    error: "Too many requests. Please wait before trying again.",
+    error: "Zu viele Anfragen. Bitte warte kurz, bevor du es erneut versuchst.",
     retryAfter: 60,
   });
 

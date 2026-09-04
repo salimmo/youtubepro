@@ -29,7 +29,7 @@ function validateEvidenceSources(
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["evidenceContext", "evidenceClaims", claimIndex, "sourceVideoIds", sourceIndex],
-          message: `Evidence referenced unsupported source video ID: ${sourceId}`,
+          message: `Evidenz verweist auf eine nicht unterstützte Quellvideo-ID: ${sourceId}`,
         });
       }
     });
@@ -56,7 +56,7 @@ export const scriptRegenerationOutputSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["evidenceClaimIds"],
-      message: "Evidence claim IDs must be unique",
+      message: "Evidenz-Claim-IDs müssen eindeutig sein",
     });
   }
 });

@@ -162,7 +162,7 @@ const ACTIVE_WORKFLOW_KEY = "youtube_pro_active_workflow";
 function createEmptyState(id: string | null = null, now: number | null = null): WorkflowState {
   return {
     id,
-    title: "Untitled workflow",
+    title: "Unbenannter Workflow",
     customTitle: null,
     createdAt: now,
     updatedAt: now,
@@ -203,7 +203,7 @@ function normalizeState(value: Partial<WorkflowState>, fallbackId?: string): Wor
     ...createEmptyState(id, createdAt),
     ...value,
     id,
-    title: "Untitled workflow",
+    title: "Unbenannter Workflow",
     customTitle: typeof value.customTitle === "string" ? normalizeCustomWorkflowTitle(value.customTitle) : null,
     createdAt,
     updatedAt: typeof value.updatedAt === "number" ? value.updatedAt : createdAt,
@@ -306,7 +306,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       setHistoryError(null);
     }).catch((error) => {
       console.error("Failed to save workflow history:", error);
-      setHistoryError("Recent workflows could not be saved in this browser.");
+      setHistoryError("Letzte Workflows konnten in diesem Browser nicht gespeichert werden.");
     });
   }, []);
 
@@ -340,7 +340,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           const summary = summaryFromState(fallback);
           setState(fallback);
           setRecentWorkflows(summary ? [summary] : []);
-          setHistoryError("Recent workflows are unavailable. The current workflow will remain open for this session.");
+          setHistoryError("Letzte Workflows sind nicht verfügbar. Der aktuelle Workflow bleibt für diese Sitzung geöffnet.");
         }
       } finally {
         if (!cancelled) {
@@ -371,7 +371,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       const record = await getWorkflowRecord<WorkflowState>(id);
       if (!record) {
         setRecentWorkflows((current) => current.filter((item) => item.id !== id));
-        setHistoryError("That workflow is no longer available in local history.");
+        setHistoryError("Dieser Workflow ist im lokalen Verlauf nicht mehr verfügbar.");
         return null;
       }
       const restored = normalizeState(record.state, record.id);
@@ -382,7 +382,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       return restored.currentStep;
     } catch (error) {
       console.error("Failed to open workflow:", error);
-      setHistoryError("The selected workflow could not be opened.");
+      setHistoryError("Der ausgewählte Workflow konnte nicht geöffnet werden.");
       return null;
     }
   }, []);
@@ -390,7 +390,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const renameWorkflow = useCallback(async (id: string, title: string): Promise<boolean> => {
     const customTitle = normalizeCustomWorkflowTitle(title);
     if (!customTitle) {
-      setHistoryError("Workflow names cannot be empty.");
+      setHistoryError("Workflow-Namen dürfen nicht leer sein.");
       return false;
     }
     try {
@@ -398,7 +398,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       const record = await getWorkflowRecord<WorkflowState>(id);
       if (!record) {
         setRecentWorkflows((current) => current.filter((item) => item.id !== id));
-        setHistoryError("That workflow is no longer available in local history.");
+        setHistoryError("Dieser Workflow ist im lokalen Verlauf nicht mehr verfügbar.");
         return false;
       }
       const current = normalizeState(record.state, record.id);
@@ -421,7 +421,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error("Failed to rename workflow:", error);
-      setHistoryError("The workflow could not be renamed.");
+      setHistoryError("Der Workflow konnte nicht umbenannt werden.");
       return false;
     }
   }, [state.id]);
@@ -453,7 +453,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       return "research";
     } catch (error) {
       console.error("Failed to delete workflow:", error);
-      setHistoryError("The workflow could not be deleted.");
+      setHistoryError("Der Workflow konnte nicht gelöscht werden.");
       return null;
     }
   }, [state.currentStep, state.id]);

@@ -38,7 +38,7 @@ export function createRateLimiter(options: RateLimiterOptions = {}) {
       const retryAfter = Math.max(1, Math.ceil((entry.resetTime - timestamp) / 1_000));
       res.setHeader("Retry-After", retryAfter.toString());
       return res.status(429).json({
-        error: "Too many requests. Please wait before trying again.",
+        error: "Zu viele Anfragen. Bitte warte kurz, bevor du es erneut versuchst.",
         retryAfter,
       });
     }

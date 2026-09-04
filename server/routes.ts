@@ -24,35 +24,35 @@ function getUserFriendlyError(error: any, context: string): { message: string; s
 
   if (errorMessage.includes("api key") || errorMessage.includes("authentication") || errorMessage.includes("unauthorized")) {
     return {
-      message: `${context} is temporarily unavailable`,
-      suggestion: "Please try again in a moment. If the problem persists, contact support."
+      message: `${context} ist vorübergehend nicht verfügbar`,
+      suggestion: "Bitte versuche es gleich noch einmal. Wenn das Problem weiterhin besteht, wende dich an den Support."
     };
   }
 
   if (errorMessage.includes("rate limit") || errorMessage.includes("quota") || errorMessage.includes("too many")) {
     return {
-      message: `${context} is experiencing high demand`,
-      suggestion: "Please wait a minute and try again."
+      message: `${context} ist derzeit stark ausgelastet`,
+      suggestion: "Bitte warte eine Minute und versuche es erneut."
     };
   }
 
   if (errorMessage.includes("timeout") || errorMessage.includes("timed out") || errorMessage.includes("network")) {
     return {
-      message: `${context} took too long to respond`,
-      suggestion: "Please check your connection and try again."
+      message: `${context} hat zu lange für eine Antwort gebraucht`,
+      suggestion: "Bitte prüfe deine Verbindung und versuche es erneut."
     };
   }
 
   if (errorMessage.includes("content") || errorMessage.includes("safety") || errorMessage.includes("blocked")) {
     return {
-      message: `${context} couldn't process this content`,
-      suggestion: "Try rephrasing your request or using different keywords."
+      message: `${context} konnte diesen Inhalt nicht verarbeiten`,
+      suggestion: "Formuliere deine Anfrage um oder verwende andere Keywords."
     };
   }
 
   return {
-    message: `${context} encountered an issue`,
-    suggestion: "Please try again. If the problem persists, try refreshing the page."
+    message: `${context} ist auf ein Problem gestoßen`,
+    suggestion: "Bitte versuche es erneut. Wenn das Problem weiterhin besteht, lade die Seite neu."
   };
 }
 
@@ -63,7 +63,7 @@ export async function registerRoutes(
   app.get("/api/settings/status", (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     if (!isLocalSettingsRequest(req)) {
-      return res.status(403).json({ error: "Settings are available only from this machine." });
+      return res.status(403).json({ error: "Die Einstellungen sind nur von diesem Rechner aus verfügbar." });
     }
     return res.json(getApiKeyStatus());
   });
@@ -71,7 +71,7 @@ export async function registerRoutes(
   app.put("/api/settings/api-keys", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     if (!isLocalSettingsRequest(req)) {
-      return res.status(403).json({ error: "Settings are available only from this machine." });
+      return res.status(403).json({ error: "Die Einstellungen sind nur von diesem Rechner aus verfügbar." });
     }
 
     try {
@@ -80,7 +80,7 @@ export async function registerRoutes(
       return res.json({ success: true, status });
     } catch (error: any) {
       return res.status(400).json({
-        error: error?.message || "Unable to save API settings.",
+        error: error?.message || "API-Einstellungen konnten nicht gespeichert werden.",
       });
     }
   });
@@ -90,7 +90,7 @@ export async function registerRoutes(
       const { query, uploadDate, duration, sortBy, maxResults } = req.query;
 
       if (!query || typeof query !== "string") {
-        return res.status(400).json({ error: "Query parameter is required" });
+        return res.status(400).json({ error: "Ein Suchbegriff ist erforderlich" });
       }
 
       const filters = searchFiltersSchema.parse({
@@ -106,7 +106,7 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("YouTube search error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid search parameters", details: error.errors });
+        return res.status(400).json({ error: "Ungültige Suchparameter", details: error.errors });
       }
       const providerError = normalizeProviderError(error, "youtube");
       res.status(providerError.status).json(providerErrorPayload(providerError, "YouTube Data API"));
@@ -121,9 +121,9 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Script generation error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid script input", details: error.errors });
+        return res.status(400).json({ error: "Ungültige Skript-Eingabe", details: error.errors });
       }
-      const friendly = getUserFriendlyError(error, "Script generation");
+      const friendly = getUserFriendlyError(error, "Skript-Generierung");
       res.status(500).json({ error: friendly.message, suggestion: friendly.suggestion });
     }
   });
@@ -136,9 +136,9 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Narration extraction error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid narration extraction request", details: error.errors });
+        return res.status(400).json({ error: "Ungültige Anfrage zur Sprechtext-Extraktion", details: error.errors });
       }
-      const friendly = getUserFriendlyError(error, "Narration extraction");
+      const friendly = getUserFriendlyError(error, "Sprechtext-Extraktion");
       res.status(500).json({ error: friendly.message, suggestion: friendly.suggestion });
     }
   });
@@ -147,7 +147,7 @@ export async function registerRoutes(
     try {
       const parsed = ideaGenerationRequestSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid grounded idea request", details: parsed.error.errors });
+        return res.status(400).json({ error: "Ungültige Anfrage für fundierte Ideen", details: parsed.error.errors });
       }
 
       const result = await generateIdeas(parsed.data);
@@ -155,7 +155,7 @@ export async function registerRoutes(
     } catch (error: unknown) {
       console.error("Ideas generation error:", error);
       const providerError = normalizeProviderError(error, "gemini");
-      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini Ideas"));
+      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini-Ideen"));
     }
   });
 
@@ -165,7 +165,7 @@ export async function registerRoutes(
 
       if (!parsed.success) {
         return res.status(400).json({
-          error: "A query and between 1 and 50 valid videos are required.",
+          error: "Ein Suchbegriff und zwischen 1 und 50 gültige Videos sind erforderlich.",
           code: "RESEARCH_REQUEST_INVALID",
           details: parsed.error.errors,
         });
@@ -176,7 +176,7 @@ export async function registerRoutes(
     } catch (error: unknown) {
       console.error("Research insights error:", error);
       const providerError = normalizeProviderError(error, "gemini");
-      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini research"));
+      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini-Recherche"));
     }
   });
 
@@ -193,9 +193,9 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Title regeneration error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid title regeneration request", details: error.errors });
+        return res.status(400).json({ error: "Ungültige Anfrage zur Titel-Neugenerierung", details: error.errors });
       }
-      const friendly = getUserFriendlyError(error, "Title regeneration");
+      const friendly = getUserFriendlyError(error, "Titel-Neugenerierung");
       res.status(500).json({ error: friendly.message, suggestion: friendly.suggestion });
     }
   });
@@ -205,11 +205,11 @@ export async function registerRoutes(
       const parsed = sectionRegenerationRequestSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({
-          error: "Invalid section regeneration request",
+          error: "Ungültige Anfrage zur Abschnitts-Neugenerierung",
           code: "SCRIPT_SECTION_REGENERATION_REQUEST_INVALID",
           category: "invalid_response",
           retryable: false,
-          suggestion: "Keep the current section and review its topic, format, audience, and evidence context.",
+          suggestion: "Behalte den aktuellen Abschnitt bei und prüfe Thema, Format, Zielgruppe und Evidenz-Kontext.",
           details: parsed.error.flatten(),
         });
       }
@@ -219,7 +219,7 @@ export async function registerRoutes(
     } catch (error: unknown) {
       console.error("Section regeneration error:", error);
       const providerError = normalizeProviderError(error, "gemini");
-      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini section regeneration"));
+      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini-Abschnitts-Neugenerierung"));
     }
   });
 
@@ -228,11 +228,11 @@ export async function registerRoutes(
       const parsed = paragraphRegenerationRequestSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({
-          error: "Invalid paragraph regeneration request",
+          error: "Ungültige Anfrage zur Absatz-Neugenerierung",
           code: "SCRIPT_PARAGRAPH_REGENERATION_REQUEST_INVALID",
           category: "invalid_response",
           retryable: false,
-          suggestion: "Keep the current paragraph and review its section, topic, format, audience, and evidence context.",
+          suggestion: "Behalte den aktuellen Absatz bei und prüfe Abschnitt, Thema, Format, Zielgruppe und Evidenz-Kontext.",
           details: parsed.error.flatten(),
         });
       }
@@ -242,7 +242,7 @@ export async function registerRoutes(
     } catch (error: unknown) {
       console.error("Paragraph regeneration error:", error);
       const providerError = normalizeProviderError(error, "gemini");
-      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini paragraph regeneration"));
+      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini-Absatz-Neugenerierung"));
     }
   });
 
@@ -251,11 +251,11 @@ export async function registerRoutes(
       const parsed = thumbnailGenerationRequestSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({
-          error: "Invalid thumbnail generation request",
+          error: "Ungültige Anfrage zur Thumbnail-Generierung",
           code: "THUMBNAIL_REQUEST_INVALID",
           category: "invalid_response",
           retryable: false,
-          suggestion: "Review the thumbnail fields and reference image requirements, then try again.",
+          suggestion: "Prüfe die Thumbnail-Felder und die Anforderungen an Referenzbilder und versuche es dann erneut.",
           details: parsed.error.flatten(),
         });
       }
@@ -266,7 +266,7 @@ export async function registerRoutes(
     } catch (error: unknown) {
       console.error("Thumbnail generation error:", error);
       const providerError = normalizeProviderError(error, "gemini");
-      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini image generation"));
+      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini-Bildgenerierung"));
     }
   });
 
@@ -275,11 +275,11 @@ export async function registerRoutes(
       const parsed = thumbnailSuggestionsRequestSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({
-          error: "Invalid thumbnail suggestions request",
+          error: "Ungültige Anfrage für Thumbnail-Vorschläge",
           code: "THUMBNAIL_SUGGESTIONS_REQUEST_INVALID",
           category: "invalid_response",
           retryable: false,
-          suggestion: "Add a valid topic and shorten any supplied idea context.",
+          suggestion: "Gib ein gültiges Thema an und kürze den mitgelieferten Ideen-Kontext.",
           details: parsed.error.flatten(),
         });
       }
@@ -289,7 +289,7 @@ export async function registerRoutes(
     } catch (error: unknown) {
       console.error("Thumbnail suggestions error:", error);
       const providerError = normalizeProviderError(error, "gemini");
-      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini thumbnail suggestions"));
+      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini-Thumbnail-Vorschläge"));
     }
   });
 

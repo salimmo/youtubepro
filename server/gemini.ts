@@ -59,6 +59,15 @@ export function configureGeminiModels(textModel: GeminiTextModel, imageModel: Ge
   process.env.GEMINI_IMAGE_MODEL = imageModel;
 }
 
+// Ausgabesprache der KI-Inhalte. Die Prompts selbst bleiben Englisch, weil die
+// Modelle Anweisungen darin zuverlässiger befolgen. Über OUTPUT_LANGUAGE kann
+// die Sprache der generierten Texte geändert werden (Standard: Deutsch).
+export const OUTPUT_LANGUAGE = process.env.OUTPUT_LANGUAGE?.trim() || "German (Deutsch)";
+
+export const OUTPUT_LANGUAGE_RULE = `Language: Write every human-readable text value (titles, summaries, hooks, scripts, sections, questions, answers, rationales, suggestions, limitations, notes, delivery notes, B-roll suggestions) in ${OUTPUT_LANGUAGE}. Keep JSON keys, IDs, snapshot IDs, and any explicitly enumerated allowed values exactly as specified, in English. Do not translate the enumerated values.`;
+
+export const THUMBNAIL_TEXT_LANGUAGE_RULE = `Any words rendered in the image must be in ${OUTPUT_LANGUAGE} with correct spelling and diacritics (ä, ö, ü, ß).`;
+
 function getFormatGuidelines(format: VideoFormat): string {
   switch (format) {
     case VideoFormat.SHORT:
@@ -218,10 +227,11 @@ Return one strict JSON object with exactly these keys:
 - "hook": a spoken opening that immediately confirms the package promise
 - "structure": an ordered array of sections with section, purpose, and evidenceClaimIds
 - "script": the full script as a string with:
-- Clear section headers
+- Clear section headers written as markdown headings using exactly these names in this order where applicable: "## HOOK", "## EINLEITUNG" (only when the format needs a promise bridge), "## HAUPTTEIL", "## CALL-TO-ACTION". Never rename or translate these four heading names.
 - Timestamps in [00:00] format
 - Delivery notes in (parentheses)
-- B-roll suggestions in [square brackets]
+- B-roll suggestions in [square brackets], each starting with "B-Roll:"
+- No speaker labels. If one is unavoidable, use "SPRECHER:".
 - "payoff": the exact closing delivery of the honest promise
 - "primaryCta": one benefit-framed next action after value has been delivered
 - "studioValidation": the supplied Studio metric and experiment decision rule
@@ -236,6 +246,7 @@ Rules:
 - Use one throughline. Each section must answer the viewer's next natural question and point toward the promised payoff.
 - Shorts use one idea, no branded introduction, and a direct payoff. Long form uses explicit micro-loops only where the content earns them.
 - Put one primary CTA after the highest-value moment. Do not front-load an ask.
+- ${OUTPUT_LANGUAGE_RULE}
 - Return JSON only.`;
 
   try {
@@ -373,6 +384,7 @@ Evidence rules:
 - studioMetric must name the private metric that would validate the package.
 - experimentRule must change one packaging variable and state a decision rule.
 - The title and thumbnailConcept must complement each other and make the same honestPromise.
+- ${OUTPUT_LANGUAGE_RULE}
 - Return JSON only.`;
 
   try {
@@ -608,6 +620,8 @@ Provide a detailed analysis in the following JSON format:
   }
 }
 
+${OUTPUT_LANGUAGE_RULE}
+
 Return ONLY valid JSON, no additional text or markdown.`;
 
   try {
@@ -660,6 +674,7 @@ Requirements:
 - Complement the thumbnail concept instead of repeating its words
 - Do not claim popularity, search volume, trend status, authority, or guaranteed outcomes
 - Vary the framing without changing the topic or payoff
+- ${OUTPUT_LANGUAGE_RULE}
 
 Return one strict JSON object with exactly one key, "titles", containing exactly 5 strings.`;
 
@@ -779,6 +794,7 @@ Craft rules:
 - Preserve the question-to-payoff path and place no CTA before meaningful value.
 - Use one primary CTA at most, after value, and do not imitate a living person's voice.
 - Delivery notes and B-roll may clarify the existing material but cannot introduce factual claims.
+- ${OUTPUT_LANGUAGE_RULE}
 
 Return only strict JSON with exactly two keys:
 {"content":"complete rewritten section","evidenceClaimIds":["exact supplied claim IDs used"]}`;
@@ -811,6 +827,7 @@ Craft rules:
 - Do not add a CTA, authority claim, metric, example, or recommendation that was not already present and evidence-supported.
 - Do not imitate a living person's voice.
 - Return plain paragraph content inside JSON, without markdown headings.
+- ${OUTPUT_LANGUAGE_RULE}
 
 Return only strict JSON with exactly two keys:
 {"content":"rewritten paragraph","evidenceClaimIds":["exact supplied claim IDs used"]}`;
@@ -855,6 +872,7 @@ export function buildThumbnailPrompt(topic: string, config: ThumbnailConfig): st
         config.subText ? `Secondary text: \"${config.subText}\"` : "No secondary text.",
         `Reserve the ${config.textPosition} area for readable text and keep text clear of faces and key objects.`,
         "Prioritize mobile-size legibility and accurate spelling. Use a readable heavy sans-serif treatment only when it fits the selected style.",
+        THUMBNAIL_TEXT_LANGUAGE_RULE,
       ].join("\n")
     : "Do not render any words, letters, logos, watermarks, or interface text.";
 
@@ -965,6 +983,7 @@ Requirements:
 - Do not invent results, proof, urgency, secrets, danger, or exclusivity.
 - Do not promise views, money, transformation, or guaranteed outcomes.
 - Use normal title casing unless capitalization is necessary for a name or acronym.
+- ${OUTPUT_LANGUAGE_RULE}
 - Return only a JSON array of exactly five strings. No markdown or commentary.`;
 }
 
@@ -1036,12 +1055,12 @@ STRICT RULES - REMOVE ALL OF THESE:
 1. Timestamps: [00:00], (0:00-0:15), [00:05-00:20]
 2. Stage directions in parentheses: (Energetic tone), (Quick, energetic delivery), (Friendly, confident tone)
 3. Visual cues: VISUAL: [...], **VISUAL:**, [Overlay: ...], [Fast cut to...], [Screen recording...]
-4. Speaker labels: YOU:, NARRATOR:, HOST:, VOICEOVER:
-5. Section headers: **HOOK:**, ## INTRODUCTION, ### SCRIPT, MAIN CONTENT:
-6. Metadata headers: Title:, Topic:, Duration:, Target Audience:, YouTube Short Script:
+4. Speaker labels: YOU:, NARRATOR:, HOST:, VOICEOVER:, SPRECHER:, ERZÄHLER:, MODERATOR:
+5. Section headers: **HOOK:**, ## INTRODUCTION, ### SCRIPT, MAIN CONTENT:, ## EINLEITUNG, ## HAUPTTEIL, ## CALL-TO-ACTION, ## ABSCHLUSS
+6. Metadata headers: Title:, Topic:, Duration:, Target Audience:, YouTube Short Script:, Titel:, Thema:, Dauer:, Zielgruppe:
 7. Markdown: **, ##, ---, ***, *, bullet points
-8. Labels like "YouTube Short Script:", "General Audience", "Tech Enthusiasts"
-9. Format descriptions like "Under 60 seconds"
+8. Labels like "YouTube Short Script:", "General Audience", "Tech Enthusiasts", "Allgemeines Publikum", "Technikaffine Zuschauer"
+9. Format descriptions like "Under 60 seconds" or "Unter 60 Sekunden"
 10. Music/sound cues: (upbeat music), [music plays]
 
 KEEP ONLY: The actual spoken words - the dialogue that someone would read aloud as narration.

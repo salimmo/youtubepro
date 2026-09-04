@@ -2,9 +2,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { loadEnvFile } from "node:process";
+import { timingSafeEqual } from "node:crypto";
+import { ENV_FILE_PATH, isBasicAuthConfigured } from "./settings";
 
+// Die .env-Datei ergänzt nur fehlende Variablen. Bereits gesetzte
+// Umgebungsvariablen (z. B. aus Coolify) haben Vorrang.
 try {
-  loadEnvFile(".env");
+  loadEnvFile(ENV_FILE_PATH);
 } catch (error: any) {
   if (error?.code !== "ENOENT") throw error;
 }
@@ -13,6 +17,61 @@ const app = express();
 const httpServer = createServer(app);
 
 app.disable("x-powered-by");
+
+// Hinter einem Reverse-Proxy (Coolify/Traefik, nginx, Caddy) muss Express den
+// X-Forwarded-For-Header auswerten, sonst sieht das Ratenlimit nur die
+// Proxy-Adresse. TRUST_PROXY akzeptiert die Express-Werte: eine Hop-Anzahl
+// ("1"), "true"/"false" oder eine Adressliste.
+const trustProxy = process.env.TRUST_PROXY?.trim();
+if (trustProxy) {
+  if (/^\d+$/.test(trustProxy)) app.set("trust proxy", Number(trustProxy));
+  else if (trustProxy === "true") app.set("trust proxy", true);
+  else if (trustProxy !== "false") app.set("trust proxy", trustProxy);
+}
+
+// Health-Check für Coolify/Docker. Absichtlich vor der Authentifizierung.
+app.get("/api/health", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ status: "ok", uptime: Math.round(process.uptime()) });
+});
+
+// Optionaler Basisschutz für öffentlich erreichbare Deployments. Die App hat
+// keinen eigenen Login, hält aber kostenpflichtige API-Schlüssel. Sobald
+// BASIC_AUTH_USER und BASIC_AUTH_PASSWORD gesetzt sind, wird jede Anfrage
+// außer /api/health per HTTP Basic Auth geschützt.
+const basicAuthUser = process.env.BASIC_AUTH_USER?.trim() || "";
+const basicAuthPassword = process.env.BASIC_AUTH_PASSWORD || "";
+const basicAuthEnabled = isBasicAuthConfigured();
+
+function safeEqual(a: string, b: string): boolean {
+  const bufferA = Buffer.from(a, "utf8");
+  const bufferB = Buffer.from(b, "utf8");
+  if (bufferA.length !== bufferB.length) {
+    timingSafeEqual(bufferA, bufferA);
+    return false;
+  }
+  return timingSafeEqual(bufferA, bufferB);
+}
+
+if (basicAuthEnabled) {
+  app.use((req, res, next) => {
+    const header = req.get("authorization") || "";
+    if (header.startsWith("Basic ")) {
+      const decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
+      const separator = decoded.indexOf(":");
+      if (separator > 0) {
+        const user = decoded.slice(0, separator);
+        const password = decoded.slice(separator + 1);
+        if (safeEqual(user, basicAuthUser) && safeEqual(password, basicAuthPassword)) {
+          return next();
+        }
+      }
+    }
+    res.setHeader("WWW-Authenticate", 'Basic realm="YouTube Pro", charset="UTF-8"');
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(401).json({ error: "Anmeldung erforderlich." });
+  });
+}
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -39,11 +98,11 @@ app.use(
 app.use(express.urlencoded({ extended: false, limit: "64kb", parameterLimit: 100 }));
 
 export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
+  const formattedTime = new Date().toLocaleTimeString("de-DE", {
+    hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    hour12: true,
+    hour12: false,
   });
 
   console.log(`${formattedTime} [${source}] ${message}`);
@@ -77,7 +136,7 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     log(`unhandled request error (${status})`, "express");
     if (!res.headersSent) {
-      res.status(status).json({ message: "Internal Server Error" });
+      res.status(status).json({ message: "Interner Serverfehler" });
     }
   });
 
@@ -116,7 +175,21 @@ app.use((req, res, next) => {
       host,
     },
     () => {
-      log(`serving on port ${port}`);
+      log(`serving on ${host}:${port}${basicAuthEnabled ? " (Basic Auth aktiv)" : ""}`);
+      if (host !== "127.0.0.1" && host !== "localhost" && host !== "::1" && !basicAuthEnabled) {
+        log(
+          "WARNUNG: Der Server ist nicht nur auf Loopback gebunden und hat keinen Basic-Auth-Schutz. Setze BASIC_AUTH_USER und BASIC_AUTH_PASSWORD oder schütze den Zugang am Reverse-Proxy.",
+        );
+      }
     },
   );
+
+  // Sauberes Herunterfahren bei `docker stop` bzw. Coolify-Redeploys.
+  const shutdown = (signal: NodeJS.Signals) => {
+    log(`${signal} received, shutting down`);
+    httpServer.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 5_000).unref();
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 })();

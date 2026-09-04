@@ -9,10 +9,10 @@ interface VideoCardProps {
 }
 
 function formatViews(views?: number): string {
-  if (views === undefined) return "N/A";
-  if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
-  if (views >= 1000) return `${(views / 1000).toFixed(1)}K`;
-  return views.toString();
+  if (views === undefined) return "k. A.";
+  if (views >= 1000000) return `${(views / 1000000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio.`;
+  if (views >= 1000) return `${(views / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tsd.`;
+  return views.toLocaleString("de-DE");
 }
 
 function formatDate(dateString: string): string {
@@ -22,16 +22,16 @@ function formatDate(dateString: string): string {
   const diffDays = Math.ceil(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
 
   if (diffTime < 0) {
-    if (diffDays <= 1) return "Scheduled for tomorrow";
-    return `Scheduled in ${diffDays} days`;
+    if (diffDays <= 1) return "Geplant für morgen";
+    return `Geplant in ${diffDays} Tagen`;
   }
 
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-  return `${Math.floor(diffDays / 365)} years ago`;
+  if (diffDays === 0) return "Heute";
+  if (diffDays === 1) return "Gestern";
+  if (diffDays < 7) return `vor ${diffDays} Tagen`;
+  if (diffDays < 30) return `vor ${Math.floor(diffDays / 7)} ${Math.floor(diffDays / 7) === 1 ? "Woche" : "Wochen"}`;
+  if (diffDays < 365) return `vor ${Math.floor(diffDays / 30)} ${Math.floor(diffDays / 30) === 1 ? "Monat" : "Monaten"}`;
+  return `vor ${Math.floor(diffDays / 365)} ${Math.floor(diffDays / 365) === 1 ? "Jahr" : "Jahren"}`;
 }
 
 function formatDuration(duration?: string): string {
@@ -69,7 +69,7 @@ export function VideoCard({ video, onClick }: VideoCardProps) {
       } : undefined}
       role={isInteractive ? "button" : undefined}
       tabIndex={isInteractive ? 0 : undefined}
-      aria-label={isInteractive ? `Open details for ${video.title}` : undefined}
+      aria-label={isInteractive ? `Details öffnen für ${video.title}` : undefined}
       data-testid={`card-video-${video.id}`}
     >
       <div className="relative aspect-video bg-muted overflow-hidden">
@@ -109,7 +109,7 @@ export function VideoCard({ video, onClick }: VideoCardProps) {
           <span className="flex items-center gap-1">
             <Eye className="h-3.5 w-3.5" aria-hidden="true" />
             <span data-testid={`text-video-views-${video.id}`}>
-              {formatViews(video.viewCount)} views
+              {formatViews(video.viewCount)} Aufrufe
             </span>
           </span>
 

@@ -17,14 +17,14 @@ interface VideoDetailDialogProps {
 }
 
 function formatViews(views?: number): string {
-  if (views === undefined) return "N/A";
-  if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
-  if (views >= 1000) return `${(views / 1000).toFixed(1)}K`;
-  return views.toString();
+  if (views === undefined) return "k. A.";
+  if (views >= 1000000) return `${(views / 1000000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio.`;
+  if (views >= 1000) return `${(views / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tsd.`;
+  return views.toLocaleString("de-DE");
 }
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
+  return new Date(dateString).toLocaleDateString("de-DE", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -32,7 +32,7 @@ function formatDate(dateString: string): string {
 }
 
 function formatDuration(duration?: string): string {
-  if (!duration) return "N/A";
+  if (!duration) return "k. A.";
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return duration;
 
@@ -41,9 +41,9 @@ function formatDuration(duration?: string): string {
   const seconds = match[3] ? parseInt(match[3]) : 0;
 
   if (hours > 0) {
-    return `${hours}h ${minutes}m ${seconds}s`;
+    return `${hours} Std. ${minutes} Min. ${seconds} Sek.`;
   }
-  return `${minutes}m ${seconds}s`;
+  return `${minutes} Min. ${seconds} Sek.`;
 }
 
 export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDialogProps) {
@@ -82,7 +82,7 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                   </a>
                   {video.channelStatistics?.subscriberCount !== undefined && (
                     <p className="text-xs text-muted-foreground">
-                      {formatViews(video.channelStatistics.subscriberCount)} subscribers
+                      {formatViews(video.channelStatistics.subscriberCount)} Abonnenten
                     </p>
                   )}
                 </div>
@@ -94,7 +94,7 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                     data-testid="link-watch-youtube"
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    Watch on YouTube
+                    Auf YouTube ansehen
                   </a>
                 </Button>
               </div>
@@ -103,7 +103,7 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                 <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
                   <Eye className="h-5 w-5 text-muted-foreground mb-1" />
                   <span className="text-lg font-semibold">{formatViews(video.viewCount)}</span>
-                  <span className="text-xs text-muted-foreground">Views</span>
+                  <span className="text-xs text-muted-foreground">Aufrufe</span>
                 </div>
                 <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
                   <ThumbsUp className="h-5 w-5 text-muted-foreground mb-1" />
@@ -113,39 +113,39 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                 <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
                   <MessageSquare className="h-5 w-5 text-muted-foreground mb-1" />
                   <span className="text-lg font-semibold">{formatViews(video.commentCount)}</span>
-                  <span className="text-xs text-muted-foreground">Comments</span>
+                  <span className="text-xs text-muted-foreground">Kommentare</span>
                 </div>
                 <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
                   <Clock className="h-5 w-5 text-muted-foreground mb-1" />
                   <span className="text-lg font-semibold">{formatDuration(video.duration)}</span>
-                  <span className="text-xs text-muted-foreground">Duration</span>
+                  <span className="text-xs text-muted-foreground">Dauer</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                <span>Published on {formatDate(video.publishedAt)}</span>
+                <span>Veröffentlicht am {formatDate(video.publishedAt)}</span>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 {engagementRate !== null && (
-                  <Badge variant="outline">{engagementRate.toFixed(2)}% public engagement</Badge>
+                  <Badge variant="outline">{engagementRate.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % öffentliches Engagement</Badge>
                 )}
                 {video.definition && <Badge variant="secondary">{video.definition.toUpperCase()}</Badge>}
                 {video.hasCaptions !== undefined && (
-                  <Badge variant="secondary">{video.hasCaptions ? "Captions" : "No captions"}</Badge>
+                  <Badge variant="secondary">{video.hasCaptions ? "Untertitel" : "Keine Untertitel"}</Badge>
                 )}
                 {(video.defaultAudioLanguage || video.defaultLanguage) && (
                   <Badge variant="secondary">{video.defaultAudioLanguage || video.defaultLanguage}</Badge>
                 )}
                 {video.hasPaidProductPlacement && (
-                  <Badge variant="outline">Paid promotion disclosed</Badge>
+                  <Badge variant="outline">Bezahlte Werbung gekennzeichnet</Badge>
                 )}
               </div>
 
               {video.description && (
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Description</h4>
+                  <h4 className="font-medium text-sm">Beschreibung</h4>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-6">
                     {video.description}
                   </p>
@@ -166,7 +166,7 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                     ))}
                     {video.tags.length > 10 && (
                       <Badge variant="outline" className="text-xs">
-                        +{video.tags.length - 10} more
+                        +{video.tags.length - 10} weitere
                       </Badge>
                     )}
                   </div>

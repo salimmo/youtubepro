@@ -1,22 +1,22 @@
-# Security Policy
+# Sicherheitsrichtlinie
 
-## Reporting a vulnerability
+## Eine Schwachstelle melden
 
-Do not report suspected vulnerabilities in a public issue. Use the repository's private security advisory flow, or contact the repository owner through an already approved private channel.
+Melde vermutete Schwachstellen nicht in einem öffentlichen Issue. Nutze den privaten Security-Advisory-Prozess des Repositorys oder kontaktiere den Repository-Besitzer über einen bereits freigegebenen privaten Kanal.
 
-Include the affected route or component, reproduction steps, expected impact, and a minimal proof of concept. Remove API keys, access tokens, personal data, and private channel data from all reports and screenshots.
+Gib die betroffene Route oder Komponente, Schritte zur Reproduktion, die erwartete Auswirkung und einen minimalen Proof of Concept an. Entferne API-Schlüssel, Zugriffstoken, personenbezogene Daten und private Kanaldaten aus allen Meldungen und Screenshots.
 
-## Supported configuration
+## Unterstützte Konfiguration
 
-The current supported configuration is local-first:
+Die aktuell unterstützte Konfiguration ist Local-first:
 
-- The server binds to `127.0.0.1` by default.
-- YouTube and Gemini keys remain in the server environment.
-- The local Settings endpoint accepts same-origin loopback requests only.
-- Billable routes use an in-memory per-process rate limiter.
+- Der Server bindet sich standardmäßig an `127.0.0.1`.
+- YouTube- und Gemini-Schlüssel bleiben in der Server-Umgebung.
+- Der lokale Einstellungs-Endpunkt akzeptiert ausschließlich Same-Origin-Loopback-Anfragen.
+- Kostenpflichtige Routen verwenden einen In-Memory-Ratenlimiter pro Prozess.
 
-This is not a hardened multi-user internet service. Before remote deployment, add authenticated access, a trusted secret-management path, a shared rate limiter, request observability that excludes secrets and content bodies, and a deployment-specific threat review.
+Dies ist kein gehärteter Mehrbenutzer-Internetdienst. Ergänze vor einem Remote-Deployment authentifizierten Zugriff, einen vertrauenswürdigen Pfad zur Geheimnisverwaltung, einen gemeinsamen Ratenlimiter, eine Anfrage-Beobachtbarkeit, die Geheimnisse und Inhalts-Bodies ausschließt, sowie eine deploymentspezifische Bedrohungsanalyse.
 
-## Credential response
+## Umgang mit kompromittierten Zugangsdaten
 
-If a credential is accidentally committed, revoke or rotate it immediately. Removing it from the latest commit is not sufficient because Git history and clones may retain the value.
+Wenn Zugangsdaten versehentlich committet werden, widerrufe oder rotiere sie sofort. Sie aus dem letzten Commit zu entfernen reicht nicht aus, da Git-Historie und Klone den Wert weiterhin enthalten können.

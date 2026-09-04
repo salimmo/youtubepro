@@ -43,7 +43,7 @@ export const getQueryFn: <T>(options: {
       if (unauthorizedBehavior === "returnNull") {
         return null;
       }
-      throw new Error("Unauthorized request.");
+      throw new Error("Nicht autorisierte Anfrage.");
     }
 
     await throwIfResNotOk(res);

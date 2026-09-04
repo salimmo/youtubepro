@@ -88,7 +88,7 @@ function youtubeHttpError(status: number, body: unknown, stage: string): Provide
 
   if (invalidKey) {
     return new ProviderError({
-      message: `YouTube rejected the API key during ${stage}.`,
+      message: `YouTube hat den API-Schlüssel abgelehnt (Schritt: ${stage}).`,
       category: "invalid_key",
       code: "YOUTUBE_INVALID_KEY",
       status: 401,
@@ -97,7 +97,7 @@ function youtubeHttpError(status: number, body: unknown, stage: string): Provide
   }
   if (quota) {
     return new ProviderError({
-      message: `YouTube quota was unavailable during ${stage}.`,
+      message: `YouTube-Kontingent nicht verfügbar (Schritt: ${stage}).`,
       category: "quota",
       code: "YOUTUBE_QUOTA",
       status: 429,
@@ -106,7 +106,7 @@ function youtubeHttpError(status: number, body: unknown, stage: string): Provide
   }
   if (status >= 500) {
     return new ProviderError({
-      message: `YouTube returned a server error during ${stage}.`,
+      message: `YouTube hat einen Serverfehler zurückgegeben (Schritt: ${stage}).`,
       category: "provider_server",
       code: "YOUTUBE_PROVIDER_SERVER",
       status: 502,
@@ -114,7 +114,7 @@ function youtubeHttpError(status: number, body: unknown, stage: string): Provide
     });
   }
   return new ProviderError({
-    message: `YouTube rejected the ${stage} request.`,
+    message: `YouTube hat die Anfrage abgelehnt (Schritt: ${stage}).`,
     category: "unknown",
     code: "YOUTUBE_REQUEST_REJECTED",
     status: 502,
@@ -132,7 +132,7 @@ async function fetchYouTubeJson(url: string, stage: string): Promise<any> {
       body = await response.json();
     } catch (error) {
       throw new ProviderError({
-        message: `YouTube returned malformed JSON during ${stage}.`,
+        message: `YouTube hat fehlerhaftes JSON zurückgegeben (Schritt: ${stage}).`,
         category: "invalid_response",
         code: "YOUTUBE_INVALID_RESPONSE",
         status: 502,
@@ -146,7 +146,7 @@ async function fetchYouTubeJson(url: string, stage: string): Promise<any> {
     if (error instanceof ProviderError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
       throw new ProviderError({
-        message: `YouTube timed out during ${stage}.`,
+        message: `Zeitüberschreitung bei YouTube (Schritt: ${stage}).`,
         category: "timeout",
         code: "YOUTUBE_TIMEOUT",
         status: 504,
@@ -155,7 +155,7 @@ async function fetchYouTubeJson(url: string, stage: string): Promise<any> {
       });
     }
     throw new ProviderError({
-      message: `YouTube could not be reached during ${stage}.`,
+      message: `YouTube war nicht erreichbar (Schritt: ${stage}).`,
       category: "network",
       code: "YOUTUBE_NETWORK",
       status: 502,
@@ -184,7 +184,7 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
   const apiKey = process.env.YOUTUBE_API_KEY?.trim();
   if (!apiKey) {
     throw new ProviderError({
-      message: "YouTube API key is not configured.",
+      message: "YouTube-API-Schlüssel ist nicht konfiguriert.",
       category: "missing_key",
       code: "YOUTUBE_MISSING_KEY",
       status: 503,
@@ -212,12 +212,12 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
   }
 
   const searchUrl = `${BASE_URL}/search?${params}`;
-  const searchData = await fetchYouTubeJson(searchUrl, "search");
+  const searchData = await fetchYouTubeJson(searchUrl, "Suche");
   const retrievedAt = new Date().toISOString();
   const warnings: SearchResponse["warnings"] = [];
   if (!Array.isArray(searchData.items)) {
     throw new ProviderError({
-      message: "YouTube returned an invalid search response.",
+      message: "YouTube hat eine ungültige Suchantwort zurückgegeben.",
       category: "invalid_response",
       code: "YOUTUBE_INVALID_RESPONSE",
       status: 502,
@@ -262,7 +262,7 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
     warnings.push({
       code: "SEARCH_ITEMS_OMITTED",
       stage: "search",
-      message: "Some search rows did not contain a public video identifier and were omitted.",
+      message: "Einige Suchergebnisse enthielten keine öffentliche Video-ID und wurden ausgelassen.",
     });
   }
   if (orderedVideoIds.length === 0) {
@@ -302,10 +302,10 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
   });
 
   const detailsUrl = `${BASE_URL}/videos?${detailsParams}`;
-  const detailsData = await fetchYouTubeJson(detailsUrl, "video details");
+  const detailsData = await fetchYouTubeJson(detailsUrl, "Videodetails");
   if (!Array.isArray(detailsData.items)) {
     throw new ProviderError({
-      message: "YouTube returned an invalid video-details response.",
+      message: "YouTube hat eine ungültige Videodetails-Antwort zurückgegeben.",
       category: "invalid_response",
       code: "YOUTUBE_INVALID_RESPONSE",
       status: 502,
@@ -316,7 +316,7 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
     warnings.push({
       code: "VIDEO_DETAILS_PARTIAL",
       stage: "video_details",
-      message: "Some search results no longer had public video details and were omitted.",
+      message: "Für einige Suchergebnisse waren keine öffentlichen Videodetails mehr verfügbar; sie wurden ausgelassen.",
     });
   }
   const channelIds = Array.from(new Set(
@@ -336,7 +336,7 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
     });
 
     try {
-      const channelData = await fetchYouTubeJson(`${BASE_URL}/channels?${channelParams}`, "channel enrichment");
+      const channelData = await fetchYouTubeJson(`${BASE_URL}/channels?${channelParams}`, "Kanal-Anreicherung");
       for (const channel of Array.isArray(channelData.items) ? channelData.items : []) {
         channelDetails.set(channel.id, channel);
       }
@@ -348,7 +348,7 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
       warnings.push({
         code: "CHANNEL_ENRICHMENT_PARTIAL",
         stage: "channel_enrichment",
-        message: "Channel-level public metadata was unavailable for some or all videos.",
+        message: "Öffentliche Kanal-Metadaten waren für einige oder alle Videos nicht verfügbar.",
       });
     }
   }

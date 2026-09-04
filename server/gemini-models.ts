@@ -2,32 +2,32 @@ export const GEMINI_TEXT_MODELS = [
   {
     id: "gemini-3.7-flash",
     label: "Gemini 3.7 Flash",
-    description: "Recommended production default for capable, fast research and writing.",
+    description: "Empfohlener Standard für leistungsfähige, schnelle Recherche und Texterstellung.",
   },
   {
     id: "gemini-3.1-pro-preview",
     label: "Gemini 3.1 Pro (Preview)",
-    description: "Highest-reasoning option, with preview stability and latency tradeoffs.",
+    description: "Option mit dem stärksten Reasoning, dafür mit Preview-Stabilität und höherer Latenz.",
   },
   {
     id: "gemini-3.6-flash",
     label: "Gemini 3.6 Flash",
-    description: "Previous-generation balanced model.",
+    description: "Ausgewogenes Modell der vorherigen Generation.",
   },
   {
     id: "gemini-3.5-flash",
     label: "Gemini 3.5 Flash",
-    description: "Stable general-purpose model.",
+    description: "Stabiles Allzweckmodell.",
   },
   {
     id: "gemini-3.5-flash-lite",
     label: "Gemini 3.5 Flash-Lite",
-    description: "Lower-cost choice for high-volume work.",
+    description: "Günstigere Wahl für hohes Volumen.",
   },
   {
     id: "gemini-3.1-flash-lite",
     label: "Gemini 3.1 Flash-Lite",
-    description: "Efficient earlier-generation model.",
+    description: "Effizientes Modell einer früheren Generation.",
   },
 ] as const;
 
@@ -35,22 +35,22 @@ export const GEMINI_IMAGE_MODELS = [
   {
     id: "gemini-3.1-flash-image",
     label: "Nano Banana 2",
-    description: "Recommended balance of image quality, speed, and cost.",
+    description: "Empfohlene Balance aus Bildqualität, Geschwindigkeit und Kosten.",
   },
   {
     id: "gemini-3.1-flash-lite-image",
     label: "Nano Banana 2 Lite",
-    description: "Fastest, lowest-cost image option.",
+    description: "Schnellste und günstigste Bildoption.",
   },
   {
     id: "gemini-3-pro-image",
     label: "Nano Banana Pro",
-    description: "Premium option for complex, high-precision thumbnails.",
+    description: "Premium-Option für komplexe, hochpräzise Thumbnails.",
   },
   {
     id: "gemini-2.5-flash-image",
     label: "Nano Banana (legacy)",
-    description: "Legacy image model retained for compatibility.",
+    description: "Älteres Bildmodell, aus Kompatibilitätsgründen beibehalten.",
   },
 ] as const;
 

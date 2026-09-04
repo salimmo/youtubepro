@@ -150,25 +150,25 @@ describe("research export tables", () => {
   test("keeps all reader and audit sections in one normalized payload", () => {
     const tables = buildResearchExportTables(report);
     assert.deepEqual(tables.map((table) => table.name), [
-      "Summary", "Overview", "Videos", "AI Insights", "Evidence", "Ideas", "Coverage & Sources",
+      "Zusammenfassung", "Überblick", "Videos", "KI-Insights", "Evidenz", "Ideen", "Abdeckung & Quellen",
     ]);
     assert.equal(tables.find((table) => table.name === "Videos")?.rows.length, 1);
-    assert.equal(tables.find((table) => table.name === "Ideas")?.rows.length, 6);
+    assert.equal(tables.find((table) => table.name === "Ideen")?.rows.length, 6);
   });
 
   test("creates an Excel workbook with one worksheet per report section", () => {
     const workbook = buildResearchXls(report);
     assert.equal((workbook.match(/<Worksheet ss:Name=/g) || []).length, 7);
     assert.match(workbook, /camera &amp; lighting/);
-    assert.match(workbook, /Advanced/);
+    assert.match(workbook, /Fortgeschritten/);
   });
 
   test("creates a complete long-form CSV without ambiguous sparse columns", () => {
     const csv = buildResearchCsv(report);
     assert.ok(csv.startsWith("\uFEFF"));
-    assert.match(csv, /"Table","Row","Field","Value"/);
-    assert.match(csv, /"Videos","1","Description","A detailed camera comparison\."/);
-    assert.match(csv, /"Ideas","1","Difficulty","Advanced"/);
+    assert.match(csv, /"Tabelle","Zeile","Feld","Wert"/);
+    assert.match(csv, /"Videos","1","Beschreibung","A detailed camera comparison\."/);
+    assert.match(csv, /"Ideen","1","Schwierigkeit","Fortgeschritten"/);
   });
 
   test("builds a multi-page searchable PDF report from the same payload", () => {

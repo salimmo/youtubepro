@@ -4,18 +4,18 @@ import { evidenceClaimSchema, scriptEvidenceContextSchema } from "./evidence-con
 export * from "./evidence-contracts";
 
 export enum VideoFormat {
-  SHORT = "YouTube Short (< 60 sec)",
-  LONG_FORM = "Long-form Video (8-15 min)",
-  TUTORIAL = "Tutorial/How-to",
-  REVIEW = "Product Review",
-  VLOG = "Vlog Style"
+  SHORT = "YouTube Short (< 60 Sek.)",
+  LONG_FORM = "Langform-Video (8–15 Min.)",
+  TUTORIAL = "Tutorial/Anleitung",
+  REVIEW = "Produkt-Review",
+  VLOG = "Vlog-Stil"
 }
 
 export enum TargetAudience {
-  GENERAL = "General Audience",
-  TECH_SAVVY = "Tech-Savvy Viewers",
-  BEGINNERS = "Beginners",
-  PROFESSIONALS = "Industry Professionals"
+  GENERAL = "Allgemeines Publikum",
+  TECH_SAVVY = "Technikaffine Zuschauer",
+  BEGINNERS = "Einsteiger",
+  PROFESSIONALS = "Branchenprofis"
 }
 
 export enum UploadDateFilter {
@@ -236,14 +236,14 @@ export const researchInsightsRequestSchema = z.object({
   warnings: z.array(researchWarningSchema).max(20),
 }).strict().superRefine((data, ctx) => {
   if (data.provenance.query.trim() !== data.query.trim()) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["provenance", "query"], message: "Provenance query must match the active query" });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["provenance", "query"], message: "Der Herkunfts-Suchbegriff muss mit dem aktiven Suchbegriff übereinstimmen" });
   }
   const videoIds = data.videos.map((video) => video.id);
   if (JSON.stringify(videoIds) !== JSON.stringify(data.provenance.orderedVideoIds)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["provenance", "orderedVideoIds"], message: "Ordered video IDs must match the active video records" });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["provenance", "orderedVideoIds"], message: "Die geordneten Video-IDs müssen mit den aktiven Videodatensätzen übereinstimmen" });
   }
   if (data.analytics.totalVideos !== data.videos.length) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["analytics", "totalVideos"], message: "Analytics sample size must match the active video records" });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["analytics", "totalVideos"], message: "Die Stichprobengröße der Analytics muss mit den aktiven Videodatensätzen übereinstimmen" });
   }
 });
 
@@ -258,7 +258,7 @@ export const researchInsightsResponseSchema = researchInsightsContentSchema.exte
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["evidenceClaims", index, "snapshotId"],
-        message: "Evidence claim snapshot must match the response snapshot",
+        message: "Der Snapshot der Evidenz-Aussage muss mit dem Antwort-Snapshot übereinstimmen",
       });
     }
   });
@@ -282,7 +282,7 @@ export enum CreatorPersona {
 }
 
 export const scriptInputSchema = z.object({
-  topic: z.string().trim().min(1, "Topic is required").max(500),
+  topic: z.string().trim().min(1, "Thema ist erforderlich").max(500),
   format: z.nativeEnum(VideoFormat),
   audience: z.nativeEnum(TargetAudience),
   persona: z.nativeEnum(CreatorPersona).optional().default(CreatorPersona.NONE),
@@ -293,7 +293,7 @@ export const scriptInputSchema = z.object({
   if (data.persona === CreatorPersona.OTHER && !data.customPersona) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Please describe the custom tone traits",
+      message: "Bitte beschreibe die gewünschten Tonalitätsmerkmale",
       path: ["customPersona"],
     });
   }

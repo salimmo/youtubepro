@@ -32,7 +32,7 @@ describe("workflow history helpers", () => {
   test("falls back through script and thumbnail signals", () => {
     assert.equal(deriveWorkflowTitle({ scriptTitle: "Script title", thumbnailTopic: "Thumbnail" }), "Script title");
     assert.equal(deriveWorkflowTitle({ thumbnailTopic: "Thumbnail only" }), "Thumbnail only");
-    assert.equal(deriveWorkflowTitle({}), "Untitled workflow");
+    assert.equal(deriveWorkflowTitle({}), "Unbenannter Workflow");
   });
 
   test("bounds long titles without splitting the history layout", () => {

@@ -42,22 +42,26 @@ import { Search, FileText, Play, Settings, Rocket, Check, ArrowRight, Image, His
 import { useWorkflow } from "@/lib/workflow-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNowStrict } from "date-fns";
+import { de } from "date-fns/locale";
 
 const menuItems = [
   {
-    title: "Research",
+    title: "Recherche",
+    testId: "link-research",
     url: "/",
     icon: Search,
     step: "research" as const,
   },
   {
-    title: "Script Writer",
+    title: "Skript-Writer",
+    testId: "link-script-writer",
     url: "/script",
     icon: FileText,
     step: "script" as const,
   },
   {
-    title: "Thumbnail Creator",
+    title: "Thumbnail-Creator",
+    testId: "link-thumbnail-creator",
     url: "/thumbnail",
     icon: Image,
     step: "thumbnail" as const,
@@ -67,9 +71,15 @@ const menuItems = [
 const stepOrder = ["research", "script", "thumbnail"] as const;
 type ShellWorkflowStep = typeof stepOrder[number];
 const stepLabels: Record<ShellWorkflowStep, string> = {
-  research: "Research",
-  script: "Script",
+  research: "Recherche",
+  script: "Skript",
   thumbnail: "Thumbnail",
+};
+const stepStatusLabels: Record<string, string> = {
+  inactive: "inaktiv",
+  completed: "abgeschlossen",
+  current: "aktuell",
+  upcoming: "ausstehend",
 };
 
 export function AppSidebar() {
@@ -124,14 +134,14 @@ export function AppSidebar() {
     if (!renameTarget) return;
     const title = renameValue.trim().replace(/\s+/g, " ");
     if (!title) {
-      setRenameError("Enter a workflow name.");
+      setRenameError("Gib einen Workflow-Namen ein.");
       return;
     }
     setSavingName(true);
     try {
       const renamed = await renameWorkflow(renameTarget.id, title);
       if (renamed) setRenameTarget(null);
-      else setRenameError("The workflow could not be renamed.");
+      else setRenameError("Der Workflow konnte nicht umbenannt werden.");
     } finally {
       setSavingName(false);
     }
@@ -174,7 +184,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
-        <Link href="/" onClick={() => goToStep("research")} className="flex items-center gap-3" aria-label="YouTube Pro home">
+        <Link href="/" onClick={() => goToStep("research")} className="flex items-center gap-3" aria-label="YouTube Pro Startseite">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
             <Play className="h-5 w-5 text-primary-foreground" fill="currentColor" aria-hidden="true" />
           </div>
@@ -183,7 +193,7 @@ export function AppSidebar() {
               YouTube Pro
             </span>
             <span className="text-xs text-muted-foreground">
-              Research & Script
+              Recherche & Skript
             </span>
           </div>
         </Link>
@@ -198,9 +208,9 @@ export function AppSidebar() {
               data-testid="button-new-workflow"
             >
               <Rocket className="h-4 w-4" aria-hidden="true" />
-              New Workflow
+              Neuer Workflow
             </Button>
-            <ol className="flex items-center gap-1" aria-label="Workflow progress">
+            <ol className="flex items-center gap-1" aria-label="Workflow-Fortschritt">
               {stepOrder.map((step, index) => {
                 const status = getStepStatus(step);
                 return (
@@ -209,10 +219,10 @@ export function AppSidebar() {
                     className="flex items-center gap-1"
                     aria-current={status === "current" ? "step" : undefined}
                   >
-                    <span className="sr-only">{stepLabels[step]}: {status}</span>
+                    <span className="sr-only">{stepLabels[step]}: {stepStatusLabels[status]}</span>
                     <div
                       aria-hidden="true"
-                      title={`${stepLabels[step]}: ${status}`}
+                      title={`${stepLabels[step]}: ${stepStatusLabels[status]}`}
                       className={`h-2 w-2 rounded-full transition-colors ${
                         status === "completed"
                           ? "bg-success"
@@ -256,7 +266,7 @@ export function AppSidebar() {
                         href={item.url}
                         onClick={() => goToStep(item.step)}
                         aria-current={isActive ? "page" : undefined}
-                        data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                        data-testid={item.testId}
                       >
                         <div className="flex items-center gap-2 flex-1">
                           <item.icon className={isActive ? "text-primary" : ""} aria-hidden="true" />
@@ -284,13 +294,13 @@ export function AppSidebar() {
         <SidebarGroup className="pt-1">
           <SidebarGroupLabel className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             <History className="h-3.5 w-3.5" aria-hidden="true" />
-            Recent workflows
+            Letzte Workflows
           </SidebarGroupLabel>
           <SidebarGroupContent>
             {historyLoading ? (
-              <p className="px-2 py-2 text-xs text-muted-foreground" role="status">Loading local history...</p>
+              <p className="px-2 py-2 text-xs text-muted-foreground" role="status">Lokaler Verlauf wird geladen …</p>
             ) : recentWorkflows.length === 0 ? (
-              <p className="px-2 py-2 text-xs leading-relaxed text-muted-foreground">Your recent research, scripts, and thumbnails will appear here.</p>
+              <p className="px-2 py-2 text-xs leading-relaxed text-muted-foreground">Deine letzten Recherchen, Skripte und Thumbnails erscheinen hier.</p>
             ) : (
               <SidebarMenu>
                 {recentWorkflows.map((workflow) => {
@@ -314,15 +324,15 @@ export function AppSidebar() {
                         )}
                         <span className="min-w-0 flex-1 text-left">
                           <span className="block truncate text-sm font-medium">{workflow.title}</span>
-                          <span className="mt-0.5 block text-[11px] capitalize text-muted-foreground">
-                            {stepLabels[workflow.currentStep]} · {formatDistanceToNowStrict(workflow.updatedAt, { addSuffix: true })}
+                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                            {stepLabels[workflow.currentStep]} · {formatDistanceToNowStrict(workflow.updatedAt, { addSuffix: true, locale: de })}
                           </span>
                         </span>
                       </SidebarMenuButton>
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           className="absolute right-1 top-1.5 flex aspect-square w-7 items-center justify-center rounded-md text-sidebar-foreground opacity-100 outline-none ring-sidebar-ring transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 md:opacity-0 md:group-focus-within/menu-item:opacity-100 md:group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 [&>svg]:size-4"
-                          aria-label={`Actions for ${workflow.title}`}
+                          aria-label={`Aktionen für ${workflow.title}`}
                           data-testid={`button-workflow-actions-${workflow.id}`}
                         >
                           <MoreHorizontal aria-hidden="true" />
@@ -330,14 +340,14 @@ export function AppSidebar() {
                         <DropdownMenuContent side="right" align="start" className="w-40">
                           <DropdownMenuItem onSelect={() => beginRename(workflow.id, workflow.title)}>
                             <Pencil aria-hidden="true" />
-                            Rename
+                            Umbenennen
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
                             onSelect={() => setDeleteTarget({ id: workflow.id, title: workflow.title })}
                           >
                             <Trash2 aria-hidden="true" />
-                            Delete
+                            Löschen
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -362,7 +372,7 @@ export function AppSidebar() {
                 data-testid="link-settings"
               >
                 <Settings className={location === "/settings" ? "text-primary" : ""} aria-hidden="true" />
-                <span>Settings</span>
+                <span>Einstellungen</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -373,8 +383,8 @@ export function AppSidebar() {
         <DialogContent>
           <form onSubmit={handleRename} className="space-y-5">
             <DialogHeader>
-              <DialogTitle>Rename workflow</DialogTitle>
-              <DialogDescription>Give this project a short name that will be easy to recognize later.</DialogDescription>
+              <DialogTitle>Workflow umbenennen</DialogTitle>
+              <DialogDescription>Gib diesem Projekt einen kurzen Namen, den du später leicht wiedererkennst.</DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
               <Input
@@ -382,20 +392,20 @@ export function AppSidebar() {
                 value={renameValue}
                 maxLength={48}
                 onChange={(event) => { setRenameValue(event.target.value); setRenameError(null); }}
-                aria-label="Workflow name"
+                aria-label="Workflow-Name"
                 aria-invalid={Boolean(renameError)}
                 data-testid="input-workflow-name"
               />
               <div className="flex items-center justify-between gap-3 text-xs">
-                <span className={renameError ? "text-destructive" : "text-muted-foreground"}>{renameError || "Maximum 48 characters"}</span>
+                <span className={renameError ? "text-destructive" : "text-muted-foreground"}>{renameError || "Maximal 48 Zeichen"}</span>
                 <span className="tabular-nums text-muted-foreground">{renameValue.length}/48</span>
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setRenameTarget(null)} disabled={savingName}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setRenameTarget(null)} disabled={savingName}>Abbrechen</Button>
               <Button type="submit" disabled={savingName || !renameValue.trim()}>
                 {savingName && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                Save name
+                Namen speichern
               </Button>
             </DialogFooter>
           </form>
@@ -405,20 +415,20 @@ export function AppSidebar() {
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open && !deletingWorkflow) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete “{deleteTarget?.title}”?</AlertDialogTitle>
+            <AlertDialogTitle>„{deleteTarget?.title}“ löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the locally saved research, ideas, script, and thumbnail for this workflow. This action cannot be undone.
+              Dadurch werden die lokal gespeicherte Recherche, die Ideen, das Skript und das Thumbnail dieses Workflows entfernt. Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingWorkflow}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deletingWorkflow}>Abbrechen</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={(event) => { event.preventDefault(); void handleDelete(); }}
               disabled={deletingWorkflow}
             >
               {deletingWorkflow && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
-              Delete workflow
+              Workflow löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

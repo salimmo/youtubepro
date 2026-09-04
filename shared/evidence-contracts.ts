@@ -19,7 +19,7 @@ export const evidenceClaimSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["sourceVideoIds"],
-      message: "Observed claims require at least one source video ID",
+      message: "Beobachtete Aussagen benötigen mindestens eine Quellvideo-ID",
     });
   }
 });
@@ -58,7 +58,7 @@ export const researchEvidenceContextSchema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["evidenceClaims", index, "snapshotId"],
-        message: "Evidence claim snapshot must match the active research snapshot",
+        message: "Der Snapshot der Evidenz-Aussage muss mit dem aktiven Recherche-Snapshot übereinstimmen",
       });
     }
   });
@@ -93,7 +93,7 @@ export const scriptEvidenceContextSchema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["evidenceClaims", index, "snapshotId"],
-        message: "Evidence claim snapshot must match the selected idea snapshot",
+        message: "Der Snapshot der Evidenz-Aussage muss mit dem Snapshot der ausgewählten Idee übereinstimmen",
       });
     }
   });

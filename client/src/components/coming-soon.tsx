@@ -26,13 +26,13 @@ export function ComingSoon({ title, description, features }: ComingSoonProps) {
               className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground"
               data-testid="badge-coming-soon"
             >
-              Soon
+              Bald
             </Badge>
           </div>
           <h1 className="text-2xl font-bold" data-testid="text-coming-soon-title">
             {title}
           </h1>
-          <p className="text-muted-foreground">Coming Soon</p>
+          <p className="text-muted-foreground">Demnächst verfügbar</p>
           <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-4 text-left sm:grid-cols-2">
             {features.map((feature) => (
               <div key={feature.label} className="flex items-center gap-2">

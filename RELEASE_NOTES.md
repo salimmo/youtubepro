@@ -1,66 +1,66 @@
-# Release notes
+# Release Notes
 
-## 2026-08-25: Version 1.0.0 public release
+## 2026-08-25: Version 1.0.0 – öffentliche Veröffentlichung
 
-This release brings the complete local-first workflow, current product documentation, and release checks together in the public GitHub repository.
+Diese Version führt den vollständigen Local-first-Workflow, die aktuelle Produktdokumentation und die Release-Prüfungen im öffentlichen GitHub-Repository zusammen.
 
-### Included
+### Enthalten
 
-- **Complete creation workflow:** Research, evidence-grounded AI Insights, automatically generated Ideas, Script Writer with teleprompter, and Thumbnail Creator remain connected through one restorable project.
-- **Workflow history controls:** The eight most recent browser-local projects can be reopened, renamed, or deleted after explicit confirmation.
-- **Current product tour:** Five current screenshots document Research analytics, source videos, AI Insights, the Script teleprompter, and Thumbnail Creator.
-- **Launch package:** A five-minute demonstration script, presentation, shot list, and YouTube publishing package are available under `docs/launch-video/`.
-- **Open-source repository:** The exact release is available at `AgriciDaniel/youtubepro` under the Apache License 2.0.
+- **Vollständiger Erstellungs-Workflow:** Recherche, evidenzbasierte KI-Insights, automatisch generierte Ideen, Skript-Writer mit Teleprompter und Thumbnail-Creator bleiben über ein wiederherstellbares Projekt verbunden.
+- **Steuerung des Workflow-Verlaufs:** Die acht zuletzt verwendeten browserlokalen Projekte können nach ausdrücklicher Bestätigung erneut geöffnet, umbenannt oder gelöscht werden.
+- **Aktuelle Produkt-Tour:** Fünf aktuelle Screenshots dokumentieren Recherche-Analytics, Quellvideos, KI-Insights, den Skript-Teleprompter und den Thumbnail-Creator.
+- **Launch-Paket:** Ein fünfminütiges Demonstrationsskript, eine Präsentation, eine Shot-Liste und ein YouTube-Veröffentlichungspaket sind unter `docs/launch-video/` verfügbar.
+- **Open-Source-Repository:** Das exakte Release ist unter `AgriciDaniel/youtubepro` unter der Apache License 2.0 verfügbar.
 
-### Verification
+### Verifikation
 
-- `npm test`: 62 tests passed
-- `npm run check`: TypeScript check passed
-- `npm run build`: Production client and server builds completed
-- `npm audit --audit-level=high`: 0 vulnerabilities
-- Current source scan outside the ignored `.env`: 0 secret findings
-- GitHub Actions runs the same test, TypeScript, and production-build gates on every push and pull request
+- `npm test`: 62 Tests bestanden
+- `npm run check`: TypeScript-Prüfung bestanden
+- `npm run build`: Produktions-Builds für Client und Server abgeschlossen
+- `npm audit --audit-level=high`: 0 Schwachstellen
+- Aktueller Quellcode-Scan außerhalb der ignorierten `.env`: 0 Geheimnisfunde
+- GitHub Actions führt dieselben Test-, TypeScript- und Produktions-Build-Gates bei jedem Push und Pull Request aus
 
-### Release boundary
+### Release-Grenze
 
-This is a local-first application release, not a hardened multi-user internet service. Do not expose the server directly to the internet without the authentication, secret-management, shared rate-limiting, and deployment-specific security controls described in `SECURITY.md`.
+Dies ist das Release einer Local-first-Anwendung, kein gehärteter Mehrbenutzer-Internetdienst. Setze den Server nicht direkt dem Internet aus, ohne die in `SECURITY.md` beschriebenen Kontrollen für Authentifizierung, Geheimnisverwaltung, gemeinsames Ratenlimit und deploymentspezifische Sicherheit.
 
-## 2026-08-24: Restorable local workflows and refreshed research experience
+## 2026-08-24: Wiederherstellbare lokale Workflows und überarbeitete Recherche-Erfahrung
 
-This update makes YouTube Pro easier to leave and resume. Research, generated ideas, scripts, and thumbnail work now stay grouped as local workflows, while the research brief presents dense AI output in a more visual, scan-first format.
+Dieses Update macht es einfacher, YouTube Pro zu verlassen und später fortzusetzen. Recherche, generierte Ideen, Skripte und Thumbnail-Arbeit bleiben jetzt als lokale Workflows gruppiert, während das Recherche-Briefing dichte KI-Ausgaben in einem visuelleren, schnell erfassbaren Format präsentiert.
 
-### Added
+### Hinzugefügt
 
-- **Recent workflows:** The sidebar lists the eight most recently updated projects and reopens the last useful Research, Script Writer, or Thumbnail Creator step.
-- **Browser-local persistence:** Research snapshots, AI Insights, grounded ideas, script output and revisions, thumbnail briefs, and generated thumbnail results are stored in IndexedDB.
-- **Independent projects:** **New Workflow** starts a fresh project without replacing earlier work in the recent-workflow list.
-- **Workflow management:** Recent projects can be renamed from the sidebar or deleted after explicit confirmation.
-- **Workflow helper tests:** Shared title, ordering, deduplication, and history-limit behavior now have focused automated coverage.
+- **Letzte Workflows:** Die Seitenleiste listet die acht zuletzt aktualisierten Projekte auf und öffnet den zuletzt sinnvollen Schritt in Recherche, Skript-Writer oder Thumbnail-Creator erneut.
+- **Browserlokale Persistenz:** Recherche-Snapshots, KI-Insights, fundierte Ideen, Skript-Ausgaben und -Überarbeitungen, Thumbnail-Briefings und generierte Thumbnail-Ergebnisse werden in IndexedDB gespeichert.
+- **Unabhängige Projekte:** **Neuer Workflow** startet ein neues Projekt, ohne frühere Arbeit in der Liste der letzten Workflows zu ersetzen.
+- **Workflow-Verwaltung:** Letzte Projekte können über die Seitenleiste umbenannt oder nach ausdrücklicher Bestätigung gelöscht werden.
+- **Tests für Workflow-Hilfsfunktionen:** Gemeinsames Verhalten für Titel, Reihenfolge, Deduplizierung und Verlaufslimit ist jetzt durch fokussierte automatisierte Tests abgedeckt.
 
-### Improved
+### Verbessert
 
-- **Research readability:** AI Insights use compact visual summaries, expandable findings, opportunity cards, and collapsed evidence and methodology details.
-- **Evidence clarity:** Observed findings, inferred recommendations, and metrics that require channel-owner YouTube Studio data remain visibly separated.
-- **Resume behavior:** Research results are saved as soon as the public-data snapshot returns, then enriched again when AI Insights and grounded ideas finish.
-- **Script Writer:** Generated output, supporting metadata, form inputs, and user revisions restore with the selected workflow.
-- **Thumbnail Creator:** The brief, advanced visual controls, generated image, and model information restore with the selected workflow.
-- **Navigation:** Opening a saved workflow returns to the most useful completed step instead of an empty route.
+- **Lesbarkeit der Recherche:** KI-Insights verwenden kompakte visuelle Zusammenfassungen, ausklappbare Erkenntnisse, Chancen-Karten sowie eingeklappte Evidenz- und Methodik-Details.
+- **Klarheit der Evidenz:** Beobachtete Erkenntnisse, abgeleitete Empfehlungen und Metriken, die YouTube-Studio-Daten des Kanalinhabers erfordern, bleiben sichtbar getrennt.
+- **Fortsetzungsverhalten:** Recherche-Ergebnisse werden gespeichert, sobald der Snapshot öffentlicher Daten zurückkommt, und anschließend erneut angereichert, wenn KI-Insights und fundierte Ideen fertig sind.
+- **Skript-Writer:** Generierte Ausgaben, unterstützende Metadaten, Formulareingaben und Nutzer-Überarbeitungen werden mit dem ausgewählten Workflow wiederhergestellt.
+- **Thumbnail-Creator:** Briefing, erweiterte visuelle Steuerelemente, generiertes Bild und Modellinformationen werden mit dem ausgewählten Workflow wiederhergestellt.
+- **Navigation:** Das Öffnen eines gespeicherten Workflows führt zum sinnvollsten abgeschlossenen Schritt statt zu einer leeren Route.
 
-### Documentation
+### Dokumentation
 
-- Replaced the product-tour captures with five current screenshots covering Research analytics, Source Videos, AI Insights, the Script teleprompter, and Thumbnail Creator.
-- Expanded the README with workflow-history behavior, local-storage boundaries, and restoration details.
+- Die Aufnahmen der Produkt-Tour wurden durch fünf aktuelle Screenshots ersetzt, die Recherche-Analytics, Quellvideos, KI-Insights, den Skript-Teleprompter und den Thumbnail-Creator abdecken.
+- Das README wurde um das Verhalten des Workflow-Verlaufs, die Grenzen der lokalen Speicherung und Details zur Wiederherstellung erweitert.
 
-### Privacy and storage boundaries
+### Datenschutz- und Speichergrenzen
 
-- Workflow history remains in the current browser profile. It is not synchronized to a server or another device.
-- API keys remain server-side and are not written into workflow history.
-- Uploaded thumbnail reference images are not retained. Users must select them again for a later generation.
-- Research continues to use public YouTube Data API metadata. Owner-only metrics such as impressions, click-through rate, traffic sources, and retention require YouTube Studio and are not inferred as public facts.
+- Der Workflow-Verlauf bleibt im aktuellen Browserprofil. Er wird nicht mit einem Server oder einem anderen Gerät synchronisiert.
+- API-Schlüssel bleiben serverseitig und werden nicht in den Workflow-Verlauf geschrieben.
+- Hochgeladene Thumbnail-Referenzbilder werden nicht gespeichert. Nutzer müssen sie für eine spätere Generierung erneut auswählen.
+- Die Recherche verwendet weiterhin öffentliche Metadaten der YouTube Data API. Metriken, die nur dem Inhaber zugänglich sind, wie Impressionen, Klickrate, Traffic-Quellen und Retention, erfordern YouTube Studio und werden nicht als öffentliche Fakten abgeleitet.
 
-### Verification
+### Verifikation
 
-- `npm test`: 61 tests passed
-- `npm run check`: TypeScript check passed
-- `npm run build`: Production client and server builds completed
-- README image-reference and source-image checksum checks passed
+- `npm test`: 61 Tests bestanden
+- `npm run check`: TypeScript-Prüfung bestanden
+- `npm run build`: Produktions-Builds für Client und Server abgeschlossen
+- Prüfungen der README-Bildreferenzen und der Quellbild-Prüfsummen bestanden
