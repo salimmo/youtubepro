@@ -96,8 +96,31 @@ interface ScriptActionError {
   message: string;
 }
 
+// apiRequest wirft Fehler im Format "<status>: <body>". Enthält der Body die
+// strukturierte Anbieter-Antwort des Servers (error, suggestion, category),
+// wird sie direkt angezeigt statt als rohes JSON.
+function parseStructuredApiError(message: string): { error: string; suggestion?: string; category?: string } | null {
+  const match = /^\d{3}:\s*(\{[\s\S]*\})\s*$/.exec(message);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1]) as Record<string, unknown>;
+    if (typeof parsed.error !== "string" || !parsed.error.trim()) return null;
+    return {
+      error: parsed.error,
+      suggestion: typeof parsed.suggestion === "string" ? parsed.suggestion : undefined,
+      category: typeof parsed.category === "string" ? parsed.category : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function providerAwareScriptError(error: unknown, fallback: string): string {
   const message = error instanceof Error ? error.message : String(error || "");
+  const structured = parseStructuredApiError(message);
+  if (structured) {
+    return structured.suggestion ? `${structured.error}. ${structured.suggestion}` : structured.error;
+  }
   const normalized = message.toLowerCase();
   if (normalized.includes("quota") || normalized.includes("rate limit") || normalized.includes("too many")) {
     return "Die Gemini-Nutzung ist vorübergehend eingeschränkt. Warte, bis das Kontingent des Anbieters zurückgesetzt wird, und versuche es dann erneut.";

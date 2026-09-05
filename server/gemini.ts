@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, Modality, ThinkingLevel, type GenerateContentParameters, type GenerateContentResponse } from "@google/genai";
 import type { IdeaGenerationRequest, IdeaGenerationResponse, ResearchInsightsRequest, ResearchInsightsResponse, ScriptEvidenceContext, ScriptInput, ScriptResult } from "@shared/schema";
 import {
   ideaGenerationOutputSchema,
@@ -45,6 +45,44 @@ if (!geminiApiKey) {
 }
 
 let ai = new GoogleGenAI({ apiKey: geminiApiKey });
+
+// Gemini antwortet bei erschöpftem Kontingent mit 429 (RESOURCE_EXHAUSTED) und
+// nennt oft eine Wartezeit. Statt sofort zu scheitern, wird die Anfrage nach
+// einer Pause bis zu zweimal wiederholt. Das fängt kurze Limits pro Minute ab.
+const QUOTA_RETRY_DELAYS_MS = [8_000, 20_000];
+
+function isQuotaError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error || "")).toLowerCase();
+  return message.includes("429")
+    || message.includes("resource_exhausted")
+    || message.includes("quota")
+    || message.includes("rate limit")
+    || message.includes("too many requests");
+}
+
+function suggestedRetryDelayMs(error: unknown): number | null {
+  const message = error instanceof Error ? error.message : String(error || "");
+  const match = /retry(?:Delay|\s+in)\D{0,4}(\d+(?:\.\d+)?)\s*s/i.exec(message);
+  if (!match) return null;
+  const seconds = Number(match[1]);
+  return Number.isFinite(seconds) && seconds > 0 && seconds <= 60 ? Math.ceil(seconds * 1000) : null;
+}
+
+async function generateContentWithRetry(params: GenerateContentParameters): Promise<GenerateContentResponse> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= QUOTA_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await generateContentWithRetry(params);
+    } catch (error) {
+      lastError = error;
+      if (!isQuotaError(error) || attempt === QUOTA_RETRY_DELAYS_MS.length) throw error;
+      const delay = suggestedRetryDelayMs(error) ?? QUOTA_RETRY_DELAYS_MS[attempt];
+      console.warn(`Gemini quota limit hit (${params.model}); retrying in ${Math.round(delay / 1000)}s (attempt ${attempt + 1}/${QUOTA_RETRY_DELAYS_MS.length}).`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
 
 export function configureGeminiApiKey(apiKey: string): void {
   geminiApiKey = apiKey.trim();
@@ -253,7 +291,7 @@ Rules:
     let parsed: ReturnType<typeof parseScriptGenerationOutput> | undefined;
     let validationError = "";
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const response = await ai.models.generateContent({
+      const response = await generateContentWithRetry({
         model: geminiTextModel,
         contents: attempt === 0
           ? prompt
@@ -391,7 +429,7 @@ Evidence rules:
     let parsed: ReturnType<typeof parseIdeaGenerationOutput> | undefined;
     let validationError = "";
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const response = await ai.models.generateContent({
+      const response = await generateContentWithRetry({
         model: geminiTextModel,
         contents: attempt === 0
           ? prompt
@@ -625,7 +663,7 @@ ${OUTPUT_LANGUAGE_RULE}
 Return ONLY valid JSON, no additional text or markdown.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: geminiTextModel,
       contents: prompt,
       config: {
@@ -681,7 +719,7 @@ Return one strict JSON object with exactly one key, "titles", containing exactly
   try {
     let validationError = "";
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const response = await ai.models.generateContent({
+      const response = await generateContentWithRetry({
         model: geminiTextModel,
         contents: attempt === 0
           ? prompt
@@ -724,7 +762,7 @@ async function generateScriptRegeneration(
   try {
     let validationError = "";
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const response = await ai.models.generateContent({
+      const response = await generateContentWithRetry({
         model: geminiTextModel,
         contents: attempt === 0
           ? prompt
@@ -930,7 +968,7 @@ export async function generateThumbnail(
   contentParts.push({ text: prompt });
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: geminiImageModel,
       contents: [{ role: "user", parts: contentParts }],
       config: {
@@ -1025,7 +1063,7 @@ export async function generateThumbnailSuggestions(
   const prompt = buildThumbnailSuggestionsPrompt(request);
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: geminiTextModel,
       contents: prompt,
     });
@@ -1072,7 +1110,7 @@ If the input has no speakable content, return exactly: [No narration content]
 EXTRACTED NARRATION:`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: geminiTextModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });

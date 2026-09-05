@@ -21,43 +21,6 @@ import { createRateLimiter } from "./rate-limit";
 
 const { middleware: rateLimit } = createRateLimiter();
 
-function getUserFriendlyError(error: any, context: string): { message: string; suggestion: string } {
-  const errorMessage = error?.message?.toLowerCase() || "";
-
-  if (errorMessage.includes("api key") || errorMessage.includes("authentication") || errorMessage.includes("unauthorized")) {
-    return {
-      message: `${context} ist vorübergehend nicht verfügbar`,
-      suggestion: "Bitte versuche es gleich noch einmal. Wenn das Problem weiterhin besteht, wende dich an den Support."
-    };
-  }
-
-  if (errorMessage.includes("rate limit") || errorMessage.includes("quota") || errorMessage.includes("too many")) {
-    return {
-      message: `${context} ist derzeit stark ausgelastet`,
-      suggestion: "Bitte warte eine Minute und versuche es erneut."
-    };
-  }
-
-  if (errorMessage.includes("timeout") || errorMessage.includes("timed out") || errorMessage.includes("network")) {
-    return {
-      message: `${context} hat zu lange für eine Antwort gebraucht`,
-      suggestion: "Bitte prüfe deine Verbindung und versuche es erneut."
-    };
-  }
-
-  if (errorMessage.includes("content") || errorMessage.includes("safety") || errorMessage.includes("blocked")) {
-    return {
-      message: `${context} konnte diesen Inhalt nicht verarbeiten`,
-      suggestion: "Formuliere deine Anfrage um oder verwende andere Keywords."
-    };
-  }
-
-  return {
-    message: `${context} ist auf ein Problem gestoßen`,
-    suggestion: "Bitte versuche es erneut. Wenn das Problem weiterhin besteht, lade die Seite neu."
-  };
-}
-
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -182,8 +145,8 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Ungültige Skript-Eingabe", details: error.errors });
       }
-      const friendly = getUserFriendlyError(error, "Skript-Generierung");
-      res.status(500).json({ error: friendly.message, suggestion: friendly.suggestion });
+      const providerError = normalizeProviderError(error, "gemini");
+      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini-Skript-Generierung"));
     }
   });
 
@@ -202,8 +165,8 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Ungültige Anfrage zur Sprechtext-Extraktion", details: error.errors });
       }
-      const friendly = getUserFriendlyError(error, "Sprechtext-Extraktion");
-      res.status(500).json({ error: friendly.message, suggestion: friendly.suggestion });
+      const providerError = normalizeProviderError(error, "gemini");
+      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini-Sprechtext-Extraktion"));
     }
   });
 
@@ -276,8 +239,8 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Ungültige Anfrage zur Titel-Neugenerierung", details: error.errors });
       }
-      const friendly = getUserFriendlyError(error, "Titel-Neugenerierung");
-      res.status(500).json({ error: friendly.message, suggestion: friendly.suggestion });
+      const providerError = normalizeProviderError(error, "gemini");
+      res.status(providerError.status).json(providerErrorPayload(providerError, "Gemini-Titel-Neugenerierung"));
     }
   });
 
