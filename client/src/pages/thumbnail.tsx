@@ -60,7 +60,7 @@ type ThumbnailColorScheme = (typeof colorSchemeOptions)[number][0];
 type ThumbnailTextPosition = (typeof textPositionOptions)[number][0];
 type ReferenceRole = (typeof imageRoleOptions)[number][0];
 type ReferenceImage = { image: string; role: ReferenceRole; name: string };
-type RequestFailure = { error: string; code: string; category: string; retryable: boolean; suggestion: string };
+type RequestFailure = { error: string; code: string; category: string; retryable: boolean; suggestion: string; detail?: string };
 type ImageModelStatus = { id: string; label: string; description: string };
 type SelectOption = readonly [string, string];
 type OutcomePreset = {
@@ -92,6 +92,7 @@ async function readFailure(response: Response): Promise<RequestFailure> {
     category: body.category || (response.status === 429 ? "quota" : "unknown"),
     retryable: body.retryable ?? response.status >= 429,
     suggestion: body.suggestion || "Versuche es einmal erneut. Wenn das Problem bleibt, prüfe die Einstellungen und die Server-Logs.",
+    detail: typeof body.detail === "string" ? body.detail : undefined,
   };
 }
 
@@ -144,6 +145,7 @@ function FailurePanel({ failure, busy, onRetry, onSettings }: { failure: Request
       <AlertTitle>{failure.error}</AlertTitle>
       <AlertDescription className="space-y-3">
         <p>{failure.suggestion}</p>
+        {failure.detail && <p className="text-xs opacity-80">Anbieter-Meldung: {failure.detail}</p>}
         <div className="flex flex-wrap gap-2">
           {failure.retryable && <Button type="button" size="sm" variant="outline" onClick={onRetry} disabled={busy}><RefreshCw className="mr-2 h-4 w-4" />Erneut versuchen</Button>}
           {needsSettings && <Button type="button" size="sm" variant="outline" onClick={onSettings}><Settings className="mr-2 h-4 w-4" />Einstellungen öffnen</Button>}

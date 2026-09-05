@@ -77,6 +77,7 @@ class ResearchRequestError extends Error {
   category: ApiErrorCategory;
   retryable: boolean;
   suggestion?: string;
+  detail?: string;
 
   constructor(options: {
     message: string;
@@ -85,6 +86,7 @@ class ResearchRequestError extends Error {
     category: ApiErrorCategory;
     retryable?: boolean;
     suggestion?: string;
+    detail?: string;
   }) {
     super(options.message);
     this.name = "ResearchRequestError";
@@ -93,7 +95,15 @@ class ResearchRequestError extends Error {
     this.category = options.category;
     this.retryable = options.retryable ?? options.status >= 500;
     this.suggestion = options.suggestion;
+    this.detail = options.detail;
   }
+}
+
+// Zeigt neben dem Hinweis die bereinigte Originalmeldung des Anbieters, damit
+// die Ursache ohne Blick ins Server-Log erkennbar ist.
+function withDetail(error: ResearchRequestError): string {
+  const base = error.suggestion || error.message;
+  return error.detail ? `${base} Anbieter-Meldung: ${error.detail}` : base;
 }
 
 function normalizeErrorCategory(status: number, category: unknown, message: string): ApiErrorCategory {
@@ -125,6 +135,7 @@ async function readApiError(response: Response): Promise<ResearchRequestError> {
     category: normalizeErrorCategory(response.status, payload.category, message),
     retryable: typeof payload.retryable === "boolean" ? payload.retryable : response.status >= 500,
     suggestion: typeof payload.suggestion === "string" ? payload.suggestion : undefined,
+    detail: typeof payload.detail === "string" ? payload.detail : undefined,
   });
 }
 
@@ -546,7 +557,7 @@ export default function ResearchDashboard() {
             category: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "unknown",
             retryable: true,
           });
-      setInsightsError(normalizedError.suggestion || normalizedError.message);
+      setInsightsError(withDetail(normalizedError));
       setInsightsErrorCategory(normalizedError.category);
       insightsFetchedRef.current = "";
     } finally {
@@ -626,7 +637,7 @@ export default function ResearchDashboard() {
             category: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "unknown",
             retryable: true,
           });
-      setIdeasError(normalizedError.suggestion || normalizedError.message);
+      setIdeasError(withDetail(normalizedError));
       setIdeasErrorCategory(normalizedError.category);
       ideasFetchedRef.current = "";
     } finally {
@@ -954,7 +965,7 @@ export default function ResearchDashboard() {
                 <ErrorIcon className="h-4 w-4" />
                 <AlertTitle>{presentation.title}</AlertTitle>
                 <AlertDescription className="space-y-3">
-                  <p>{searchError.suggestion || searchError.message}</p>
+                  <p>{withDetail(searchError)}</p>
                   <div className="flex flex-wrap gap-2">
                     {keyError && (
                       <Button size="sm" variant="outline" onClick={() => setLocation("/settings")}>

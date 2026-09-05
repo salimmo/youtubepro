@@ -47,7 +47,22 @@ function categoryFromMessage(message: string): ProviderErrorCategory {
   ) return "quota";
   if (normalized.includes("timeout") || normalized.includes("timed out") || normalized.includes("abort")) return "timeout";
   if (normalized.includes("network") || normalized.includes("fetch failed") || normalized.includes("econn")) return "network";
-  if (normalized.includes("invalid response") || normalized.includes("malformed") || normalized.includes("schema")) return "invalid_response";
+  if (
+    normalized.includes("overloaded")
+    || normalized.includes("unavailable")
+    || normalized.includes("internal error")
+    || /50[0234]/.test(normalized)
+  ) return "provider_server";
+  if (
+    normalized.includes("invalid response")
+    || normalized.includes("malformed")
+    || normalized.includes("schema")
+    || normalized.includes("not found")
+    || normalized.includes("not supported")
+    || normalized.includes("unsupported")
+    || normalized.includes("invalid_argument")
+    || normalized.includes("invalid argument")
+  ) return "invalid_response";
   return "unknown";
 }
 
@@ -78,6 +93,16 @@ export function normalizeProviderError(error: unknown, context: ProviderErrorCon
     ...defaults,
     cause: error,
   });
+}
+
+// Originalmeldung des Anbieters für die Anzeige kürzen und Schlüssel entfernen.
+export function sanitizeProviderDetail(message: string): string {
+  return message
+    .replace(/(key|token|authorization)=([^&\s"']+)/gi, "$1=[entfernt]")
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, "[entfernt]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 300);
 }
 
 export function providerErrorPayload(error: ProviderError, contextLabel: string): ProviderErrorResponse {
@@ -116,10 +141,12 @@ export function providerErrorPayload(error: ProviderError, contextLabel: string)
     },
   };
 
+  const detail = sanitizeProviderDetail(error.message);
   return {
     ...copy[error.category],
     code: error.code,
     category: error.category,
     retryable: error.retryable,
+    detail: detail || undefined,
   };
 }

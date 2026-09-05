@@ -118,6 +118,8 @@ export const providerErrorResponseSchema = z.object({
   category: providerErrorCategorySchema,
   retryable: z.boolean(),
   suggestion: z.string(),
+  // Bereinigte Originalmeldung des Anbieters zur Diagnose.
+  detail: z.string().optional(),
 });
 
 export type ProviderErrorResponse = z.infer<typeof providerErrorResponseSchema>;

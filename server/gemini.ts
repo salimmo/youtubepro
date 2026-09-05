@@ -57,7 +57,11 @@ function isQuotaError(error: unknown): boolean {
     || message.includes("resource_exhausted")
     || message.includes("quota")
     || message.includes("rate limit")
-    || message.includes("too many requests");
+    || message.includes("too many requests")
+    // Kurzzeitige Überlastung beim Anbieter wird ebenfalls wiederholt.
+    || message.includes("overloaded")
+    || message.includes("503")
+    || message.includes("unavailable");
 }
 
 function suggestedRetryDelayMs(error: unknown): number | null {
