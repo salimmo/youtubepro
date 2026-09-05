@@ -888,7 +888,7 @@ export default function ResearchDashboard() {
     <ScrollArea className="h-full">
       <div className="flex flex-col min-h-full relative">
         <StarryBackground />
-        <div className="sticky top-0 z-50 border-b border-border bg-background/95 shadow-sm backdrop-blur-md">
+        <div className="relative z-10 border-b border-border bg-background/95">
           <div className="mx-auto w-full max-w-[1680px] space-y-4 p-4 lg:p-6">
             <div className="flex flex-col sm:flex-row gap-4">
               <div
