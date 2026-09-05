@@ -10,7 +10,8 @@ Lies zuerst `README.md`. Es beschreibt das aktuelle Produkt, das Local-first-Zug
 - `client/src/pages/settings.tsx`: Anbieterstatus, Ersatzschlüssel und Modellauswahl (nur Admins).
 - `client/src/pages/login.tsx`, `client/src/lib/auth-context.tsx`, `client/src/components/user-menu.tsx`: Login, Sitzungszustand, Passwort ändern, Abmelden.
 - `client/src/pages/admin.tsx` und `client/src/components/admin/*`: Admin-Bereich mit Übersicht, Benutzerverwaltung, Aktivitätsprotokoll und Inhalts-Dialog.
-- `client/src/lib/workflow-context.tsx`: Kontinuität von Recherche über Skript bis Thumbnail.
+- `client/src/lib/workflow-context.tsx` und `client/src/lib/workflow-storage.ts`: Kontinuität von Recherche über Skript bis Thumbnail; Workflows werden pro Benutzer über `/api/workflows` serverseitig gespeichert.
+- `server/workflow-routes.ts`: Workflow-API pro Benutzer (Soft-Delete) und Admin-Einsicht in alle Workflows.
 - `server/youtube.ts`: YouTube-Suche, Anreicherung, Herkunftsnachweis, Warnungen bei Teilphasen und deterministische Snapshot-Identität.
 - `server/gemini.ts`: aktive Gemini-Text- und Bildoperationen.
 - `server/routes.ts`: API-Oberfläche und In-Memory-Ratenlimit.

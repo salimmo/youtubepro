@@ -58,7 +58,7 @@ Das Produkt folgt einem durchgehenden Workflow:
 
 Es gibt keinen eigenständigen Ideen-Bildschirm. Der alte Pfad `/ideas` leitet zum Ideen-Abschnitt innerhalb der Recherche weiter.
 
-Jeder Klick auf **Neuer Workflow** erstellt ein separates lokales Projekt. Die Seitenleiste behält die acht zuletzt verwendeten Workflows in der IndexedDB des Browsers, erlaubt das Umbenennen oder Löschen und öffnet den zuletzt aktiven Schritt Recherche, Skript oder Thumbnail erneut. Recherche-Snapshots, generierte Ideen, bearbeitbare Skripte, Thumbnail-Briefings und generierte Thumbnail-Ergebnisse werden gemeinsam wiederhergestellt. Hochgeladene Referenzbilder werden absichtlich nicht gespeichert, sodass Berechtigung und Dateiauswahl bei jeder späteren Generierung neu erfolgen.
+Jeder Klick auf **Neuer Workflow** erstellt ein separates Projekt. Workflows werden pro Benutzer serverseitig in PostgreSQL gespeichert: Jeder Benutzer sieht nur seine eigenen acht zuletzt verwendeten Workflows, unabhängig von Browser oder Gerät. Die Seitenleiste erlaubt das Umbenennen oder Löschen und öffnet den zuletzt aktiven Schritt Recherche, Skript oder Thumbnail erneut. Vom Benutzer gelöschte Workflows verschwinden aus seiner Liste, bleiben für Admins aber einsehbar. Recherche-Snapshots, generierte Ideen, bearbeitbare Skripte, Thumbnail-Briefings und generierte Thumbnail-Ergebnisse werden gemeinsam wiederhergestellt. Hochgeladene Referenzbilder werden absichtlich nicht gespeichert, sodass Berechtigung und Dateiauswahl bei jeder späteren Generierung neu erfolgen.
 
 ## Anforderungen
 
@@ -87,6 +87,8 @@ Die App hat ein eigenes Login mit zwei Rollen. Alle Daten dazu liegen in Postgre
 - **Benutzer**: Darf Recherche, Skript-Writer und Thumbnail-Creator uneingeschränkt benutzen, kann sein Passwort ändern, sieht aber weder Einstellungen noch Admin-Bereich noch das Protokoll.
 
 Der erste Admin wird beim Start aus `ADMIN_USER` und `ADMIN_PASSWORD` angelegt, solange die Datenbank noch keine Benutzer enthält. Weitere Konten legt der Admin unter **Admin → Benutzer** mit Startpasswort an. Es gibt keine öffentliche Registrierung. Konten lassen sich deaktivieren, Passwörter zurücksetzen und Rollen ändern.
+
+Unter **Admin → Workflows** sieht der Admin die Workflows aller Benutzer mit Recherche (Suchbegriff, Videoliste, Insights), ausgewählter Idee, Skript und Thumbnail, auch solche, die der Benutzer bereits gelöscht hat. Workflows aus der früheren Browser-Ablage werden beim ersten Login eines Admins mit leerem Konto einmalig übernommen.
 
 Das Aktivitätsprotokoll unter **Admin → Aktivitäten** speichert pro Aktion Zeitpunkt, Benutzer, Aktion, Zusammenfassung, Status, Dauer und Client-Adresse. Zusätzlich werden die erzeugten Inhalte gespeichert und sind dort direkt einsehbar: Recherche-Snapshots mit Videoliste, KI-Insights, Ideen, komplette Skripte, neu generierte Abschnitte und Absätze, Titelvorschläge, Sprechtexte und Thumbnails als Bild. Auch Anmeldungen, fehlgeschlagene Anmeldungen, Abmeldungen, Passwortänderungen und Admin-Aktionen werden protokolliert.
 
@@ -177,7 +179,7 @@ Anschließend `http://localhost:5000` öffnen. Die Variablen aus `.env` werden v
 
 - Jede Nutzung erfordert ein Login. Konten werden ausschließlich von Admins angelegt, siehe [Login, Rollen und Aktivitätsprotokoll](#login-rollen-und-aktivitätsprotokoll).
 - API-Schlüssel bleiben serverseitig, `.env` wird ignoriert und die Einstellungen-Seite ist Admins vorbehalten.
-- Der Verlauf der letzten Workflows bleibt im aktuellen Browserprofil. Er wird nicht an einen separaten Verlaufsdienst gesendet und enthält nie API-Schlüssel.
+- Workflows liegen pro Benutzer in der Datenbank und enthalten nie API-Schlüssel. Benutzer sehen ausschließlich ihre eigenen Workflows.
 - Anfrage- und Antwort-Bodies werden nicht in Server-Logs geschrieben. Erzeugte Inhalte und Aktionen werden in der Datenbank protokolliert und sind nur für Admins einsehbar.
 - Die Anwendung bindet sich an Loopback, sofern `HOST` nicht ausdrücklich geändert wird.
 - Für öffentliche Deployments HTTPS verwenden (Coolify macht das über Traefik), damit das Session-Cookie als `Secure` gesetzt wird.
