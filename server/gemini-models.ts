@@ -2,7 +2,7 @@ export const GEMINI_TEXT_MODELS = [
   {
     id: "gemini-3.7-flash",
     label: "Gemini 3.7 Flash",
-    description: "Empfohlener Standard für leistungsfähige, schnelle Recherche und Texterstellung.",
+    description: "Leistungsfähiges, schnelles Modell für Recherche und Texterstellung. Aktionspreis bis Ende 2026.",
   },
   {
     id: "gemini-3.1-pro-preview",
@@ -22,7 +22,7 @@ export const GEMINI_TEXT_MODELS = [
   {
     id: "gemini-3.5-flash-lite",
     label: "Gemini 3.5 Flash-Lite",
-    description: "Günstigere Wahl für hohes Volumen.",
+    description: "Empfohlener Standard: günstigstes Modell mit großzügigen Limits, ausreichend für Recherche, Ideen und Skripte.",
   },
   {
     id: "gemini-3.1-flash-lite",
@@ -54,7 +54,9 @@ export const GEMINI_IMAGE_MODELS = [
   },
 ] as const;
 
-export const DEFAULT_GEMINI_TEXT_MODEL = GEMINI_TEXT_MODELS[0].id;
+// Standard bewusst das günstigste Modell; über GEMINI_TEXT_MODEL oder die
+// Einstellungen-Seite lässt sich jedes Modell aus der Liste wählen.
+export const DEFAULT_GEMINI_TEXT_MODEL: GeminiTextModel = "gemini-3.5-flash-lite";
 export const DEFAULT_GEMINI_IMAGE_MODEL = GEMINI_IMAGE_MODELS[0].id;
 
 export type GeminiTextModel = (typeof GEMINI_TEXT_MODELS)[number]["id"];

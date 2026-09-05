@@ -102,7 +102,7 @@ Hinweis: Wer Kolleginnen und Kollegen ein Konto gibt, sollte sie über das Proto
 | --- | --- | --- |
 | `YOUTUBE_API_KEY` | Suche und Anreicherung über die YouTube Data API v3 | Erforderlich für die Recherche |
 | `GEMINI_API_KEY` | Gemini-Text- und Bildgenerierung | Erforderlich für KI-Funktionen |
-| `GEMINI_TEXT_MODEL` | Modell für Recherche, Ideen, Skript und Neugenerierung | `gemini-3.7-flash` |
+| `GEMINI_TEXT_MODEL` | Modell für Recherche, Ideen, Skript und Neugenerierung | `gemini-3.5-flash-lite` |
 | `GEMINI_IMAGE_MODEL` | Modell für die Thumbnail-Generierung | `gemini-3.1-flash-image` |
 | `OUTPUT_LANGUAGE` | Sprache der KI-generierten Inhalte (Insights, Ideen, Skripte, Thumbnail-Text) | `German (Deutsch)` |
 | `DATABASE_URL` | PostgreSQL-Verbindung für Login, Benutzer und Protokoll | Erforderlich |
@@ -141,7 +141,7 @@ Das Repository enthält ein produktionsfertiges [`Dockerfile`](Dockerfile) (mehr
 | `YOUTUBE_API_KEY` | ja | YouTube Data API v3 |
 | `GEMINI_API_KEY` | ja | Gemini Text- und Bildgenerierung |
 | `ADMIN_DISPLAY_NAME` | nein | Anzeigename des ersten Admins |
-| `GEMINI_TEXT_MODEL` / `GEMINI_IMAGE_MODEL` | nein | Modellauswahl, Standard `gemini-3.7-flash` / `gemini-3.1-flash-image` |
+| `GEMINI_TEXT_MODEL` / `GEMINI_IMAGE_MODEL` | nein | Modellauswahl, Standard `gemini-3.5-flash-lite` / `gemini-3.1-flash-image` |
 | `OUTPUT_LANGUAGE` | nein | Sprache der KI-Ausgaben, Standard `German (Deutsch)` |
 | `SESSION_TTL_HOURS` | nein | Gültigkeit einer Anmeldung, Standard `720` |
 | `DATABASE_SSL` | nein | `true` für TLS zu einer externen Datenbank |
