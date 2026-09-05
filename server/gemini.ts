@@ -72,16 +72,21 @@ function suggestedRetryDelayMs(error: unknown): number | null {
   return Number.isFinite(seconds) && seconds > 0 && seconds <= 60 ? Math.ceil(seconds * 1000) : null;
 }
 
-async function generateContentWithRetry(params: GenerateContentParameters): Promise<GenerateContentResponse> {
+// `invoke` ist nur für Tests austauschbar; produktiv geht der Aufruf an das SDK.
+export async function generateContentWithRetry(
+  params: GenerateContentParameters,
+  invoke: (params: GenerateContentParameters) => Promise<GenerateContentResponse> = (request) => ai.models.generateContent(request),
+  delays: readonly number[] = QUOTA_RETRY_DELAYS_MS,
+): Promise<GenerateContentResponse> {
   let lastError: unknown;
-  for (let attempt = 0; attempt <= QUOTA_RETRY_DELAYS_MS.length; attempt += 1) {
+  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
     try {
-      return await generateContentWithRetry(params);
+      return await invoke(params);
     } catch (error) {
       lastError = error;
-      if (!isQuotaError(error) || attempt === QUOTA_RETRY_DELAYS_MS.length) throw error;
-      const delay = suggestedRetryDelayMs(error) ?? QUOTA_RETRY_DELAYS_MS[attempt];
-      console.warn(`Gemini quota limit hit (${params.model}); retrying in ${Math.round(delay / 1000)}s (attempt ${attempt + 1}/${QUOTA_RETRY_DELAYS_MS.length}).`);
+      if (!isQuotaError(error) || attempt === delays.length) throw error;
+      const delay = suggestedRetryDelayMs(error) ?? delays[attempt];
+      console.warn(`Gemini quota limit hit (${params.model}); retrying in ${Math.round(delay / 1000)}s (attempt ${attempt + 1}/${delays.length}).`);
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
