@@ -111,6 +111,22 @@ const MIGRATIONS: string[] = [
   `CREATE INDEX IF NOT EXISTS activity_log_action_idx ON activity_log(action, id DESC)`,
   `CREATE INDEX IF NOT EXISTS activity_log_created_at_idx ON activity_log(created_at DESC)`,
   `ALTER TABLE contents ADD COLUMN IF NOT EXISTS activity_id BIGINT`,
+  `CREATE TABLE IF NOT EXISTS workflows (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT '',
+    current_step TEXT NOT NULL DEFAULT 'research',
+    has_research BOOLEAN NOT NULL DEFAULT FALSE,
+    has_script BOOLEAN NOT NULL DEFAULT FALSE,
+    has_thumbnail BOOLEAN NOT NULL DEFAULT FALSE,
+    research_query TEXT,
+    video_count INTEGER NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL,
+    deleted_at TIMESTAMPTZ,
+    state JSONB NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS workflows_user_id_idx ON workflows(user_id, updated_at DESC)`,
 ];
 
 export async function migrate(): Promise<void> {

@@ -196,3 +196,64 @@ export interface AdminStats {
     lastActivityAt: string | null;
   }>;
 }
+
+// ---------- Workflows (serverseitig pro Benutzer gespeichert) ----------
+
+export type WorkflowStepName = "research" | "script" | "thumbnail";
+
+// Ein gespeicherter Workflow. `state` ist der komplette Client-Zustand
+// (Recherche, Idee, Skript, Thumbnail) und wird als JSONB abgelegt.
+export interface WorkflowRecordPayload<T = unknown> {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
+  state: T;
+}
+
+export interface WorkflowSummaryPayload {
+  title: string;
+  currentStep: WorkflowStepName;
+  hasResearch: boolean;
+  hasScript: boolean;
+  hasThumbnail: boolean;
+}
+
+export const workflowIdSchema = z.string().trim().min(8).max(128).regex(/^[A-Za-z0-9._-]+$/);
+
+export const workflowSummaryPayloadSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  currentStep: z.enum(["research", "script", "thumbnail"]),
+  hasResearch: z.boolean(),
+  hasScript: z.boolean(),
+  hasThumbnail: z.boolean(),
+}).strict();
+
+export const workflowUpsertSchema = z.object({
+  createdAt: z.number().int().positive(),
+  updatedAt: z.number().int().positive(),
+  state: z.unknown(),
+  summary: workflowSummaryPayloadSchema,
+}).strict();
+export type WorkflowUpsertRequest = z.infer<typeof workflowUpsertSchema>;
+
+// Admin-Sicht auf Workflows aller Benutzer, inklusive vom Benutzer gelöschter.
+export interface AdminWorkflowSummary extends WorkflowSummaryPayload {
+  id: string;
+  userId: number;
+  username: string;
+  displayName: string;
+  createdAt: number;
+  updatedAt: number;
+  deletedAt: string | null;
+  researchQuery: string | null;
+  videoCount: number;
+}
+
+export interface AdminWorkflowListResponse {
+  workflows: AdminWorkflowSummary[];
+}
+
+export interface AdminWorkflowDetailResponse {
+  workflow: AdminWorkflowSummary;
+  state: unknown;
+}

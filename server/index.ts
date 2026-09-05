@@ -109,6 +109,9 @@ app.use((req, res, next) => {
     return requireAuth(req, res, next);
   });
 
+  const { registerWorkflowRoutes } = await import("./workflow-routes");
+  registerWorkflowRoutes(app);
+
   const { registerRoutes } = await import("./routes");
   await registerRoutes(httpServer, app);
 

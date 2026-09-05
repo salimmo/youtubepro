@@ -14,13 +14,16 @@ import {
   type WorkflowHistorySummary,
 } from "@shared/workflow-history";
 import {
+  clearLegacyIndexedDb,
   deleteWorkflowRecord,
   getWorkflowRecord,
-  listWorkflowRecords,
+  listWorkflowSummaries,
   pruneWorkflowRecords,
   putWorkflowRecord,
+  readLegacyIndexedDbRecords,
   type StoredWorkflowRecord,
 } from "@/lib/workflow-storage";
+import { useAuth } from "@/lib/auth-context";
 
 interface ResearchInsights {
   peopleAlsoAsk?: { question: string; answer: string }[];
@@ -262,11 +265,8 @@ function summaryFromState(state: WorkflowState): WorkflowHistorySummary | null {
   };
 }
 
-function recordsToSummaries(records: StoredWorkflowRecord<WorkflowState>[]): WorkflowHistorySummary[] {
-  return sortAndLimitWorkflowSummaries(records.flatMap((record) => {
-    const summary = summaryFromState(normalizeState(record.state, record.id));
-    return summary ? [summary] : [];
-  }));
+function recordToSummary(record: StoredWorkflowRecord<WorkflowState>): WorkflowHistorySummary | null {
+  return summaryFromState(normalizeState(record.state, record.id));
 }
 
 function readLegacyState(): Partial<WorkflowState> | null {
@@ -282,6 +282,25 @@ function readLegacyState(): Partial<WorkflowState> | null {
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
 
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  // Der zuletzt geöffnete Workflow wird pro Benutzer gemerkt, damit sich
+  // Benutzer im selben Browser nicht gegenseitig beeinflussen.
+  const activeKeyRef = useRef(`${ACTIVE_WORKFLOW_KEY}:${user?.id ?? "anonymous"}`);
+  activeKeyRef.current = `${ACTIVE_WORKFLOW_KEY}:${user?.id ?? "anonymous"}`;
+  const rememberActive = useCallback((id: string) => {
+    try {
+      window.localStorage.setItem(activeKeyRef.current, id);
+    } catch {
+      // localStorage nicht verfügbar
+    }
+  }, []);
+  const readActive = useCallback((): string | null => {
+    try {
+      return window.localStorage.getItem(activeKeyRef.current);
+    } catch {
+      return null;
+    }
+  }, []);
   const [state, setState] = useState<WorkflowState>(() => createEmptyState());
   const [recentWorkflows, setRecentWorkflows] = useState<WorkflowHistorySummary[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -293,46 +312,81 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     const summary = summaryFromState(nextState);
     if (!summary || !nextState.id || !nextState.createdAt || !nextState.updatedAt) return;
     setRecentWorkflows((current) => sortAndLimitWorkflowSummaries([summary, ...current]));
-    window.localStorage.setItem(ACTIVE_WORKFLOW_KEY, nextState.id);
+    rememberActive(nextState.id);
     saveQueueRef.current = saveQueueRef.current.then(async () => {
       await putWorkflowRecord({
         id: nextState.id as string,
         createdAt: nextState.createdAt as number,
         updatedAt: nextState.updatedAt as number,
         state: { ...nextState, highlightSearchBox: false, highlightTrigger: 0 },
+      }, {
+        title: summary.title,
+        currentStep: summary.currentStep,
+        hasResearch: summary.hasResearch,
+        hasScript: summary.hasScript,
+        hasThumbnail: summary.hasThumbnail,
       });
       const removed = await pruneWorkflowRecords();
       if (removed.length > 0) setRecentWorkflows((current) => current.filter((item) => !removed.includes(item.id)));
       setHistoryError(null);
     }).catch((error) => {
       console.error("Failed to save workflow history:", error);
-      setHistoryError("Letzte Workflows konnten in diesem Browser nicht gespeichert werden.");
+      setHistoryError("Der Workflow konnte nicht auf dem Server gespeichert werden.");
     });
-  }, []);
+  }, [rememberActive]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const records = await listWorkflowRecords<WorkflowState>();
+        let summaries = await listWorkflowSummaries();
         if (cancelled) return;
-        const activeId = window.localStorage.getItem(ACTIVE_WORKFLOW_KEY);
-        let selectedRecord = records.find((record) => record.id === activeId) || records[0];
+
+        // Einmalige Übernahme: Workflows aus der alten Browser-Ablage gehören
+        // dem Admin, der die App vor dem Login-System benutzt hat. Sie werden
+        // nur in ein leeres Admin-Konto übernommen und danach lokal gelöscht.
+        if (summaries.length === 0 && user?.role === "admin") {
+          const legacy = await readLegacyIndexedDbRecords<WorkflowState>();
+          if (legacy.length > 0) {
+            for (const record of legacy.sort((left, right) => left.updatedAt - right.updatedAt)) {
+              const summary = recordToSummary(record);
+              if (!summary) continue;
+              const normalized = normalizeState(record.state, record.id);
+              await putWorkflowRecord({
+                id: normalized.id as string,
+                createdAt: normalized.createdAt as number,
+                updatedAt: normalized.updatedAt as number,
+                state: normalized,
+              }, summary);
+            }
+            await clearLegacyIndexedDb();
+            summaries = await listWorkflowSummaries();
+            if (cancelled) return;
+          }
+        }
+
+        const activeId = readActive();
+        const selectedSummary = summaries.find((summary) => summary.id === activeId) || summaries[0];
+        let selectedRecord = selectedSummary ? await getWorkflowRecord<WorkflowState>(selectedSummary.id) : null;
+        if (cancelled) return;
         if (!selectedRecord) {
           const migrated = normalizeState(readLegacyState() || {});
+          const summary = summaryFromState(migrated);
           selectedRecord = {
             id: migrated.id as string,
             createdAt: migrated.createdAt as number,
             updatedAt: migrated.updatedAt as number,
             state: migrated,
           };
-          await putWorkflowRecord(selectedRecord);
+          if (summary) {
+            await putWorkflowRecord(selectedRecord, summary);
+            summaries = [summary, ...summaries.filter((item) => item.id !== summary.id)];
+          }
           window.sessionStorage.removeItem(LEGACY_STORAGE_KEY);
-          records.unshift(selectedRecord);
         }
         setState(normalizeState(selectedRecord.state, selectedRecord.id));
-        setRecentWorkflows(recordsToSummaries(records));
-        window.localStorage.setItem(ACTIVE_WORKFLOW_KEY, selectedRecord.id);
+        setRecentWorkflows(sortAndLimitWorkflowSummaries(summaries));
+        rememberActive(selectedRecord.id);
       } catch (error) {
         console.error("Failed to load workflow history:", error);
         if (!cancelled) {
@@ -340,7 +394,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           const summary = summaryFromState(fallback);
           setState(fallback);
           setRecentWorkflows(summary ? [summary] : []);
-          setHistoryError("Letzte Workflows sind nicht verfügbar. Der aktuelle Workflow bleibt für diese Sitzung geöffnet.");
+          setHistoryError("Deine Workflows konnten nicht vom Server geladen werden. Der aktuelle Workflow bleibt für diese Sitzung geöffnet.");
         }
       } finally {
         if (!cancelled) {
@@ -350,7 +404,10 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+    // Nur einmal pro angemeldetem Benutzer laden; der Provider wird beim
+    // Benutzerwechsel neu eingehängt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
     if (hydrated) queueSave(state);
@@ -371,13 +428,13 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       const record = await getWorkflowRecord<WorkflowState>(id);
       if (!record) {
         setRecentWorkflows((current) => current.filter((item) => item.id !== id));
-        setHistoryError("Dieser Workflow ist im lokalen Verlauf nicht mehr verfügbar.");
+        setHistoryError("Dieser Workflow ist nicht mehr verfügbar.");
         return null;
       }
       const restored = normalizeState(record.state, record.id);
       restored.currentStep = restorableStep(restored);
       setState(restored);
-      window.localStorage.setItem(ACTIVE_WORKFLOW_KEY, id);
+      rememberActive(id);
       setHistoryError(null);
       return restored.currentStep;
     } catch (error) {
@@ -385,7 +442,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       setHistoryError("Der ausgewählte Workflow konnte nicht geöffnet werden.");
       return null;
     }
-  }, []);
+  }, [rememberActive]);
 
   const renameWorkflow = useCallback(async (id: string, title: string): Promise<boolean> => {
     const customTitle = normalizeCustomWorkflowTitle(title);
@@ -398,7 +455,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       const record = await getWorkflowRecord<WorkflowState>(id);
       if (!record) {
         setRecentWorkflows((current) => current.filter((item) => item.id !== id));
-        setHistoryError("Dieser Workflow ist im lokalen Verlauf nicht mehr verfügbar.");
+        setHistoryError("Dieser Workflow ist nicht mehr verfügbar.");
         return false;
       }
       const current = normalizeState(record.state, record.id);
@@ -408,14 +465,15 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         customTitle,
         updatedAt: Date.now(),
       };
+      const renamedSummary = summaryFromState(renamed);
+      if (!renamedSummary) return false;
       await putWorkflowRecord({
         id: record.id,
         createdAt: record.createdAt,
         updatedAt: renamed.updatedAt as number,
         state: renamed,
-      });
-      const records = await listWorkflowRecords<WorkflowState>();
-      setRecentWorkflows(recordsToSummaries(records));
+      }, renamedSummary);
+      setRecentWorkflows(sortAndLimitWorkflowSummaries(await listWorkflowSummaries()));
       if (state.id === id) setState(renamed);
       setHistoryError(null);
       return true;
@@ -430,25 +488,25 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     try {
       await saveQueueRef.current;
       await deleteWorkflowRecord(id);
-      const records = await listWorkflowRecords<WorkflowState>();
-      setRecentWorkflows(recordsToSummaries(records));
+      const summaries = await listWorkflowSummaries();
+      setRecentWorkflows(sortAndLimitWorkflowSummaries(summaries));
       if (state.id !== id) {
         setHistoryError(null);
         return state.currentStep;
       }
-      const next = records[0];
+      const next = summaries[0] ? await getWorkflowRecord<WorkflowState>(summaries[0].id) : null;
       if (next) {
         const restored = normalizeState(next.state, next.id);
         restored.currentStep = restorableStep(restored);
         setState(restored);
-        window.localStorage.setItem(ACTIVE_WORKFLOW_KEY, restored.id as string);
+        rememberActive(restored.id as string);
         setHistoryError(null);
         return restored.currentStep;
       }
       const now = Date.now();
       const fresh = createEmptyState(createWorkflowId(), now);
       setState(fresh);
-      window.localStorage.setItem(ACTIVE_WORKFLOW_KEY, fresh.id as string);
+      rememberActive(fresh.id as string);
       setHistoryError(null);
       return "research";
     } catch (error) {
@@ -456,7 +514,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       setHistoryError("Der Workflow konnte nicht gelöscht werden.");
       return null;
     }
-  }, [state.currentStep, state.id]);
+  }, [rememberActive, state.currentStep, state.id]);
 
   const clearHighlight = useCallback(() => setState((previous) => ({ ...previous, highlightSearchBox: false })), []);
   const endWorkflow = useCallback(() => setState((previous) => ({ ...previous, isWorkflowActive: false })), []);

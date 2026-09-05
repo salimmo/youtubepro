@@ -1,112 +1,143 @@
-import { WORKFLOW_HISTORY_LIMIT } from "@shared/workflow-history";
+import type { WorkflowHistorySummary } from "@shared/workflow-history";
+import type { WorkflowRecordPayload, WorkflowSummaryPayload } from "@shared/auth-contracts";
 
-const DATABASE_NAME = "youtube-pro-workflows";
-const DATABASE_VERSION = 1;
-const STORE_NAME = "workflows";
+// Workflow-Speicher: Workflows liegen serverseitig pro Benutzer in PostgreSQL.
+// Dadurch sieht jeder Benutzer nur seine eigenen Workflows, unabhängig vom
+// Browser, und Admins können alle Workflows im Admin-Bereich einsehen.
+//
+// Die frühere IndexedDB-Ablage bleibt nur für die einmalige Übernahme alter
+// Workflows erhalten (siehe readLegacyIndexedDbRecords / clearLegacyIndexedDb).
 
-export interface StoredWorkflowRecord<T> {
-  id: string;
-  createdAt: number;
-  updatedAt: number;
-  state: T;
-}
+export type StoredWorkflowRecord<T> = WorkflowRecordPayload<T>;
 
-function requestResult<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("Anfrage an den Workflow-Speicher fehlgeschlagen"));
+async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method,
+    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    credentials: "include",
   });
-}
-
-function transactionComplete(transaction: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error || new Error("Transaktion im Workflow-Speicher fehlgeschlagen"));
-    transaction.onabort = () => reject(transaction.error || new Error("Transaktion im Workflow-Speicher wurde abgebrochen"));
-  });
-}
-
-function openDatabase(): Promise<IDBDatabase> {
-  if (typeof indexedDB === "undefined") {
-    return Promise.reject(new Error("IndexedDB ist in diesem Browser nicht verfügbar"));
+  if (response.status === 401) {
+    window.dispatchEvent(new Event("yp:unauthorized"));
+    throw new Error("Anmeldung erforderlich.");
   }
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        const store = database.createObjectStore(STORE_NAME, { keyPath: "id" });
-        store.createIndex("updatedAt", "updatedAt");
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("Workflow-Speicher konnte nicht geöffnet werden"));
-  });
+  if (response.status === 404) {
+    throw new WorkflowNotFoundError();
+  }
+  if (!response.ok) {
+    let message = `Workflow-Speicher antwortete mit Status ${response.status}.`;
+    try {
+      const data = await response.json();
+      if (data?.error) message = String(data.error);
+    } catch {
+      // Antwort ohne JSON-Body
+    }
+    throw new Error(message);
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
 }
 
-export async function listWorkflowRecords<T>(): Promise<StoredWorkflowRecord<T>[]> {
-  const database = await openDatabase();
-  try {
-    const transaction = database.transaction(STORE_NAME, "readonly");
-    const completion = transactionComplete(transaction);
-    const records = await requestResult(transaction.objectStore(STORE_NAME).getAll()) as StoredWorkflowRecord<T>[];
-    await completion;
-    return records.sort((left, right) => right.updatedAt - left.updatedAt);
-  } finally {
-    database.close();
+export class WorkflowNotFoundError extends Error {
+  constructor() {
+    super("Workflow nicht gefunden.");
+    this.name = "WorkflowNotFoundError";
   }
+}
+
+export async function listWorkflowSummaries(): Promise<WorkflowHistorySummary[]> {
+  const data = await request<{ workflows: WorkflowHistorySummary[] }>("GET", "/api/workflows");
+  return data.workflows;
 }
 
 export async function getWorkflowRecord<T>(id: string): Promise<StoredWorkflowRecord<T> | null> {
-  const database = await openDatabase();
   try {
-    const transaction = database.transaction(STORE_NAME, "readonly");
-    const completion = transactionComplete(transaction);
-    const record = await requestResult(transaction.objectStore(STORE_NAME).get(id)) as StoredWorkflowRecord<T> | undefined;
-    await completion;
-    return record || null;
-  } finally {
-    database.close();
+    const data = await request<{ record: StoredWorkflowRecord<T> }>("GET", `/api/workflows/${encodeURIComponent(id)}`);
+    return data.record;
+  } catch (error) {
+    if (error instanceof WorkflowNotFoundError) return null;
+    throw error;
   }
 }
 
-export async function putWorkflowRecord<T>(record: StoredWorkflowRecord<T>): Promise<void> {
-  const database = await openDatabase();
-  try {
-    const transaction = database.transaction(STORE_NAME, "readwrite");
-    const completion = transactionComplete(transaction);
-    transaction.objectStore(STORE_NAME).put(record);
-    await completion;
-  } finally {
-    database.close();
-  }
+export async function putWorkflowRecord<T>(
+  record: StoredWorkflowRecord<T>,
+  summary: WorkflowSummaryPayload,
+): Promise<void> {
+  // Nur die Zusammenfassungsfelder senden; der Server validiert strikt.
+  await request("PUT", `/api/workflows/${encodeURIComponent(record.id)}`, {
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    state: record.state,
+    summary: {
+      title: summary.title,
+      currentStep: summary.currentStep,
+      hasResearch: summary.hasResearch,
+      hasScript: summary.hasScript,
+      hasThumbnail: summary.hasThumbnail,
+    },
+  });
 }
 
 export async function deleteWorkflowRecord(id: string): Promise<void> {
-  const database = await openDatabase();
+  await request("DELETE", `/api/workflows/${encodeURIComponent(id)}`);
+}
+
+export async function pruneWorkflowRecords(): Promise<string[]> {
+  const data = await request<{ removed: string[] }>("POST", "/api/workflows/prune");
+  return data.removed;
+}
+
+// ---------- Einmalige Übernahme alter Browser-Workflows ----------
+
+const LEGACY_DATABASE_NAME = "youtube-pro-workflows";
+const LEGACY_STORE_NAME = "workflows";
+
+function openLegacyDatabase(): Promise<IDBDatabase | null> {
+  if (typeof indexedDB === "undefined") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let existed = true;
+    const openRequest = indexedDB.open(LEGACY_DATABASE_NAME);
+    openRequest.onupgradeneeded = () => {
+      // Die Datenbank gab es noch nicht; nichts zu übernehmen.
+      existed = false;
+    };
+    openRequest.onsuccess = () => {
+      const database = openRequest.result;
+      if (!existed || !database.objectStoreNames.contains(LEGACY_STORE_NAME)) {
+        database.close();
+        indexedDB.deleteDatabase(LEGACY_DATABASE_NAME);
+        resolve(null);
+        return;
+      }
+      resolve(database);
+    };
+    openRequest.onerror = () => resolve(null);
+    openRequest.onblocked = () => resolve(null);
+  });
+}
+
+export async function readLegacyIndexedDbRecords<T>(): Promise<StoredWorkflowRecord<T>[]> {
+  const database = await openLegacyDatabase();
+  if (!database) return [];
   try {
-    const transaction = database.transaction(STORE_NAME, "readwrite");
-    const completion = transactionComplete(transaction);
-    transaction.objectStore(STORE_NAME).delete(id);
-    await completion;
+    return await new Promise<StoredWorkflowRecord<T>[]>((resolve) => {
+      const transaction = database.transaction(LEGACY_STORE_NAME, "readonly");
+      const getAll = transaction.objectStore(LEGACY_STORE_NAME).getAll();
+      getAll.onsuccess = () => resolve((getAll.result as StoredWorkflowRecord<T>[]) || []);
+      getAll.onerror = () => resolve([]);
+    });
   } finally {
     database.close();
   }
 }
 
-export async function pruneWorkflowRecords(limit = WORKFLOW_HISTORY_LIMIT): Promise<string[]> {
-  const records = await listWorkflowRecords<unknown>();
-  const expired = records.slice(Math.max(0, limit));
-  if (expired.length === 0) return [];
-  const database = await openDatabase();
-  try {
-    const transaction = database.transaction(STORE_NAME, "readwrite");
-    const completion = transactionComplete(transaction);
-    const store = transaction.objectStore(STORE_NAME);
-    for (const record of expired) store.delete(record.id);
-    await completion;
-    return expired.map((record) => record.id);
-  } finally {
-    database.close();
-  }
+export function clearLegacyIndexedDb(): Promise<void> {
+  if (typeof indexedDB === "undefined") return Promise.resolve();
+  return new Promise((resolve) => {
+    const deleteRequest = indexedDB.deleteDatabase(LEGACY_DATABASE_NAME);
+    deleteRequest.onsuccess = () => resolve();
+    deleteRequest.onerror = () => resolve();
+    deleteRequest.onblocked = () => resolve();
+  });
 }

@@ -1,8 +1,9 @@
-import { Activity, LayoutDashboard, ShieldCheck, Users } from "lucide-react";
+import { Activity, FolderKanban, LayoutDashboard, ShieldCheck, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityTab } from "@/components/admin/activity-tab";
 import { OverviewTab } from "@/components/admin/overview-tab";
 import { UsersTab } from "@/components/admin/users-tab";
+import { WorkflowsTab } from "@/components/admin/workflows-tab";
 
 export default function AdminPage() {
   return (
@@ -28,6 +29,10 @@ export default function AdminPage() {
             <Users className="mr-2 h-4 w-4" />
             Benutzer
           </TabsTrigger>
+          <TabsTrigger value="workflows" data-testid="tab-admin-workflows">
+            <FolderKanban className="mr-2 h-4 w-4" />
+            Workflows
+          </TabsTrigger>
           <TabsTrigger value="activity" data-testid="tab-admin-activity">
             <Activity className="mr-2 h-4 w-4" />
             Aktivitäten
@@ -39,6 +44,9 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="users">
           <UsersTab />
+        </TabsContent>
+        <TabsContent value="workflows">
+          <WorkflowsTab />
         </TabsContent>
         <TabsContent value="activity">
           <ActivityTab />
