@@ -271,7 +271,7 @@ ${input.evidenceContext ? `**Grounded package and evidence**:\n${JSON.stringify(
 **Deliverables**:
 Return one strict JSON object with exactly these keys:
 - "titles": exactly 3 honest title strings, each under 100 characters
-- "hook": a spoken opening that immediately confirms the package promise
+- "hook": a spoken opening that immediately confirms the package promise, as ONE plain string under 1200 characters
 - "structure": an ordered array of sections with section, purpose, and evidenceClaimIds
 - "script": the full script as a string with:
 - Clear section headers written as markdown headings using exactly these names in this order where applicable: "## HOOK", "## EINLEITUNG" (only when the format needs a promise bridge), "## HAUPTTEIL", "## CALL-TO-ACTION". Never rename or translate these four heading names.
@@ -279,9 +279,11 @@ Return one strict JSON object with exactly these keys:
 - Delivery notes in (parentheses)
 - B-roll suggestions in [square brackets], each starting with "B-Roll:"
 - No speaker labels. If one is unavoidable, use "SPRECHER:".
-- "payoff": the exact closing delivery of the honest promise
-- "primaryCta": one benefit-framed next action after value has been delivered
-- "studioValidation": the supplied Studio metric and experiment decision rule
+- "payoff": the exact closing delivery of the honest promise, one plain string under 800 characters
+- "primaryCta": one benefit-framed next action after value has been delivered, one plain string under 600 characters
+- "studioValidation": the supplied Studio metric and experiment decision rule, one plain string under 600 characters
+
+Format constraints (strict): "titles" is an array of exactly 3 strings; "structure" is an array of objects; every other value is a single plain string, never an object, array, or nested JSON. Put the whole script text into "script" as one string with markdown headings.
 
 Rules:
 - Fulfill the supplied honestPromise and payoff.
@@ -360,6 +362,107 @@ Rules:
   }
 }
 
+// ---------- Tolerante Normalisierung der Skript-Antwort ----------
+//
+// Kleinere Modelle (z. B. Flash-Lite) halten das geforderte JSON-Format nicht
+// immer exakt ein: Textfelder kommen als Objekt oder Array, Felder sind zu
+// lang, "titles" hat nicht genau drei Einträge. Statt die Antwort komplett zu
+// verwerfen, wird sie hier in das erwartete Format überführt. Die inhaltliche
+// Prüfung (Zod-Schema) läuft danach unverändert.
+
+function modelValueToText(value: unknown, depth = 0): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (depth > 4) return "";
+  if (Array.isArray(value)) {
+    return value.map((item) => modelValueToText(item, depth + 1)).filter(Boolean).join("\n\n");
+  }
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, entry]) => {
+        const text = modelValueToText(entry, depth + 1).trim();
+        if (!text) return "";
+        // Abschnittsartige Objekte ({ HOOK: "...", HAUPTTEIL: "..." }) werden zu
+        // Markdown-Überschriften, sonst bleibt nur der Text.
+        return /^[A-ZÄÖÜ][A-ZÄÖÜ0-9 _-]{2,}$/.test(key) ? `## ${key}\n${text}` : text;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+  }
+  return "";
+}
+
+function clampText(value: unknown, max: number, fallback = ""): string {
+  let text = modelValueToText(value).replace(/\r\n/g, "\n").trim();
+  if (!text) text = fallback;
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const boundary = cut.lastIndexOf(" ");
+  return `${(boundary > max * 0.6 ? cut.slice(0, boundary) : cut).trimEnd()}…`;
+}
+
+function firstParagraph(text: string): string {
+  // Überschriftenzeilen komplett entfernen, dann den ersten Absatz nehmen.
+  const withoutHeadings = text.replace(/^#{1,6}\s.*$/gm, "");
+  return withoutHeadings.split(/\n\s*\n/).map((part) => part.trim()).find(Boolean) || "";
+}
+
+export function normalizeScriptModelOutput(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const source = raw as Record<string, unknown>;
+
+  const script = clampText(source.script, 80_000);
+  const hook = clampText(source.hook, 1_500, firstParagraph(script));
+
+  const rawTitles = Array.isArray(source.titles) ? source.titles : source.titles != null ? [source.titles] : [];
+  const titles = Array.from(new Set(
+    rawTitles
+      .map((title) => {
+        if (title && typeof title === "object" && !Array.isArray(title)) {
+          const record = title as Record<string, unknown>;
+          return clampText(record.title ?? record.text ?? record.value ?? title, 100);
+        }
+        return clampText(title, 100);
+      })
+      .filter(Boolean),
+  )).slice(0, 3);
+
+  const rawStructure = Array.isArray(source.structure) ? source.structure : [];
+  let structure = rawStructure
+    .map((entry) => {
+      if (typeof entry === "string") return { section: clampText(entry, 120), purpose: clampText(entry, 500), evidenceClaimIds: [] as string[] };
+      if (!entry || typeof entry !== "object") return null;
+      const record = entry as Record<string, unknown>;
+      const section = clampText(record.section ?? record.name ?? record.title, 120);
+      const purpose = clampText(record.purpose ?? record.goal ?? record.description ?? record.content, 500, section);
+      const ids = Array.isArray(record.evidenceClaimIds)
+        ? record.evidenceClaimIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0).map((id) => id.trim().slice(0, 128)).slice(0, 8)
+        : [];
+      return section ? { section, purpose, evidenceClaimIds: ids } : null;
+    })
+    .filter((entry): entry is { section: string; purpose: string; evidenceClaimIds: string[] } => entry !== null)
+    .slice(0, 16);
+  if (structure.length < 2) {
+    const headings = Array.from(script.matchAll(/^#{1,6}\s*(.+?)\s*$/gm)).map((match) => match[1].trim()).filter(Boolean);
+    const derived = headings.map((heading) => ({ section: heading.slice(0, 120), purpose: heading.slice(0, 500), evidenceClaimIds: [] as string[] }));
+    structure = [...structure, ...derived].slice(0, 16);
+    while (structure.length < 2) {
+      structure.push({ section: structure.length === 0 ? "HOOK" : "HAUPTTEIL", purpose: structure.length === 0 ? "Einstieg" : "Inhalt", evidenceClaimIds: [] });
+    }
+  }
+
+  return {
+    titles,
+    hook,
+    structure,
+    script,
+    payoff: clampText(source.payoff, 1_000, "Siehe Skript."),
+    primaryCta: clampText(source.primaryCta ?? source.cta ?? source.callToAction, 800, "Siehe Skript."),
+    studioValidation: clampText(source.studioValidation ?? source.studioMetric, 800, "Siehe Skript."),
+  };
+}
+
 export function parseScriptGenerationOutput(text: string) {
   let parsed: unknown;
   try {
@@ -367,7 +470,7 @@ export function parseScriptGenerationOutput(text: string) {
   } catch {
     throw new Error("Script model response was not valid JSON");
   }
-  const validated = scriptGenerationOutputSchema.safeParse(parsed);
+  const validated = scriptGenerationOutputSchema.safeParse(normalizeScriptModelOutput(parsed));
   if (!validated.success) {
     throw new Error(`Script model response failed schema validation: ${validated.error.issues[0]?.message || "unknown error"}`);
   }

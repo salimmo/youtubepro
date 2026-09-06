@@ -100,7 +100,7 @@ export const scriptEvidenceContextSchema = z.object({
 });
 
 export const scriptGenerationOutputSchema = z.object({
-  titles: z.array(boundedText.max(100)).length(3),
+  titles: z.array(boundedText.max(100)).min(1).max(3),
   hook: boundedText.max(1_500),
   structure: z.array(z.object({
     section: boundedText.max(120),
