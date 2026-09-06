@@ -120,6 +120,7 @@ function getFormatGuidelines(format: VideoFormat): string {
     case VideoFormat.SHORT:
       return `
         - Total duration: Under 60 seconds
+        - Target length: 120 to 180 spoken words, written out completely
         - Hook must be in first 1-2 seconds
         - Fast-paced, punchy delivery
         - Single clear message or takeaway
@@ -130,6 +131,7 @@ function getFormatGuidelines(format: VideoFormat): string {
     case VideoFormat.LONG_FORM:
       return `
         - Total duration: 8-15 minutes
+        - Target length: 1,200 to 2,200 spoken words (about 150 words per minute), written out completely
         - Strong hook in first 30 seconds
         - Clear chapter structure with timestamps
         - Use pacing changes at natural topic or visual transitions
@@ -139,6 +141,7 @@ function getFormatGuidelines(format: VideoFormat): string {
 
     case VideoFormat.TUTORIAL:
       return `
+        - Target length: 900 to 1,800 spoken words, written out completely
         - Step-by-step structure with numbered steps
         - Clear prerequisites listed at the start
         - Detailed explanations with examples
@@ -149,6 +152,7 @@ function getFormatGuidelines(format: VideoFormat): string {
 
     case VideoFormat.REVIEW:
       return `
+        - Target length: 900 to 1,800 spoken words, written out completely
         - Unboxing/first impressions section
         - Detailed pros and cons list
         - Comparison with alternatives
@@ -159,6 +163,7 @@ function getFormatGuidelines(format: VideoFormat): string {
 
     case VideoFormat.VLOG:
       return `
+        - Target length: 800 to 1,500 spoken words, written out completely
         - Personal and conversational tone
         - Story arc with beginning, middle, end
         - Behind-the-scenes moments
@@ -284,6 +289,8 @@ Return one strict JSON object with exactly these keys:
 - "studioValidation": the supplied Studio metric and experiment decision rule, one plain string under 600 characters
 
 Format constraints (strict): "titles" is an array of exactly 3 strings; "structure" is an array of objects; every other value is a single plain string, never an object, array, or nested JSON. Put the whole script text into "script" as one string with markdown headings.
+
+Completeness (strict): "script" must contain the COMPLETE spoken narration for the entire runtime, every sentence the presenter says out loud, from the first second to the last. Do not summarize, do not outline, do not skip ahead. Timestamps must be continuous with no gaps larger than about 30 seconds of unwritten speech. Never write placeholders such as "..." or "[continue here]". Meet the target word count of the format.
 
 Rules:
 - Fulfill the supplied honestPromise and payoff.
