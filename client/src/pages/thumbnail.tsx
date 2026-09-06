@@ -85,7 +85,21 @@ function localFailure(error: string, suggestion: string): RequestFailure {
 
 async function readFailure(response: Response): Promise<RequestFailure> {
   let body: Partial<RequestFailure> = {};
-  try { body = await response.json(); } catch { body = {}; }
+  try {
+    const text = await response.text();
+    if (/^\s*(<!doctype html|<html|<head|<body)/i.test(text)) {
+      const title = /<title[^>]*>([^<]{1,120})<\/title>/i.exec(text)?.[1]?.trim();
+      body = {
+        error: `Der Server war nicht erreichbar (Status ${response.status}).`,
+        suggestion: "Statt einer API-Antwort kam eine HTML-Fehlerseite, vermutlich von einem Proxy, einer Firewall oder einem Bot-Schutz zwischen Browser und Server. Versuche es erneut und prüfe, ob ein VPN, Firmennetz oder Filter aktiv ist.",
+        detail: title ? `Seitentitel: ${title}` : "HTML-Seite ohne Titel",
+        category: "provider_server",
+        retryable: true,
+      };
+    } else {
+      body = JSON.parse(text);
+    }
+  } catch { body = {}; }
   return {
     error: body.error || `Anfrage fehlgeschlagen mit Status ${response.status}`,
     code: body.code || `HTTP_${response.status}`,

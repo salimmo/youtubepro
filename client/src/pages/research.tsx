@@ -123,7 +123,19 @@ function normalizeErrorCategory(status: number, category: unknown, message: stri
 async function readApiError(response: Response): Promise<ResearchRequestError> {
   let payload: Record<string, unknown> = {};
   try {
-    payload = await response.json();
+    const text = await response.text();
+    if (/^\s*(<!doctype html|<html|<head|<body)/i.test(text)) {
+      const title = /<title[^>]*>([^<]{1,120})<\/title>/i.exec(text)?.[1]?.trim();
+      payload = {
+        error: `Der Server war nicht erreichbar (Status ${response.status}).`,
+        suggestion: "Statt einer API-Antwort kam eine HTML-Fehlerseite, vermutlich von einem Proxy, einer Firewall oder einem Bot-Schutz zwischen Browser und Server. Versuche es erneut und prüfe, ob ein VPN, Firmennetz oder Filter aktiv ist.",
+        detail: title ? `Seitentitel: ${title}` : "HTML-Seite ohne Titel",
+        category: "provider_server",
+        retryable: true,
+      };
+    } else {
+      payload = JSON.parse(text);
+    }
   } catch {
     payload = {};
   }
