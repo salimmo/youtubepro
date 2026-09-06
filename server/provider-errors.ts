@@ -71,10 +71,13 @@ function defaultsForCategory(category: ProviderErrorCategory): Pick<ProviderErro
     case "missing_key": return { status: 503, retryable: false };
     case "invalid_key": return { status: 401, retryable: false };
     case "quota": return { status: 429, retryable: true };
-    case "timeout": return { status: 504, retryable: true };
+    // Bewusst 500 statt 502/504: Cloudflare und andere CDNs ersetzen
+    // 502/504-Antworten des Servers durch eigene HTML-Fehlerseiten, wodurch
+    // die eigentliche Fehlermeldung den Browser nie erreicht.
+    case "timeout": return { status: 500, retryable: true };
     case "network":
-    case "provider_server": return { status: 502, retryable: true };
-    case "invalid_response": return { status: 502, retryable: false };
+    case "provider_server": return { status: 500, retryable: true };
+    case "invalid_response": return { status: 500, retryable: false };
     default: return { status: 500, retryable: true };
   }
 }

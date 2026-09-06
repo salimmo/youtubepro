@@ -483,7 +483,7 @@ export function parseResearchInsightsResponse(
       message: "Gemini returned malformed research insight JSON.",
       category: "invalid_response",
       code: "GEMINI_RESEARCH_INVALID_JSON",
-      status: 502,
+      status: 500,
       retryable: false,
       cause: error,
     });
@@ -495,7 +495,7 @@ export function parseResearchInsightsResponse(
       message: "Gemini research insights did not match the required schema.",
       category: "invalid_response",
       code: "GEMINI_RESEARCH_SCHEMA_MISMATCH",
-      status: 502,
+      status: 500,
       retryable: false,
       cause: parsed.error,
     });
@@ -505,7 +505,7 @@ export function parseResearchInsightsResponse(
       message: "Gemini research insights reported the wrong sample size.",
       category: "invalid_response",
       code: "GEMINI_RESEARCH_SAMPLE_MISMATCH",
-      status: 502,
+      status: 500,
       retryable: false,
     });
   }
@@ -516,7 +516,7 @@ export function parseResearchInsightsResponse(
         message: "Gemini research evidence referenced the wrong snapshot.",
         category: "invalid_response",
         code: "GEMINI_RESEARCH_SNAPSHOT_MISMATCH",
-        status: 502,
+        status: 500,
         retryable: false,
       });
     }
@@ -529,7 +529,7 @@ export function parseResearchInsightsResponse(
         message: "Gemini research evidence referenced an unknown source video.",
         category: "invalid_response",
         code: "GEMINI_RESEARCH_UNKNOWN_SOURCE",
-        status: 502,
+        status: 500,
         retryable: false,
         cause: error,
       });
@@ -788,7 +788,7 @@ async function generateScriptRegeneration(
       message: `Gemini returned an invalid script revision after one repair attempt: ${validationError}`,
       category: "invalid_response",
       code: "GEMINI_SCRIPT_REGENERATION_INVALID",
-      status: 502,
+      status: 500,
       retryable: false,
     });
   } catch (error: unknown) {
@@ -1005,7 +1005,7 @@ export async function generateThumbnail(
       message: "Gemini returned an invalid response without image data",
       category: "invalid_response",
       code: "GEMINI_IMAGE_INVALID_RESPONSE",
-      status: 502,
+      status: 500,
       retryable: false,
     });
   } catch (error: unknown) {
@@ -1043,7 +1043,7 @@ export function parseThumbnailSuggestions(value: string): string[] {
       message: "Gemini returned malformed thumbnail suggestions JSON",
       category: "invalid_response",
       code: "GEMINI_THUMBNAIL_SUGGESTIONS_INVALID",
-      status: 502,
+      status: 500,
       retryable: false,
       cause,
     });
@@ -1055,7 +1055,7 @@ export function parseThumbnailSuggestions(value: string): string[] {
       message: "Gemini returned thumbnail suggestions that did not match the schema",
       category: "invalid_response",
       code: "GEMINI_THUMBNAIL_SUGGESTIONS_INVALID",
-      status: 502,
+      status: 500,
       retryable: false,
       cause: result.error,
     });

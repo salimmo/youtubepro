@@ -149,7 +149,7 @@ describe("YouTube research snapshots", () => {
       searchVideos(filters),
       (error: unknown) => error instanceof ProviderError
         && error.category === "provider_server"
-        && error.status === 502,
+        && error.status === 500,
     );
   });
 });
