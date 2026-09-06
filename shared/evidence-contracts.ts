@@ -107,7 +107,9 @@ export const scriptGenerationOutputSchema = z.object({
     purpose: boundedText.max(500),
     evidenceClaimIds: z.array(z.string().trim().min(1).max(128)).max(8),
   }).strict()).min(2).max(16),
-  script: boundedText.max(80_000),
+  // Nicht boundedText: dessen .max(2000) bliebe zusätzlich aktiv und hätte
+  // jedes Skript über 2000 Zeichen abgelehnt (Zod prüft alle max-Regeln).
+  script: z.string().trim().min(1).max(80_000),
   payoff: boundedText.max(1_000),
   primaryCta: boundedText.max(800),
   studioValidation: boundedText.max(800),

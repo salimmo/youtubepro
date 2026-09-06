@@ -56,6 +56,18 @@ describe("normalizeScriptModelOutput", () => {
     assert.equal(parsed.payoff, "Siehe Skript.");
   });
 
+  it("akzeptiert lange Skripte weit über 2000 Zeichen", () => {
+    const longScript = "## HOOK\n" + "Satz für ein langes Skript. ".repeat(400);
+    const parsed = parseScriptGenerationOutput(JSON.stringify({
+      titles: ["Titel"],
+      hook: "Hook",
+      structure: [{ section: "A", purpose: "a", evidenceClaimIds: [] }, { section: "B", purpose: "b", evidenceClaimIds: [] }],
+      script: longScript,
+      payoff: "p", primaryCta: "c", studioValidation: "s",
+    }));
+    assert.ok(parsed.script.length > 10_000);
+  });
+
   it("lehnt Antworten ohne Skripttext weiterhin ab", () => {
     assert.throws(() => parseScriptGenerationOutput(JSON.stringify({ titles: ["x"], hook: "y" })), /schema validation/);
     assert.equal(normalizeScriptModelOutput("kein objekt"), "kein objekt");
