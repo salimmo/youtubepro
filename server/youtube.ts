@@ -109,7 +109,7 @@ function youtubeHttpError(status: number, body: unknown, stage: string): Provide
       message: `YouTube hat einen Serverfehler zurückgegeben (Schritt: ${stage}).`,
       category: "provider_server",
       code: "YOUTUBE_PROVIDER_SERVER",
-      status: 502,
+      status: 500,
       retryable: true,
     });
   }
@@ -117,7 +117,7 @@ function youtubeHttpError(status: number, body: unknown, stage: string): Provide
     message: `YouTube hat die Anfrage abgelehnt (Schritt: ${stage}).`,
     category: "unknown",
     code: "YOUTUBE_REQUEST_REJECTED",
-    status: 502,
+    status: 500,
     retryable: false,
   });
 }
@@ -135,7 +135,7 @@ async function fetchYouTubeJson(url: string, stage: string): Promise<any> {
         message: `YouTube hat fehlerhaftes JSON zurückgegeben (Schritt: ${stage}).`,
         category: "invalid_response",
         code: "YOUTUBE_INVALID_RESPONSE",
-        status: 502,
+        status: 500,
         retryable: false,
         cause: error,
       });
@@ -149,7 +149,7 @@ async function fetchYouTubeJson(url: string, stage: string): Promise<any> {
         message: `Zeitüberschreitung bei YouTube (Schritt: ${stage}).`,
         category: "timeout",
         code: "YOUTUBE_TIMEOUT",
-        status: 504,
+        status: 500,
         retryable: true,
         cause: error,
       });
@@ -158,7 +158,7 @@ async function fetchYouTubeJson(url: string, stage: string): Promise<any> {
       message: `YouTube war nicht erreichbar (Schritt: ${stage}).`,
       category: "network",
       code: "YOUTUBE_NETWORK",
-      status: 502,
+      status: 500,
       retryable: true,
       cause: error,
     });
@@ -220,7 +220,7 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
       message: "YouTube hat eine ungültige Suchantwort zurückgegeben.",
       category: "invalid_response",
       code: "YOUTUBE_INVALID_RESPONSE",
-      status: 502,
+      status: 500,
       retryable: false,
     });
   }
@@ -308,7 +308,7 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
       message: "YouTube hat eine ungültige Videodetails-Antwort zurückgegeben.",
       category: "invalid_response",
       code: "YOUTUBE_INVALID_RESPONSE",
-      status: 502,
+      status: 500,
       retryable: false,
     });
   }
