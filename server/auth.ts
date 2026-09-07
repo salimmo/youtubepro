@@ -100,10 +100,15 @@ interface UserRow {
   password_hash: string;
   role: UserRole;
   active: boolean;
+  locale?: string | null;
 }
 
-function toSessionUser(row: Pick<UserRow, "id" | "username" | "display_name" | "role">): SessionUser {
-  return { id: row.id, username: row.username, displayName: row.display_name, role: row.role };
+function toLocale(value: string | null | undefined): SessionUser["locale"] {
+  return value === "en" ? "en" : "de";
+}
+
+function toSessionUser(row: Pick<UserRow, "id" | "username" | "display_name" | "role" | "locale">): SessionUser {
+  return { id: row.id, username: row.username, displayName: row.display_name, role: row.role, locale: toLocale(row.locale) };
 }
 
 export async function createSession(req: Request, userId: number): Promise<string> {
@@ -132,7 +137,7 @@ interface SessionLookupRow extends UserRow {
 export async function resolveSession(token: string): Promise<SessionUser | null> {
   const tokenHash = hashToken(token);
   const result = await query<SessionLookupRow>(
-    `SELECT u.id, u.username, u.display_name, u.password_hash, u.role, u.active, s.last_seen_at
+    `SELECT u.id, u.username, u.display_name, u.password_hash, u.role, u.active, u.locale, s.last_seen_at
      FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = $1 AND s.expires_at > now()`,
     [tokenHash],
@@ -157,7 +162,7 @@ export async function cleanupExpiredSessions(): Promise<void> {
 
 export async function findUserForLogin(username: string): Promise<UserRow | null> {
   const result = await query<UserRow>(
-    "SELECT id, username, display_name, password_hash, role, active FROM users WHERE lower(username) = lower($1)",
+    "SELECT id, username, display_name, password_hash, role, active, locale FROM users WHERE lower(username) = lower($1)",
     [username],
   );
   return result.rows[0] ?? null;
@@ -170,6 +175,10 @@ export async function getPasswordHash(userId: number): Promise<string | null> {
 
 export async function updatePassword(userId: number, password: string): Promise<void> {
   await query("UPDATE users SET password_hash = $2 WHERE id = $1", [userId, await hashPassword(password)]);
+}
+
+export async function updateLocale(userId: number, locale: SessionUser["locale"]): Promise<void> {
+  await query("UPDATE users SET locale = $2 WHERE id = $1", [userId, locale]);
 }
 
 // Legt den ersten Admin aus ADMIN_USER/ADMIN_PASSWORD an, wenn noch keine

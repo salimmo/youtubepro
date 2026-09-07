@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
 import NotFound from "@/pages/not-found";
 import AdminPage from "@/pages/admin";
+import ChannelPage from "@/pages/channel";
 import LoginPage from "@/pages/login";
 import ResearchDashboard from "@/pages/research";
 import ScriptPage from "@/pages/script";
@@ -31,6 +32,7 @@ function Router() {
       </Route>
       <Route path="/script" component={ScriptPage} />
       <Route path="/thumbnail" component={ThumbnailPage} />
+      <Route path="/channel" component={ChannelPage} />
       <Route path="/settings" component={isAdmin ? SettingsPage : NotFound} />
       <Route path="/admin" component={isAdmin ? AdminPage : NotFound} />
       <Route component={NotFound} />

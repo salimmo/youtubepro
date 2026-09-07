@@ -11,6 +11,7 @@ import {
   CreatorPersona,
 } from "@shared/schema";
 import { normalizeProviderError, ProviderError } from "./provider-errors";
+import { currentOutputLanguage } from "./request-context";
 import {
   DEFAULT_GEMINI_IMAGE_MODEL,
   DEFAULT_GEMINI_TEXT_MODEL,
@@ -107,13 +108,29 @@ export function configureGeminiModels(textModel: GeminiTextModel, imageModel: Ge
 }
 
 // Ausgabesprache der KI-Inhalte. Die Prompts selbst bleiben Englisch, weil die
-// Modelle Anweisungen darin zuverlässiger befolgen. Über OUTPUT_LANGUAGE kann
-// die Sprache der generierten Texte geändert werden (Standard: Deutsch).
-export const OUTPUT_LANGUAGE = process.env.OUTPUT_LANGUAGE?.trim() || "German (Deutsch)";
+// Modelle Anweisungen darin zuverlässiger befolgen. Die Sprache folgt der
+// Oberflächensprache des Benutzers (Anfragekontext); ohne Kontext gilt
+// OUTPUT_LANGUAGE (Standard: Deutsch).
+export function outputLanguage(): string {
+  return currentOutputLanguage();
+}
 
-export const OUTPUT_LANGUAGE_RULE = `Language: Write every human-readable text value (titles, summaries, hooks, scripts, sections, questions, answers, rationales, suggestions, limitations, notes, delivery notes, B-roll suggestions) in ${OUTPUT_LANGUAGE}. Keep JSON keys, IDs, snapshot IDs, and any explicitly enumerated allowed values exactly as specified, in English. Do not translate the enumerated values.`;
+export function outputLanguageRule(): string {
+  return `Language: Write every human-readable text value (titles, summaries, hooks, scripts, sections, questions, answers, rationales, suggestions, limitations, notes, delivery notes, B-roll suggestions) in ${outputLanguage()}. Keep JSON keys, IDs, snapshot IDs, and any explicitly enumerated allowed values exactly as specified, in English. Do not translate the enumerated values.`;
+}
 
-export const THUMBNAIL_TEXT_LANGUAGE_RULE = `Any words rendered in the image must be in ${OUTPUT_LANGUAGE} with correct spelling and diacritics (ä, ö, ü, ß).`;
+// Abschnittsnamen im Skript, die der Client-Parser erkennt (beide Sprachen).
+export function sectionHeadingNames(): string {
+  return outputLanguage().toLowerCase().startsWith("german")
+    ? '"## HOOK", "## EINLEITUNG" (only when the format needs a promise bridge), "## HAUPTTEIL", "## CALL-TO-ACTION"'
+    : '"## HOOK", "## INTRO" (only when the format needs a promise bridge), "## MAIN CONTENT", "## CALL-TO-ACTION"';
+}
+
+export function thumbnailTextLanguageRule(): string {
+  const language = outputLanguage();
+  const diacritics = language.toLowerCase().startsWith("german") ? " and diacritics (ä, ö, ü, ß)" : "";
+  return `Any words rendered in the image must be in ${language} with correct spelling${diacritics}.`;
+}
 
 function getFormatGuidelines(format: VideoFormat): string {
   switch (format) {
@@ -279,7 +296,7 @@ Return one strict JSON object with exactly these keys:
 - "hook": a spoken opening that immediately confirms the package promise, as ONE plain string under 1200 characters
 - "structure": an ordered array of sections with section, purpose, and evidenceClaimIds
 - "script": the full script as a string with:
-- Clear section headers written as markdown headings using exactly these names in this order where applicable: "## HOOK", "## EINLEITUNG" (only when the format needs a promise bridge), "## HAUPTTEIL", "## CALL-TO-ACTION". Never rename or translate these four heading names.
+- Clear section headers written as markdown headings using exactly these names in this order where applicable: ${sectionHeadingNames()}. Never rename or translate these four heading names.
 - Timestamps in [00:00] format
 - Delivery notes in (parentheses)
 - B-roll suggestions in [square brackets], each starting with "B-Roll:"
@@ -302,7 +319,7 @@ Rules:
 - Use one throughline. Each section must answer the viewer's next natural question and point toward the promised payoff.
 - Shorts use one idea, no branded introduction, and a direct payoff. Long form uses explicit micro-loops only where the content earns them.
 - Put one primary CTA after the highest-value moment. Do not front-load an ask.
-- ${OUTPUT_LANGUAGE_RULE}
+- ${outputLanguageRule()}
 - Return JSON only.`;
 
   try {
@@ -541,7 +558,7 @@ Evidence rules:
 - studioMetric must name the private metric that would validate the package.
 - experimentRule must change one packaging variable and state a decision rule.
 - The title and thumbnailConcept must complement each other and make the same honestPromise.
-- ${OUTPUT_LANGUAGE_RULE}
+- ${outputLanguageRule()}
 - Return JSON only.`;
 
   try {
@@ -777,7 +794,7 @@ Provide a detailed analysis in the following JSON format:
   }
 }
 
-${OUTPUT_LANGUAGE_RULE}
+${outputLanguageRule()}
 
 Return ONLY valid JSON, no additional text or markdown.`;
 
@@ -831,7 +848,7 @@ Requirements:
 - Complement the thumbnail concept instead of repeating its words
 - Do not claim popularity, search volume, trend status, authority, or guaranteed outcomes
 - Vary the framing without changing the topic or payoff
-- ${OUTPUT_LANGUAGE_RULE}
+- ${outputLanguageRule()}
 
 Return one strict JSON object with exactly one key, "titles", containing exactly 5 strings.`;
 
@@ -951,7 +968,7 @@ Craft rules:
 - Preserve the question-to-payoff path and place no CTA before meaningful value.
 - Use one primary CTA at most, after value, and do not imitate a living person's voice.
 - Delivery notes and B-roll may clarify the existing material but cannot introduce factual claims.
-- ${OUTPUT_LANGUAGE_RULE}
+- ${outputLanguageRule()}
 
 Return only strict JSON with exactly two keys:
 {"content":"complete rewritten section","evidenceClaimIds":["exact supplied claim IDs used"]}`;
@@ -984,7 +1001,7 @@ Craft rules:
 - Do not add a CTA, authority claim, metric, example, or recommendation that was not already present and evidence-supported.
 - Do not imitate a living person's voice.
 - Return plain paragraph content inside JSON, without markdown headings.
-- ${OUTPUT_LANGUAGE_RULE}
+- ${outputLanguageRule()}
 
 Return only strict JSON with exactly two keys:
 {"content":"rewritten paragraph","evidenceClaimIds":["exact supplied claim IDs used"]}`;
@@ -1029,7 +1046,7 @@ export function buildThumbnailPrompt(topic: string, config: ThumbnailConfig): st
         config.subText ? `Secondary text: \"${config.subText}\"` : "No secondary text.",
         `Reserve the ${config.textPosition} area for readable text and keep text clear of faces and key objects.`,
         "Prioritize mobile-size legibility and accurate spelling. Use a readable heavy sans-serif treatment only when it fits the selected style.",
-        THUMBNAIL_TEXT_LANGUAGE_RULE,
+        thumbnailTextLanguageRule(),
       ].join("\n")
     : "Do not render any words, letters, logos, watermarks, or interface text.";
 
@@ -1140,7 +1157,7 @@ Requirements:
 - Do not invent results, proof, urgency, secrets, danger, or exclusivity.
 - Do not promise views, money, transformation, or guaranteed outcomes.
 - Use normal title casing unless capitalization is necessary for a name or acronym.
-- ${OUTPUT_LANGUAGE_RULE}
+- ${outputLanguageRule()}
 - Return only a JSON array of exactly five strings. No markdown or commentary.`;
 }
 

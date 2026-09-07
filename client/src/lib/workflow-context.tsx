@@ -67,7 +67,7 @@ interface CachedResearchData {
   videos: Video[];
   insights: ResearchInsights | null;
   analytics: CachedAnalytics | null;
-  filters: { uploadDate: string; duration: string; sortBy: string };
+  filters: { uploadDate: string; duration: string; sortBy: string; language?: string };
   timestamp: number;
   snapshotId?: string;
   retrievedAt?: string;

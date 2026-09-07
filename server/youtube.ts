@@ -1,7 +1,8 @@
 import type { Video, SearchFilters, SearchResponse } from "@shared/schema";
-import { UploadDateFilter, DurationFilter, SortBy } from "@shared/schema";
+import { UploadDateFilter, DurationFilter, SortBy, LanguageFilter } from "@shared/schema";
 import { createHash } from "node:crypto";
 import { ProviderError } from "./provider-errors";
+import { ageInDays, getChannelBaselines, outlierScore } from "./youtube-channel";
 
 const BASE_URL = "https://www.googleapis.com/youtube/v3";
 const YOUTUBE_TIMEOUT_MS = 15_000;
@@ -55,6 +56,10 @@ function getOrderBy(sortBy: SortBy): string {
       return "viewCount";
     case SortBy.RATING:
       return "rating";
+    case SortBy.OUTLIER:
+      // Outlier wird nach der Anreicherung serverseitig sortiert; YouTube
+      // liefert dafür die relevantesten Treffer.
+      return "relevance";
     default:
       return "relevance";
   }
@@ -173,6 +178,7 @@ export function createSnapshotId(filters: SearchFilters, orderedVideoIds: string
     uploadDate: filters.uploadDate,
     duration: filters.duration,
     sortBy: filters.sortBy,
+    language: filters.language,
     maxResults: filters.maxResults,
     orderedVideoIds,
     retrievedAt,
@@ -211,6 +217,13 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
     params.set("videoDuration", videoDuration);
   }
 
+  // Sprachpräferenz: YouTube bevorzugt dann Videos in dieser Sprache. Da viele
+  // Videos keine Sprachangabe tragen, ist das eine Gewichtung, kein harter Filter.
+  if (filters.language && filters.language !== LanguageFilter.ANY) {
+    params.set("relevanceLanguage", filters.language);
+    params.set("regionCode", filters.language === LanguageFilter.GERMAN ? "DE" : "US");
+  }
+
   const searchUrl = `${BASE_URL}/search?${params}`;
   const searchData = await fetchYouTubeJson(searchUrl, "Suche");
   const retrievedAt = new Date().toISOString();
@@ -242,6 +255,7 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
           uploadDate: filters.uploadDate,
           duration: filters.duration,
           sortBy: filters.sortBy,
+          language: filters.language,
           maxResults: filters.maxResults,
         },
         orderedVideoIds,
@@ -281,6 +295,7 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
           uploadDate: filters.uploadDate,
           duration: filters.duration,
           sortBy: filters.sortBy,
+          language: filters.language,
           maxResults: filters.maxResults,
         },
         orderedVideoIds,
@@ -329,7 +344,7 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
   let channelStatus: "complete" | "partial" | "skipped" = channelIds.length > 0 ? "complete" : "skipped";
   if (channelIds.length > 0) {
     const channelParams = new URLSearchParams({
-      part: "snippet,statistics,topicDetails,brandingSettings",
+      part: "snippet,statistics,topicDetails,brandingSettings,contentDetails",
       id: channelIds.join(","),
       maxResults: "50",
       key: apiKey,
@@ -357,13 +372,40 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
     detailsData.items.map((item: any) => [item.id, item]),
   );
 
-  const videos: Video[] = orderedVideoIds.flatMap((id) => {
+  // Outlier-Baseline je Kanal (Median der letzten Uploads). Aus dem Cache oder
+  // mit 2 Kontingent-Einheiten je Kanal nachgeladen; Fehler sind nicht fatal.
+  const uploadsPlaylists = new Map<string, string>();
+  channelDetails.forEach((channel, channelId) => {
+    const playlistId = channel?.contentDetails?.relatedPlaylists?.uploads;
+    if (typeof playlistId === "string") uploadsPlaylists.set(channelId, playlistId);
+  });
+  const baselines = await getChannelBaselines(uploadsPlaylists, apiKey);
+  if (uploadsPlaylists.size > 0 && baselines.size < uploadsPlaylists.size) {
+    warnings.push({
+      code: "OUTLIER_BASELINE_PARTIAL",
+      stage: "channel_enrichment",
+      message: "Für einige Kanäle konnte kein Vergleichswert für den Outlier-Wert ermittelt werden.",
+    });
+  }
+  const now = Date.now();
+
+  let videos: Video[] = orderedVideoIds.flatMap((id) => {
     const item = detailsById.get(id);
     if (!item) return [];
     const channel = channelDetails.get(item.snippet.channelId);
     const channelStats = channel?.statistics;
+    const baseline = baselines.get(item.snippet.channelId);
+    const viewCount = parseOptionalCount(item.statistics?.viewCount);
+    const viewsPerDay = viewCount === undefined ? undefined : Math.round((viewCount / ageInDays(item.snippet.publishedAt, now)) * 10) / 10;
+    const score = outlierScore(viewCount ?? null, baseline?.medianViews ?? null);
+    const velocity = outlierScore(viewsPerDay ?? null, baseline?.medianViewsPerDay ?? null);
 
     return [{
+      outlierScore: score ?? undefined,
+      velocityScore: velocity ?? undefined,
+      channelMedianViews: baseline?.medianViews ?? undefined,
+      channelSampleSize: baseline?.sampleSize,
+      viewsPerDay,
       id: item.id,
       title: item.snippet.title,
       channelTitle: item.snippet.channelTitle,
@@ -420,13 +462,37 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
     }];
   });
 
+  // Sprachfilter: Videos mit bekannter, abweichender Sprache entfernen.
+  // Videos ohne Sprachangabe bleiben, weil YouTube sie bereits nach
+  // Sprachpräferenz gewichtet hat.
+  if (filters.language && filters.language !== LanguageFilter.ANY) {
+    const wanted = filters.language;
+    const before = videos.length;
+    videos = videos.filter((video) => {
+      const language = (video.defaultAudioLanguage || video.defaultLanguage || "").toLowerCase();
+      return !language || language.startsWith(wanted);
+    });
+    if (videos.length < before) {
+      warnings.push({
+        code: "LANGUAGE_FILTERED",
+        stage: "video_details",
+        message: `${before - videos.length} Videos mit anderer Sprachangabe wurden ausgeblendet.`,
+      });
+    }
+  }
+
+  if (filters.sortBy === SortBy.OUTLIER) {
+    videos = [...videos].sort((left, right) => (right.outlierScore ?? -1) - (left.outlierScore ?? -1));
+  }
+  const finalOrderedIds = videos.map((video) => video.id);
+
   return {
     videos,
     totalResults: searchData.pageInfo?.totalResults || videos.length,
     nextPageToken: searchData.nextPageToken,
     resultsPerPage: searchData.pageInfo?.resultsPerPage || videos.length,
     regionCode: searchData.regionCode,
-    snapshotId: createSnapshotId(filters, orderedVideoIds, retrievedAt),
+    snapshotId: createSnapshotId(filters, finalOrderedIds, retrievedAt),
     retrievedAt,
     totalResultsIsApproximate: true,
     provenance: {
@@ -436,9 +502,10 @@ export async function searchVideos(filters: SearchFilters): Promise<SearchRespon
         uploadDate: filters.uploadDate,
         duration: filters.duration,
         sortBy: filters.sortBy,
+        language: filters.language,
         maxResults: filters.maxResults,
       },
-      orderedVideoIds,
+      orderedVideoIds: finalOrderedIds,
     },
     enrichment: {
       search: { status: "complete", requested: filters.maxResults, returned: orderedVideoIds.length },

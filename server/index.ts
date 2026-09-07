@@ -5,6 +5,7 @@ import { loadEnvFile } from "node:process";
 import { ENV_FILE_PATH } from "./settings";
 import { closeDatabase, getDatabaseError, initializeDatabase, isDatabaseConfigured, isDatabaseReady } from "./db";
 import { attachSession, bootstrapAdmin, cleanupExpiredSessions, rejectCrossOriginMutations, requireAuth } from "./auth";
+import { requestContextMiddleware } from "./request-context";
 
 // Die .env-Datei ergänzt nur fehlende Variablen. Bereits gesetzte
 // Umgebungsvariablen (z. B. aus Coolify) haben Vorrang.
@@ -98,6 +99,7 @@ app.use((req, res, next) => {
 (async () => {
   // Session aus dem Cookie lesen (blockiert nicht) und Cross-Site-Mutationen abweisen.
   app.use(attachSession);
+  app.use(requestContextMiddleware);
   app.use("/api", rejectCrossOriginMutations);
 
   // Login-Routen sind ohne Session erreichbar, alles andere unter /api braucht

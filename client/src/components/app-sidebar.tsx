@@ -38,7 +38,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, FileText, Play, Settings, Rocket, Check, ArrowRight, Image, History, Loader2, MoreHorizontal, Pencil, Trash2, ShieldCheck } from "lucide-react";
+import { Search, FileText, Play, Settings, Rocket, Check, ArrowRight, Image, History, Loader2, MoreHorizontal, Pencil, Trash2, ShieldCheck, Tv } from "lucide-react";
 import { useWorkflow } from "@/lib/workflow-context";
 import { useAuth } from "@/lib/auth-context";
 import { UserMenu } from "@/components/user-menu";
@@ -46,7 +46,20 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNowStrict } from "date-fns";
 import { de } from "date-fns/locale";
 
-const menuItems = [
+const stepOrder = ["research", "script", "thumbnail"] as const;
+type ShellWorkflowStep = typeof stepOrder[number];
+
+type MenuItem = {
+  title: string;
+  testId: string;
+  url: string;
+  icon: typeof Search;
+  // Nur Workflow-Schritte haben einen step; Tools ohne step bekommen keine
+  // Schritt-Markierung und ändern den Workflow-Schritt nicht.
+  step?: ShellWorkflowStep;
+};
+
+const menuItems: MenuItem[] = [
   {
     title: "Recherche",
     testId: "link-research",
@@ -68,10 +81,14 @@ const menuItems = [
     icon: Image,
     step: "thumbnail" as const,
   },
+  {
+    title: "Kanal",
+    testId: "link-channel",
+    url: "/channel",
+    icon: Tv,
+  },
 ];
 
-const stepOrder = ["research", "script", "thumbnail"] as const;
-type ShellWorkflowStep = typeof stepOrder[number];
 const stepLabels: Record<ShellWorkflowStep, string> = {
   research: "Recherche",
   script: "Skript",
@@ -268,7 +285,7 @@ export function AppSidebar() {
                     >
                       <Link
                         href={item.url}
-                        onClick={() => goToStep(item.step)}
+                        onClick={item.step ? () => goToStep(item.step as ShellWorkflowStep) : undefined}
                         aria-current={isActive ? "page" : undefined}
                         data-testid={item.testId}
                       >

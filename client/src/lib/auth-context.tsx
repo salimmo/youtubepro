@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AuthMeResponse, SessionUser } from "@shared/auth-contracts";
 import { queryClient } from "@/lib/queryClient";
+import { LANGUAGE_EVENT, setActiveLanguage, type UiLanguage } from "@/lib/i18n";
 
 export const UNAUTHORIZED_EVENT = "yp:unauthorized";
 
@@ -81,6 +82,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, []);
+
+  // Die am Konto gespeicherte Sprache gewinnt beim Login über die lokale Wahl.
+  const userId = user?.id;
+  const userLocale = user?.locale;
+  useEffect(() => {
+    if (userId && (userLocale === "de" || userLocale === "en")) setActiveLanguage(userLocale, { sync: false });
+  }, [userId, userLocale]);
+
+  // Sprachwechsel im Benutzerobjekt spiegeln, damit der Effekt oben nicht zurücksetzt.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const next = (event as CustomEvent<UiLanguage>).detail;
+      setUser((current) => (current && current.locale !== next ? { ...current, locale: next } : current));
+    };
+    window.addEventListener(LANGUAGE_EVENT, handler);
+    return () => window.removeEventListener(LANGUAGE_EVENT, handler);
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {

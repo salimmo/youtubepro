@@ -34,6 +34,18 @@ function formatDate(dateString: string): string {
   return `vor ${Math.floor(diffDays / 365)} ${Math.floor(diffDays / 365) === 1 ? "Jahr" : "Jahren"}`;
 }
 
+function outlierBadgeClass(score: number): string {
+  if (score >= 5) return "bg-primary text-primary-foreground";
+  if (score >= 2) return "bg-amber-400 text-black";
+  if (score < 1) return "bg-muted text-muted-foreground";
+  return "bg-secondary text-secondary-foreground";
+}
+
+function outlierTitle(video: Video): string {
+  const sample = video.channelSampleSize !== undefined ? ` (Stichprobe: ${video.channelSampleSize} Videos)` : "";
+  return `Outlier-Wert: Aufrufe im Verhältnis zum Median der letzten Uploads dieses Kanals${sample}`;
+}
+
 function formatDuration(duration?: string): string {
   if (!duration) return "";
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -80,6 +92,15 @@ export function VideoCard({ video, onClick }: VideoCardProps) {
           className="w-full h-full object-cover"
           loading="lazy"
         />
+        {video.outlierScore !== undefined && (
+          <span
+            className={`absolute top-2 left-2 rounded-md px-2 py-0.5 text-xs font-semibold shadow-sm ${outlierBadgeClass(video.outlierScore)}`}
+            title={outlierTitle(video)}
+            data-testid={`badge-outlier-${video.id}`}
+          >
+            {video.outlierScore.toLocaleString("de-DE", { maximumFractionDigits: 1 })}x
+          </span>
+        )}
         {video.duration && (
           <Badge
             variant="secondary"

@@ -32,12 +32,21 @@ export const changePasswordRequestSchema = z.object({
 }).strict();
 export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 
+export const UI_LOCALES = ["de", "en"] as const;
+export type UiLocale = (typeof UI_LOCALES)[number];
+
 export interface SessionUser {
   id: number;
   username: string;
   displayName: string;
   role: UserRole;
+  // Oberflächensprache; steuert auch die Sprache der KI-Ausgaben.
+  locale: UiLocale;
 }
+
+export const updateLocaleRequestSchema = z.object({
+  locale: z.enum(UI_LOCALES),
+}).strict();
 
 export interface AuthMeResponse {
   user: SessionUser;
@@ -76,6 +85,7 @@ export const ACTIVITY_ACTIONS = [
   "auth.logout",
   "auth.password_changed",
   "research.search",
+  "channel.analyze",
   "research.insights",
   "ideas.generate",
   "script.generate",
@@ -98,6 +108,7 @@ export const ACTIVITY_ACTION_LABELS: Record<ActivityAction, string> = {
   "auth.logout": "Abmeldung",
   "auth.password_changed": "Passwort geändert",
   "research.search": "YouTube-Suche",
+  "channel.analyze": "Kanalanalyse",
   "research.insights": "KI-Insights",
   "ideas.generate": "Ideen generiert",
   "script.generate": "Skript generiert",
@@ -116,6 +127,7 @@ export const ACTIVITY_ACTION_LABELS: Record<ActivityAction, string> = {
 // Inhaltsarten, die der Server zu einer Aktivität speichert.
 export const CONTENT_KINDS = [
   "research_snapshot",
+  "channel_analysis",
   "research_insights",
   "ideas",
   "script",
@@ -130,6 +142,7 @@ export type ContentKind = (typeof CONTENT_KINDS)[number];
 
 export const CONTENT_KIND_LABELS: Record<ContentKind, string> = {
   research_snapshot: "Recherche-Snapshot",
+  channel_analysis: "Kanalanalyse",
   research_insights: "KI-Insights",
   ideas: "Ideen",
   script: "Skript",

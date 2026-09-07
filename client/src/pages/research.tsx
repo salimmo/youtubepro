@@ -31,7 +31,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { StarryBackground } from "@/components/ui/starry-background";
 import type { IdeaGenerationResponse, IdeaPackage, Video, SearchResponse, ResearchInsightsResponse } from "@shared/schema";
-import { UploadDateFilter, DurationFilter, SortBy } from "@shared/schema";
+import { UploadDateFilter, DurationFilter, SortBy, LanguageFilter } from "@shared/schema";
 import { calculateYouTubeAnalytics } from "@/lib/youtube-analytics";
 import {
   DIFFICULTY_LABELS,
@@ -56,6 +56,7 @@ type AppliedFilters = {
   uploadDate: UploadDateFilter;
   duration: DurationFilter;
   sortBy: SortBy;
+  language: LanguageFilter;
 };
 
 type ApiWarning = SearchResponse["warnings"][number];
@@ -275,10 +276,12 @@ export default function ResearchDashboard() {
   const [uploadDate, setUploadDate] = useState<UploadDateFilter>(UploadDateFilter.ANY);
   const [duration, setDuration] = useState<DurationFilter>(DurationFilter.ANY);
   const [sortBy, setSortBy] = useState<SortBy>(SortBy.RELEVANCE);
+  const [language, setLanguage] = useState<LanguageFilter>(LanguageFilter.ANY);
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({
     uploadDate: UploadDateFilter.ANY,
     duration: DurationFilter.ANY,
     sortBy: SortBy.RELEVANCE,
+    language: LanguageFilter.ANY,
   });
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -317,10 +320,13 @@ export default function ResearchDashboard() {
       setUploadDate(cached.filters.uploadDate as UploadDateFilter);
       setDuration(cached.filters.duration as DurationFilter);
       setSortBy(cached.filters.sortBy as SortBy);
+      const cachedLanguage = (cached.filters.language as LanguageFilter | undefined) || LanguageFilter.ANY;
+      setLanguage(cachedLanguage);
       setAppliedFilters({
         uploadDate: cached.filters.uploadDate as UploadDateFilter,
         duration: cached.filters.duration as DurationFilter,
         sortBy: cached.filters.sortBy as SortBy,
+        language: cachedLanguage,
       });
       if (cached.insights) {
         setInsights(cached.insights as ResearchInsights);
@@ -348,6 +354,7 @@ export default function ResearchDashboard() {
             uploadDate: cached.filters.uploadDate as UploadDateFilter,
             duration: cached.filters.duration as DurationFilter,
             sortBy: cached.filters.sortBy as SortBy,
+            language: cachedLanguage,
             maxResults: 50,
           },
           orderedVideoIds: cached.videos.map((video) => video.id),
@@ -394,10 +401,12 @@ export default function ResearchDashboard() {
     setUploadDate(UploadDateFilter.ANY);
     setDuration(DurationFilter.ANY);
     setSortBy(SortBy.RELEVANCE);
+    setLanguage(LanguageFilter.ANY);
     setAppliedFilters({
       uploadDate: UploadDateFilter.ANY,
       duration: DurationFilter.ANY,
       sortBy: SortBy.RELEVANCE,
+      language: LanguageFilter.ANY,
     });
     setCachedData(null);
     setInsights(null);
@@ -434,6 +443,7 @@ export default function ResearchDashboard() {
       uploadDate: appliedFilters.uploadDate,
       duration: appliedFilters.duration,
       sortBy: appliedFilters.sortBy,
+      language: appliedFilters.language,
       maxResults: "50",
     });
     return `/api/youtube/search?${params}`;
@@ -446,6 +456,7 @@ export default function ResearchDashboard() {
       appliedFilters.uploadDate,
       appliedFilters.duration,
       appliedFilters.sortBy,
+      appliedFilters.language,
     ],
     queryFn: async ({ signal }) => {
       let res: Response;
@@ -475,6 +486,7 @@ export default function ResearchDashboard() {
     appliedFilters.uploadDate,
     appliedFilters.duration,
     appliedFilters.sortBy,
+    appliedFilters.language,
     sourceData?.retrievedAt || "cached",
     sourceData?.videos?.map((video) => video.id).join(",") || "",
   ].join("|");
@@ -669,7 +681,8 @@ export default function ResearchDashboard() {
       const sameSearch = nextQuery === submittedQuery
         && uploadDate === appliedFilters.uploadDate
         && duration === appliedFilters.duration
-        && sortBy === appliedFilters.sortBy;
+        && sortBy === appliedFilters.sortBy
+        && language === appliedFilters.language;
       insightAbortRef.current?.abort();
       ideaAbortRef.current?.abort();
       setCachedData(null);
@@ -684,11 +697,11 @@ export default function ResearchDashboard() {
       setExportError(null);
       insightsFetchedRef.current = "";
       ideasFetchedRef.current = "";
-      setAppliedFilters({ uploadDate, duration, sortBy });
+      setAppliedFilters({ uploadDate, duration, sortBy, language });
       setSubmittedQuery(nextQuery);
       if (sameSearch) await refetch();
     }
-  }, [searchQuery, submittedQuery, uploadDate, duration, sortBy, appliedFilters, refetch]);
+  }, [searchQuery, submittedQuery, uploadDate, duration, sortBy, language, appliedFilters, refetch]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -729,6 +742,7 @@ export default function ResearchDashboard() {
         uploadDate: appliedFilters.uploadDate,
         duration: appliedFilters.duration,
         sortBy: appliedFilters.sortBy,
+        language: appliedFilters.language,
       },
       analytics,
       videos: sourceData.videos,
@@ -772,6 +786,15 @@ export default function ResearchDashboard() {
       : null;
   }, [data, cachedData]);
 
+  // Top 5 nach Outlier-Wert; nur Videos, für die der Server eine Kanal-Baseline hatte.
+  const outlierLeaders = useMemo(() => {
+    const sourceVideos = (data || cachedData)?.videos || [];
+    return sourceVideos
+      .filter((video): video is Video & { outlierScore: number } => typeof video.outlierScore === "number")
+      .sort((a, b) => b.outlierScore - a.outlierScore)
+      .slice(0, 5);
+  }, [data, cachedData]);
+
   const saveResearchToCache = useCallback(() => {
     const sourceData = data || cachedData;
     if (!sourceData?.videos || !analytics) return;
@@ -799,6 +822,7 @@ export default function ResearchDashboard() {
         uploadDate: appliedFilters.uploadDate,
         duration: appliedFilters.duration,
         sortBy: appliedFilters.sortBy,
+        language: appliedFilters.language,
       },
       timestamp: Date.now(),
       snapshotId: sourceData.snapshotId,
@@ -955,9 +979,11 @@ export default function ResearchDashboard() {
               uploadDate={uploadDate}
               duration={duration}
               sortBy={sortBy}
+              language={language}
               onUploadDateChange={setUploadDate}
               onDurationChange={setDuration}
               onSortByChange={setSortBy}
+              onLanguageChange={setLanguage}
             />
             {hasSearched && (
               <p className="text-xs text-muted-foreground">
@@ -1463,6 +1489,46 @@ export default function ResearchDashboard() {
                     </Card>
                     </div>
                   </div>
+
+                  {outlierLeaders.length > 0 && (
+                    <Card data-testid="card-outlier-videos">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Sparkles className="h-4 w-4" />
+                          Outlier-Videos
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground">
+                          Outlier-Wert = Aufrufe geteilt durch den Median der letzten Uploads desselben Kanals.
+                        </p>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {outlierLeaders.map((video, index) => (
+                          <a
+                            key={video.id}
+                            href={`https://www.youtube.com/watch?v=${video.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 rounded-lg border border-border/70 bg-muted/10 p-3 transition-colors hover:border-[hsl(var(--info)/.35)] hover:bg-[hsl(var(--info)/.05)]"
+                            data-testid={`outlier-video-${index}`}
+                          >
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-info-subtle text-xs font-semibold text-info">{index + 1}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{video.title}</p>
+                              <p className="text-xs text-muted-foreground">{video.channelTitle}</p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-3 text-right">
+                              <Badge variant="outline" className="font-semibold">
+                                {video.outlierScore.toLocaleString("de-DE", { maximumFractionDigits: 1 })}x
+                              </Badge>
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {video.viewCount === undefined ? "k. A." : formatNumber(video.viewCount)} Aufrufe
+                              </span>
+                            </div>
+                          </a>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
 
                   <div>
                     <Card>

@@ -30,6 +30,7 @@ export interface ResearchReportData {
     uploadDate: string;
     duration: string;
     sortBy: string;
+    language?: string;
   };
   analytics: ResearchAnalytics;
   videos: Video[];
@@ -56,6 +57,11 @@ function readable(value: Cell): string {
 
 function joined(values?: readonly string[]): string {
   return values && values.length > 0 ? values.join(" | ") : "k. A.";
+}
+
+// Verhältniswerte auf zwei Nachkommastellen; fehlende Baseline bleibt leer (k. A.).
+function roundedMetric(value?: number, digits = 2): number | undefined {
+  return value === undefined ? undefined : Number(value.toFixed(digits));
 }
 
 function videoInteractionRate(video: Video): string {
@@ -97,6 +103,7 @@ export function buildResearchExportTables(data: ResearchReportData): ExportTable
       ["Upload-Datum-Filter", data.filters.uploadDate],
       ["Dauer-Filter", data.filters.duration],
       ["Sortierung", data.filters.sortBy],
+      ["Sprachfilter", data.filters.language],
       ["Kurzfassung", insights.summary],
     ],
   };
@@ -133,7 +140,8 @@ export function buildResearchExportTables(data: ResearchReportData): ExportTable
     name: "Videos",
     columns: [
       "Rang", "Video-ID", "Titel", "Kanal", "Kanal-ID", "Veröffentlicht", "Dauer",
-      "Aufrufe", "Likes", "Kommentare", "Sichtbare Interaktionsrate", "Tags", "Kategorie-ID",
+      "Aufrufe", "Likes", "Kommentare", "Sichtbare Interaktionsrate",
+      "Outlier-Wert", "Tempo-Wert", "Aufrufe/Tag", "Tags", "Kategorie-ID",
       "Live-Status", "Untertitel", "Auflösung", "Lizenzierter Inhalt", "Einbettbar",
       "Für Kinder", "Bezahlte Produktplatzierung", "Standardsprache", "Audiosprache",
       "Themenkategorien", "Live: tatsächlicher Start", "Live: tatsächliches Ende", "Live: geplanter Start",
@@ -154,6 +162,9 @@ export function buildResearchExportTables(data: ResearchReportData): ExportTable
       video.likeCount,
       video.commentCount,
       videoInteractionRate(video),
+      roundedMetric(video.outlierScore),
+      roundedMetric(video.velocityScore),
+      roundedMetric(video.viewsPerDay, 0),
       joined(video.tags),
       video.categoryId,
       video.liveBroadcastContent,

@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { searchVideos } from "./youtube";
+import { analyzeChannel } from "./youtube-channel";
+import { channelAnalysisRequestSchema } from "@shared/channel-contracts";
 import { generateScript, generateIdeas, generateResearchInsights, regenerateTitles, regenerateSection, regenerateParagraph, generateThumbnail, generateThumbnailSuggestions, extractNarrationText } from "./gemini";
 import { ideaGenerationRequestSchema, researchInsightsRequestSchema, searchFiltersSchema, scriptInputSchema } from "@shared/schema";
 import { z } from "zod";
@@ -56,10 +58,44 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/channel/analyze", rateLimit, async (req, res) => {
+    const activity = startActivity(req, res, "channel.analyze", () => `Kanal "${truncate(req.query.channel, 100)}"`);
+    try {
+      const parsed = channelAnalysisRequestSchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Bitte gib ein Kanal-Handle (z. B. @Finanz4U), eine Kanal-URL oder eine Kanal-ID an." });
+      }
+      const result = await analyzeChannel(parsed.data);
+      res.json(result);
+      void activity.success(() => ({
+        summary: `Kanal "${result.channel.title}" (${result.stats.analyzedVideos} Videos${result.cached ? ", aus Cache" : ""})`,
+        details: { channelId: result.channel.id, handle: result.channel.handle, videos: result.stats.analyzedVideos, medianViews: result.stats.medianViews, cached: result.cached },
+        content: result.cached ? null : {
+          kind: "channel_analysis",
+          title: `Kanal: ${result.channel.title}`,
+          payload: {
+            channel: result.channel,
+            stats: result.stats,
+            retrievedAt: result.retrievedAt,
+            videos: result.videos.slice(0, 50).map((video) => ({
+              id: video.id, title: video.title, publishedAt: video.publishedAt, url: video.url, thumbnailUrl: video.thumbnailUrl,
+              viewCount: video.viewCount, likeCount: video.likeCount, commentCount: video.commentCount, duration: video.duration,
+              outlierScore: video.outlierScore, velocityScore: video.velocityScore,
+            })),
+          },
+        },
+      }));
+    } catch (error: unknown) {
+      console.error("Channel analysis error:", error);
+      const providerError = normalizeProviderError(error, "youtube");
+      res.status(providerError.status).json(providerErrorPayload(providerError, "YouTube-Kanalanalyse"));
+    }
+  });
+
   app.get("/api/youtube/search", rateLimit, async (req, res) => {
     const activity = startActivity(req, res, "research.search", () => `Suche "${truncate(req.query.query, 120)}"`);
     try {
-      const { query, uploadDate, duration, sortBy, maxResults } = req.query;
+      const { query, uploadDate, duration, sortBy, maxResults, language } = req.query;
 
       if (!query || typeof query !== "string") {
         return res.status(400).json({ error: "Ein Suchbegriff ist erforderlich" });
@@ -70,6 +106,7 @@ export async function registerRoutes(
         uploadDate: uploadDate || "any",
         duration: duration || "any",
         sortBy: sortBy || "relevance",
+        language: language || "any",
         maxResults: maxResults ? parseInt(maxResults as string, 10) : 25,
       });
 

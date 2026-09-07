@@ -6,6 +6,7 @@ import {
   adminUpdateUserSchema,
   changePasswordRequestSchema,
   loginRequestSchema,
+  updateLocaleRequestSchema,
   type ActivityEntry,
   type ActivityListResponse,
   type AdminStats,
@@ -23,6 +24,7 @@ import {
   requireAdmin,
   requireAuth,
   setSessionCookie,
+  updateLocale,
   updatePassword,
   verifyPassword,
   databaseUnavailablePayload,
@@ -47,6 +49,7 @@ interface AdminUserRow {
   created_at: Date;
   last_login_at: Date | null;
   activity_count: string;
+  locale?: string | null;
 }
 
 function toAdminUser(row: AdminUserRow): AdminUser {
@@ -55,6 +58,7 @@ function toAdminUser(row: AdminUserRow): AdminUser {
     username: row.username,
     displayName: row.display_name,
     role: row.role,
+    locale: row.locale === "en" ? "en" : "de",
     active: row.active,
     createdAt: new Date(row.created_at).toISOString(),
     lastLoginAt: row.last_login_at ? new Date(row.last_login_at).toISOString() : null,
@@ -63,7 +67,7 @@ function toAdminUser(row: AdminUserRow): AdminUser {
 }
 
 const ADMIN_USER_SELECT = `
-  SELECT u.id, u.username, u.display_name, u.role, u.active, u.created_at, u.last_login_at,
+  SELECT u.id, u.username, u.display_name, u.role, u.active, u.locale, u.created_at, u.last_login_at,
          (SELECT count(*) FROM activity_log a WHERE a.user_id = u.id)::text AS activity_count
   FROM users u`;
 
@@ -132,7 +136,7 @@ export function registerAuthRoutes(app: Express): void {
 
       const token = await createSession(req, user.id);
       setSessionCookie(req, res, token);
-      const sessionUser = { id: user.id, username: user.username, displayName: user.display_name, role: user.role };
+      const sessionUser = { id: user.id, username: user.username, displayName: user.display_name, role: user.role, locale: (user.locale === "en" ? "en" : "de") as "de" | "en" };
       req.user = sessionUser;
       await recordActivity(req, { action: "auth.login", durationMs: Date.now() - startedAt, summary: "Angemeldet" });
       return res.json({ user: sessionUser });
@@ -155,6 +159,19 @@ export function registerAuthRoutes(app: Express): void {
   app.get("/api/auth/me", requireAuth, (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     return res.json({ user: req.user });
+  });
+
+  app.post("/api/auth/locale", requireAuth, async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const parsed = updateLocaleRequestSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: zodMessage(parsed.error) });
+    try {
+      await updateLocale(req.user!.id, parsed.data.locale);
+      return res.json({ success: true, locale: parsed.data.locale });
+    } catch (error: any) {
+      console.error("Locale update error:", error?.message || error);
+      return res.status(500).json({ error: "Sprache konnte nicht gespeichert werden." });
+    }
   });
 
   app.post("/api/auth/password", requireAuth, async (req, res) => {

@@ -1,4 +1,4 @@
-import { UploadDateFilter, DurationFilter, SortBy } from "@shared/schema";
+import { UploadDateFilter, DurationFilter, SortBy, LanguageFilter } from "@shared/schema";
 import {
   Select,
   SelectContent,
@@ -12,9 +12,11 @@ interface SearchFiltersProps {
   uploadDate: UploadDateFilter;
   duration: DurationFilter;
   sortBy: SortBy;
+  language: LanguageFilter;
   onUploadDateChange: (value: UploadDateFilter) => void;
   onDurationChange: (value: DurationFilter) => void;
   onSortByChange: (value: SortBy) => void;
+  onLanguageChange: (value: LanguageFilter) => void;
 }
 
 const uploadDateOptions = [
@@ -38,15 +40,24 @@ const sortByOptions = [
   { value: SortBy.DATE, label: "Upload-Datum" },
   { value: SortBy.VIEW_COUNT, label: "Aufrufe" },
   { value: SortBy.RATING, label: "Bewertung" },
+  { value: SortBy.OUTLIER, label: "Outlier-Wert" },
+];
+
+const languageOptions = [
+  { value: LanguageFilter.ANY, label: "Alle Sprachen" },
+  { value: LanguageFilter.GERMAN, label: "Deutsch" },
+  { value: LanguageFilter.ENGLISH, label: "Englisch" },
 ];
 
 export function SearchFilters({
   uploadDate,
   duration,
   sortBy,
+  language,
   onUploadDateChange,
   onDurationChange,
   onSortByChange,
+  onLanguageChange,
 }: SearchFiltersProps) {
   return (
     <div className="flex flex-wrap items-center gap-4">
@@ -90,6 +101,22 @@ export function SearchFilters({
           </SelectTrigger>
           <SelectContent>
             {sortByOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="filter-language" className="text-xs text-muted-foreground">Sprache</Label>
+        <Select value={language} onValueChange={onLanguageChange}>
+          <SelectTrigger id="filter-language" className="w-[140px]" data-testid="select-language">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {languageOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>

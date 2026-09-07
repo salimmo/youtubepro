@@ -8,7 +8,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Eye, ThumbsUp, MessageSquare, Calendar, Clock, ExternalLink, Tag } from "lucide-react";
+import { Eye, ThumbsUp, MessageSquare, Calendar, Clock, ExternalLink, Tag, Sparkles, Zap, Activity } from "lucide-react";
 
 interface VideoDetailDialogProps {
   video: Video | null;
@@ -29,6 +29,10 @@ function formatDate(dateString: string): string {
     month: "long",
     day: "numeric",
   });
+}
+
+function formatRatio(value: number): string {
+  return `${value.toLocaleString("de-DE", { maximumFractionDigits: 1 })}x`;
 }
 
 function formatDuration(duration?: string): string {
@@ -54,6 +58,9 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
   const engagementRate = video.viewCount && video.likeCount !== undefined && video.commentCount !== undefined
     ? ((video.likeCount + video.commentCount) / video.viewCount) * 100
     : null;
+  const hasPerformanceScores = video.outlierScore !== undefined
+    || video.velocityScore !== undefined
+    || video.viewsPerDay !== undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,6 +128,48 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                   <span className="text-xs text-muted-foreground">Dauer</span>
                 </div>
               </div>
+
+              {hasPerformanceScores && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {video.outlierScore !== undefined && (
+                      <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50" data-testid="stat-outlier-score">
+                        <Sparkles className="h-5 w-5 text-muted-foreground mb-1" />
+                        <span className="text-lg font-semibold">{formatRatio(video.outlierScore)}</span>
+                        <span className="text-xs text-muted-foreground">Outlier-Wert</span>
+                      </div>
+                    )}
+                    {video.velocityScore !== undefined && (
+                      <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50" data-testid="stat-velocity-score">
+                        <Zap className="h-5 w-5 text-muted-foreground mb-1" />
+                        <span className="text-lg font-semibold">{formatRatio(video.velocityScore)}</span>
+                        <span className="text-xs text-muted-foreground">Tempo-Wert</span>
+                      </div>
+                    )}
+                    {video.viewsPerDay !== undefined && (
+                      <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50" data-testid="stat-views-per-day">
+                        <Activity className="h-5 w-5 text-muted-foreground mb-1" />
+                        <span className="text-lg font-semibold">{Math.round(video.viewsPerDay).toLocaleString("de-DE")}</span>
+                        <span className="text-xs text-muted-foreground">Aufrufe/Tag</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {video.outlierScore !== undefined && (
+                      <>
+                        Outlier-Wert = Aufrufe geteilt durch den Median der letzten Uploads dieses Kanals
+                        {video.channelMedianViews !== undefined
+                          ? ` (Median: ${formatViews(video.channelMedianViews)}${video.channelSampleSize !== undefined ? `, Stichprobe: ${video.channelSampleSize} Videos` : ""})`
+                          : ""}
+                        .{" "}
+                      </>
+                    )}
+                    {video.velocityScore !== undefined && (
+                      <>Tempo-Wert = Aufrufe pro Tag im Verhältnis zum Median der Aufrufe pro Tag desselben Kanals.</>
+                    )}
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />

@@ -38,7 +38,15 @@ export enum SortBy {
   RELEVANCE = "relevance",
   DATE = "date",
   VIEW_COUNT = "viewCount",
-  RATING = "rating"
+  RATING = "rating",
+  // Wird serverseitig nach der Anreicherung sortiert, nicht von YouTube.
+  OUTLIER = "outlier"
+}
+
+export enum LanguageFilter {
+  ANY = "any",
+  GERMAN = "de",
+  ENGLISH = "en"
 }
 
 export const videoSchema = z.object({
@@ -85,6 +93,13 @@ export const videoSchema = z.object({
     keywords: z.string().max(1_000).optional(),
     topicCategories: z.array(z.string().url().max(2_048)).max(20).optional(),
   }).optional(),
+  // Outlier-Anreicherung: Aufrufe im Verhältnis zum Median der letzten
+  // Uploads desselben Kanals (wie 1of10). Fehlt, wenn keine Baseline vorlag.
+  outlierScore: z.number().nonnegative().optional(),
+  velocityScore: z.number().nonnegative().optional(),
+  channelMedianViews: z.number().nonnegative().optional(),
+  channelSampleSize: z.number().int().nonnegative().optional(),
+  viewsPerDay: z.number().nonnegative().optional(),
 }).strict();
 
 export type Video = z.infer<typeof videoSchema>;
@@ -94,6 +109,7 @@ export const searchFiltersSchema = z.object({
   uploadDate: z.nativeEnum(UploadDateFilter).default(UploadDateFilter.ANY),
   duration: z.nativeEnum(DurationFilter).default(DurationFilter.ANY),
   sortBy: z.nativeEnum(SortBy).default(SortBy.RELEVANCE),
+  language: z.nativeEnum(LanguageFilter).default(LanguageFilter.ANY),
   maxResults: z.number().min(1).max(50).default(25),
 });
 
@@ -145,6 +161,7 @@ export const searchProvenanceSchema = z.object({
     uploadDate: z.nativeEnum(UploadDateFilter),
     duration: z.nativeEnum(DurationFilter),
     sortBy: z.nativeEnum(SortBy),
+    language: z.nativeEnum(LanguageFilter).optional(),
     maxResults: z.number().int().min(1).max(50),
   }),
   orderedVideoIds: z.array(z.string().trim().min(1).max(128)).max(50),

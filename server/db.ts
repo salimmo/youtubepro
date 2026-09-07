@@ -111,6 +111,7 @@ const MIGRATIONS: string[] = [
   `CREATE INDEX IF NOT EXISTS activity_log_action_idx ON activity_log(action, id DESC)`,
   `CREATE INDEX IF NOT EXISTS activity_log_created_at_idx ON activity_log(created_at DESC)`,
   `ALTER TABLE contents ADD COLUMN IF NOT EXISTS activity_id BIGINT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'de'`,
   `CREATE TABLE IF NOT EXISTS workflows (
     id TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -127,6 +128,21 @@ const MIGRATIONS: string[] = [
     state JSONB NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS workflows_user_id_idx ON workflows(user_id, updated_at DESC)`,
+  // Kanalanalyse-Cache (12 h) und Outlier-Baselines je Kanal (24 h). Beides
+  // sind reine Zwischenspeicher öffentlicher YouTube-Daten.
+  `CREATE TABLE IF NOT EXISTS channel_cache (
+    cache_key TEXT PRIMARY KEY,
+    channel_id TEXT NOT NULL,
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    payload JSONB NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS channel_baseline (
+    channel_id TEXT PRIMARY KEY,
+    median_views DOUBLE PRECISION,
+    median_views_per_day DOUBLE PRECISION,
+    sample_size INTEGER NOT NULL DEFAULT 0,
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
 ];
 
 export async function migrate(): Promise<void> {

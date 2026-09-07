@@ -1,4 +1,5 @@
 import type { ProviderErrorCategory, ProviderErrorResponse } from "@shared/schema";
+import { currentLocale } from "./request-context";
 
 export class ProviderError extends Error {
   readonly category: ProviderErrorCategory;
@@ -144,9 +145,45 @@ export function providerErrorPayload(error: ProviderError, contextLabel: string)
     },
   };
 
+  const copyEn: Record<ProviderErrorCategory, { error: string; suggestion: string }> = {
+    missing_key: {
+      error: `${contextLabel} is not configured`,
+      suggestion: "Add the provider API key in Settings, then try again.",
+    },
+    invalid_key: {
+      error: `${contextLabel} rejected the configured API key`,
+      suggestion: "Replace the API key in Settings and check its restrictions with the provider.",
+    },
+    quota: {
+      error: `Quota for ${contextLabel} is not available`,
+      suggestion: "Wait for the quota to reset or check the quota with the provider before retrying.",
+    },
+    timeout: {
+      error: `${contextLabel} timed out`,
+      suggestion: "Check the connection and retry. Repeated timeouts may indicate a provider incident.",
+    },
+    network: {
+      error: `${contextLabel} could not be reached`,
+      suggestion: "Check the server's network connection and retry.",
+    },
+    provider_server: {
+      error: `${contextLabel} returned a server error`,
+      suggestion: "Retry after a short delay. If it continues, check the provider status page.",
+    },
+    invalid_response: {
+      error: `${contextLabel} returned an invalid response`,
+      suggestion: "Retry once. If it continues, choose another supported model or report the response format error.",
+    },
+    unknown: {
+      error: `${contextLabel} ran into a problem`,
+      suggestion: "Retry once. If it continues, check the server logs for the provider error code.",
+    },
+  };
+
   const detail = sanitizeProviderDetail(error.message);
+  const localized = currentLocale() === "en" ? copyEn : copy;
   return {
-    ...copy[error.category],
+    ...localized[error.category],
     code: error.code,
     category: error.category,
     retryable: error.retryable,
