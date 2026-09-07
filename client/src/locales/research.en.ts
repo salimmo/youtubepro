@@ -109,7 +109,14 @@ const dictionary: Record<string, string> = {
 
   // Source videos
   "research.sourceVideosHeading": "Source Videos ({count})",
-  "research.sourceVideosDescription": "All returned videos used for the overview and AI analysis appear below in YouTube result order.",
+  "research.sourceVideosDescription": "All returned videos used for the overview and AI analysis. Sorting here only changes the display, not the snapshot.",
+  "research.sourceSort.label": "Sort by",
+  "research.sourceSort.youtube": "YouTube order",
+  "research.sourceSort.outlier": "Outlier score",
+  "research.sourceSort.views": "Views",
+  "research.sourceSort.newest": "Newest first",
+  "research.sourceSort.likes": "Likes",
+  "research.sourceSort.comments": "Comments",
 
   // AI insights
   "research.insightsGeneratingBadge": "Generating while you review…",

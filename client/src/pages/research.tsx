@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { VideoCard } from "@/components/video-card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VideoCardSkeleton } from "@/components/video-card-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { SearchFilters } from "@/components/search-filters";
@@ -901,6 +902,32 @@ export default function ResearchDashboard() {
   const hasResults = effectiveData?.videos && effectiveData.videos.length > 0;
   const hasSearched = submittedQuery.length > 0;
   const displayedVideos = effectiveData?.videos || [];
+
+  // Sortierung der Quellvideo-Kacheln, rein clientseitig ohne neue Suche.
+  type SourceSort = "youtube" | "outlier" | "views" | "newest" | "likes" | "comments";
+  const [sourceSort, setSourceSort] = useState<SourceSort>("youtube");
+  const sortedSourceVideos = useMemo(() => {
+    if (sourceSort === "youtube") return displayedVideos;
+    const value = (video: Video): number => {
+      switch (sourceSort) {
+        case "outlier": return video.outlierScore ?? -1;
+        case "views": return video.viewCount ?? -1;
+        case "newest": return new Date(video.publishedAt).getTime() || 0;
+        case "likes": return video.likeCount ?? -1;
+        case "comments": return video.commentCount ?? -1;
+        default: return 0;
+      }
+    };
+    return [...displayedVideos].sort((left, right) => value(right) - value(left));
+  }, [displayedVideos, sourceSort]);
+  const sourceSortOptions: Array<{ value: SourceSort; label: string }> = [
+    { value: "youtube", label: t("research.sourceSort.youtube") },
+    { value: "outlier", label: t("research.sourceSort.outlier") },
+    { value: "views", label: t("research.sourceSort.views") },
+    { value: "newest", label: t("research.sourceSort.newest") },
+    { value: "likes", label: t("research.sourceSort.likes") },
+    { value: "comments", label: t("research.sourceSort.comments") },
+  ];
   const searchError = error instanceof ResearchRequestError
     ? error
     : isError
@@ -1563,17 +1590,32 @@ export default function ResearchDashboard() {
               )}
 
               <section className="scroll-mt-40 space-y-4 border-t border-border/70 pt-7" aria-labelledby="research-videos-heading">
-                <div>
-                  <h2 id="research-videos-heading" className="text-lg font-semibold flex items-center gap-2">
-                    <VideoIcon className="h-5 w-5" />
-                    {t("research.sourceVideosHeading", { count: displayedVideos.length })}
-                  </h2>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t("research.sourceVideosDescription")}
-                  </p>
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 id="research-videos-heading" className="text-lg font-semibold flex items-center gap-2">
+                      <VideoIcon className="h-5 w-5" />
+                      {t("research.sourceVideosHeading", { count: displayedVideos.length })}
+                    </h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t("research.sourceVideosDescription")}
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="source-videos-sort" className="text-xs text-muted-foreground">{t("research.sourceSort.label")}</label>
+                    <Select value={sourceSort} onValueChange={(value) => setSourceSort(value as SourceSort)}>
+                      <SelectTrigger id="source-videos-sort" className="w-[190px]" data-testid="select-source-sort">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sourceSortOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                  {displayedVideos.map((video) => (
+                  {sortedSourceVideos.map((video) => (
                     <VideoCard
                       key={video.id}
                       video={video}
