@@ -215,7 +215,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-3">
           <Link href="/" onClick={() => goToStep("research")} className="flex min-w-0 items-center gap-3" aria-label={t("shell.homeLink")}>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary">
               <Play className="h-5 w-5 text-primary-foreground" fill="currentColor" aria-hidden="true" />
@@ -229,7 +229,8 @@ export function AppSidebar() {
               </span>
             </div>
           </Link>
-          <LanguageSwitch compact={sidebarState === "collapsed"} className="shrink-0" />
+          {/* Sprachumschalter in eigener Zeile, damit der Titel nicht abgeschnitten wird. */}
+          <LanguageSwitch compact={sidebarState === "collapsed"} className="self-start" />
         </div>
       </SidebarHeader>
 
