@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useT } from "@/lib/i18n";
 
 interface ModelOption {
   id: string;
@@ -44,10 +45,6 @@ interface KeyFieldProps {
   children?: ReactNode;
 }
 
-const REMOTE_SETTINGS_HINT =
-  "Die Einstellungen sind Administratoren vorbehalten. "
-  + "Bei einem Server-Deployment (z. B. über Coolify) kannst du die API-Schlüssel auch als Umgebungsvariablen anlegen.";
-
 function KeyField({
   id,
   label,
@@ -58,6 +55,7 @@ function KeyField({
   providerLabel,
   children,
 }: KeyFieldProps) {
+  const t = useT();
   const [showKey, setShowKey] = useState(false);
 
   return (
@@ -73,7 +71,7 @@ function KeyField({
             ? "border-green-500/40 bg-green-500/10 text-green-500"
             : "text-muted-foreground"}
         >
-          {configured ? "Konfiguriert" : "Nicht konfiguriert"}
+          {configured ? t("settings.configured") : t("settings.notConfigured")}
         </Badge>
       </div>
 
@@ -85,7 +83,7 @@ function KeyField({
           type={showKey ? "text" : "password"}
           autoComplete="off"
           spellCheck={false}
-          placeholder={configured ? "Neuen Schlüssel eingeben" : "API-Schlüssel einfügen"}
+          placeholder={configured ? t("settings.newKeyPlaceholder") : t("settings.keyPlaceholder")}
           className="pr-11 font-mono"
           data-testid={`input-${id}`}
         />
@@ -95,7 +93,7 @@ function KeyField({
           size="icon"
           className="absolute right-0 top-0"
           onClick={() => setShowKey((visible) => !visible)}
-          aria-label={showKey ? `${label} verbergen` : `${label} anzeigen`}
+          aria-label={showKey ? t("settings.hideKey", { label }) : t("settings.showKey", { label })}
         >
           {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </Button>
@@ -117,6 +115,7 @@ function KeyField({
 }
 
 export default function SettingsPage() {
+  const t = useT();
   const [status, setStatus] = useState<ApiKeyStatus>({
     youtube: false,
     gemini: false,
@@ -136,14 +135,14 @@ export default function SettingsPage() {
       try {
         const response = await fetch("/api/settings/status", { cache: "no-store" });
         const data = await response.json();
-        if (response.status === 403) throw new Error(REMOTE_SETTINGS_HINT);
-        if (!response.ok) throw new Error(data.error || "Einstellungen konnten nicht geladen werden.");
+        if (response.status === 403) throw new Error(t("settings.remoteHint"));
+        if (!response.ok) throw new Error(data.error || t("settings.loadFailed"));
         const nextStatus = data as ApiKeyStatus;
         setStatus(nextStatus);
         setGeminiTextModel(nextStatus.models.text);
         setGeminiImageModel(nextStatus.models.image);
       } catch (error: any) {
-        setLoadError(error?.message || "Einstellungen konnten nicht geladen werden.");
+        setLoadError(error?.message || t("settings.loadFailed"));
       } finally {
         setIsLoading(false);
       }
@@ -161,8 +160,8 @@ export default function SettingsPage() {
 
     if (!youtubeApiKey && !geminiApiKey && !modelsChanged) {
       toast({
-        title: "Keine Änderungen zum Speichern",
-        description: "Gib einen neuen Schlüssel ein oder wähle ein anderes Modell.",
+        title: t("settings.noChangesTitle"),
+        description: t("settings.noChangesDescription"),
       });
       return;
     }
@@ -182,15 +181,15 @@ export default function SettingsPage() {
       if (youtubeKeyRef.current) youtubeKeyRef.current.value = "";
       if (geminiKeyRef.current) geminiKeyRef.current.value = "";
       toast({
-        title: "API-Einstellungen gespeichert",
-        description: "Der lokale Server verwendet jetzt die aktualisierten Anbieter-Einstellungen.",
+        title: t("settings.savedTitle"),
+        description: t("settings.savedDescription"),
       });
     } catch (error: any) {
       toast({
-        title: "Einstellungen konnten nicht gespeichert werden",
+        title: t("settings.saveFailedTitle"),
         description: typeof error?.message === "string" && error.message.startsWith("403")
-          ? REMOTE_SETTINGS_HINT
-          : (error?.message || "Prüfe den Schlüssel und versuche es erneut."),
+          ? t("settings.remoteHint")
+          : (error?.message || t("settings.saveFailedFallback")),
         variant: "destructive",
       });
     } finally {
@@ -203,72 +202,68 @@ export default function SettingsPage() {
       <div>
         <div className="flex items-center gap-2 text-primary">
           <KeyRound className="h-5 w-5" />
-          <span className="text-sm font-medium">Lokale Verbindungen</span>
+          <span className="text-sm font-medium">{t("settings.eyebrow")}</span>
         </div>
-        <h1 className="mt-2 text-3xl font-bold">Einstellungen</h1>
+        <h1 className="mt-2 text-3xl font-bold">{t("settings.title")}</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          Verbinde die Anbieter, die für die YouTube-Recherche und die KI-Generierung genutzt werden.
+          {t("settings.intro")}
         </p>
       </div>
 
       <Alert>
         <ShieldCheck className="h-4 w-4" />
-        <AlertTitle>Lokal gespeichert</AlertTitle>
+        <AlertTitle>{t("settings.storedLocallyTitle")}</AlertTitle>
         <AlertDescription>
-          Schlüssel werden in die von Git ignorierte <code>.env</code>-Datei des
-          Servers geschrieben, lesbar nur für den Besitzer. Gespeicherte Werte werden
-          nie an den Browser zurückgegeben, und die Eingabefelder werden nach dem
-          Speichern geleert. Änderungen an den Einstellungen werden nur von diesem
-          Rechner aus akzeptiert.
+          {t("settings.storedLocallyBefore")}<code>.env</code>{t("settings.storedLocallyAfter")}
         </AlertDescription>
       </Alert>
 
       {loadError && (
         <Alert variant="destructive">
-          <AlertTitle>Einstellungen nicht verfügbar</AlertTitle>
+          <AlertTitle>{t("settings.unavailableTitle")}</AlertTitle>
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle>API-Verbindungen</CardTitle>
+          <CardTitle>{t("settings.connectionsTitle")}</CardTitle>
           <CardDescription>
-            Lass ein konfiguriertes Feld leer, um den aktuellen Wert beizubehalten.
+            {t("settings.connectionsDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex min-h-48 items-center justify-center text-muted-foreground">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Verbindungsstatus wird geladen …
+              {t("settings.loadingStatus")}
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <KeyField
                 id="youtube-api-key"
-                label="YouTube Data API"
-                description="Erforderlich für die Videosuche und Recherchedaten."
+                label={t("settings.youtubeLabel")}
+                description={t("settings.youtubeDescription")}
                 configured={status.youtube}
                 inputRef={youtubeKeyRef}
                 providerUrl="https://console.cloud.google.com/apis/credentials"
-                providerLabel="Google-Cloud-Anmeldedaten öffnen"
+                providerLabel={t("settings.youtubeProviderLabel")}
               />
               <KeyField
                 id="gemini-api-key"
-                label="Gemini API"
-                description="Erforderlich für Recherche-Insights, Ideen, Skripte und die Thumbnail-Generierung."
+                label={t("settings.geminiLabel")}
+                description={t("settings.geminiDescription")}
                 configured={status.gemini}
                 inputRef={geminiKeyRef}
                 providerUrl="https://aistudio.google.com/apikey"
-                providerLabel="Google AI Studio öffnen"
+                providerLabel={t("settings.geminiProviderLabel")}
               >
                 <div className="grid gap-4 border-t border-border pt-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="gemini-text-model">Modell für Recherche und Texte</Label>
+                    <Label htmlFor="gemini-text-model">{t("settings.textModelLabel")}</Label>
                     <Select value={geminiTextModel} onValueChange={setGeminiTextModel}>
                       <SelectTrigger id="gemini-text-model" data-testid="select-gemini-text-model">
-                        <SelectValue placeholder="Modell auswählen" />
+                        <SelectValue placeholder={t("settings.selectModel")} />
                       </SelectTrigger>
                       <SelectContent>
                         {status.models.textOptions.map((model) => (
@@ -284,10 +279,10 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="gemini-image-model">Bildmodell für Thumbnails</Label>
+                    <Label htmlFor="gemini-image-model">{t("settings.imageModelLabel")}</Label>
                     <Select value={geminiImageModel} onValueChange={setGeminiImageModel}>
                       <SelectTrigger id="gemini-image-model" data-testid="select-gemini-image-model">
-                        <SelectValue placeholder="Modell auswählen" />
+                        <SelectValue placeholder={t("settings.selectModel")} />
                       </SelectTrigger>
                       <SelectContent>
                         {status.models.imageOptions.map((model) => (
@@ -309,7 +304,7 @@ export default function SettingsPage() {
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline"
                 >
-                  Offiziellen Gemini-Modellkatalog ansehen
+                  {t("settings.modelCatalog")}
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </KeyField>
@@ -321,7 +316,7 @@ export default function SettingsPage() {
                   ) : (
                     <Save className="mr-2 h-4 w-4" />
                   )}
-                  Speichern und anwenden
+                  {t("settings.saveApply")}
                 </Button>
               </div>
             </form>

@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/queryClient";
+import { getActiveLanguage, translate, useI18n } from "@/lib/i18n";
 
 function getInitials(user: SessionUser): string {
   const source = (user.displayName || user.username || "").trim();
@@ -49,20 +50,21 @@ function extractApiError(error: unknown, fallback: string): string {
   } catch {
     // Kein JSON
   }
-  if (status === 401) return "Das aktuelle Passwort ist falsch.";
-  if (status === 429) return "Zu viele Versuche. Bitte warte kurz.";
+  if (status === 401) return translate(getActiveLanguage(), "shell.user.wrongCurrentPassword");
+  if (status === 429) return translate(getActiveLanguage(), "shell.auth.tooManyAttempts");
   return body.trim() || fallback;
 }
 
 export function UserMenu() {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const { toast } = useToast();
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   if (!user) return null;
 
-  const roleLabel = user.role === "admin" ? "Admin" : "Benutzer";
+  const roleLabel = user.role === "admin" ? t("shell.user.roleAdmin") : t("shell.user.roleUser");
   const initials = getInitials(user);
 
   const handleLogout = async () => {
@@ -79,7 +81,7 @@ export function UserMenu() {
       <DropdownMenu>
         <DropdownMenuTrigger
           className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sidebar-foreground outline-none ring-sidebar-ring transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 data-[state=open]:bg-sidebar-accent"
-          aria-label={`Benutzermenü für ${user.displayName}`}
+          aria-label={t("shell.user.menuLabel", { name: user.displayName })}
           data-testid="button-user-menu"
         >
           <Avatar className="h-8 w-8">
@@ -102,7 +104,7 @@ export function UserMenu() {
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setPasswordDialogOpen(true)} data-testid="menu-change-password">
             <KeyRound aria-hidden="true" />
-            Passwort ändern
+            {t("shell.user.changePassword")}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => { void handleLogout(); }}
@@ -110,7 +112,7 @@ export function UserMenu() {
             data-testid="menu-logout"
           >
             {loggingOut ? <Loader2 className="animate-spin" aria-hidden="true" /> : <LogOut aria-hidden="true" />}
-            Abmelden
+            {t("shell.user.logout")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -120,8 +122,8 @@ export function UserMenu() {
         onOpenChange={setPasswordDialogOpen}
         onSuccess={() => {
           toast({
-            title: "Passwort geändert",
-            description: "Dein neues Passwort ist ab sofort gültig.",
+            title: t("shell.user.passwordChangedTitle"),
+            description: t("shell.user.passwordChangedDescription"),
           });
         }}
       />
@@ -136,6 +138,7 @@ interface ChangePasswordDialogProps {
 }
 
 function ChangePasswordDialog({ open, onOpenChange, onSuccess }: ChangePasswordDialogProps) {
+  const { t } = useI18n();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -161,15 +164,15 @@ function ChangePasswordDialog({ open, onOpenChange, onSuccess }: ChangePasswordD
 
     const parsed = changePasswordRequestSchema.safeParse({ currentPassword, newPassword });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Bitte prüfe deine Eingaben.");
+      setError(parsed.error.issues[0]?.message ?? t("shell.user.checkInputs"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("Die Passwörter stimmen nicht überein.");
+      setError(t("shell.user.passwordMismatch"));
       return;
     }
     if (newPassword === currentPassword) {
-      setError("Das neue Passwort muss sich vom aktuellen unterscheiden.");
+      setError(t("shell.user.passwordSameAsCurrent"));
       return;
     }
 
@@ -181,7 +184,7 @@ function ChangePasswordDialog({ open, onOpenChange, onSuccess }: ChangePasswordD
       onOpenChange(false);
       onSuccess();
     } catch (err) {
-      setError(extractApiError(err, "Das Passwort konnte nicht geändert werden."));
+      setError(extractApiError(err, t("shell.user.passwordChangeFailed")));
     } finally {
       setSaving(false);
     }
@@ -192,13 +195,13 @@ function ChangePasswordDialog({ open, onOpenChange, onSuccess }: ChangePasswordD
       <DialogContent>
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           <DialogHeader>
-            <DialogTitle>Passwort ändern</DialogTitle>
-            <DialogDescription>Gib dein aktuelles Passwort ein und wähle ein neues mit mindestens 8 Zeichen.</DialogDescription>
+            <DialogTitle>{t("shell.user.changePassword")}</DialogTitle>
+            <DialogDescription>{t("shell.user.changePasswordDescription")}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="current-password">Aktuelles Passwort</Label>
+              <Label htmlFor="current-password">{t("shell.user.currentPassword")}</Label>
               <Input
                 id="current-password"
                 type="password"
@@ -213,7 +216,7 @@ function ChangePasswordDialog({ open, onOpenChange, onSuccess }: ChangePasswordD
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-password">Neues Passwort</Label>
+              <Label htmlFor="new-password">{t("shell.user.newPassword")}</Label>
               <Input
                 id="new-password"
                 type="password"
@@ -228,7 +231,7 @@ function ChangePasswordDialog({ open, onOpenChange, onSuccess }: ChangePasswordD
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Neues Passwort wiederholen</Label>
+              <Label htmlFor="confirm-password">{t("shell.user.confirmPassword")}</Label>
               <Input
                 id="confirm-password"
                 type="password"
@@ -250,7 +253,7 @@ function ChangePasswordDialog({ open, onOpenChange, onSuccess }: ChangePasswordD
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={saving}>
-              Abbrechen
+              {t("common.cancel")}
             </Button>
             <Button
               type="submit"
@@ -258,7 +261,7 @@ function ChangePasswordDialog({ open, onOpenChange, onSuccess }: ChangePasswordD
               data-testid="button-save-password"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              Passwort speichern
+              {t("shell.user.savePassword")}
             </Button>
           </DialogFooter>
         </form>

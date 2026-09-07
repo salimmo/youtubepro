@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AuthMeResponse, SessionUser } from "@shared/auth-contracts";
 import { queryClient } from "@/lib/queryClient";
-import { LANGUAGE_EVENT, setActiveLanguage, type UiLanguage } from "@/lib/i18n";
+import { LANGUAGE_EVENT, getActiveLanguage, setActiveLanguage, translate, type UiLanguage } from "@/lib/i18n";
+
+const tx = (key: string) => translate(getActiveLanguage(), key);
 
 export const UNAUTHORIZED_EVENT = "yp:unauthorized";
 
@@ -39,7 +41,7 @@ async function fetchCurrentUser(): Promise<SessionUser | null> {
   const res = await fetch("/api/auth/me", { credentials: "include" });
   if (res.status === 401) return null;
   if (!res.ok) {
-    throw new AuthError(res.status, await readErrorMessage(res, "Die Sitzung konnte nicht geprüft werden."));
+    throw new AuthError(res.status, await readErrorMessage(res, tx("shell.auth.sessionCheckFailed")));
   }
   const data = (await res.json()) as AuthMeResponse;
   return data.user ?? null;
@@ -111,22 +113,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include",
       });
     } catch {
-      throw new AuthError(0, "Der Server ist nicht erreichbar. Bitte versuche es später erneut.");
+      throw new AuthError(0, tx("shell.auth.serverUnreachable"));
     }
 
     if (res.status === 401) {
-      throw new AuthError(401, "Benutzername oder Passwort ist falsch.");
+      throw new AuthError(401, tx("shell.auth.invalidCredentials"));
     }
     if (res.status === 429) {
-      throw new AuthError(429, "Zu viele Versuche. Bitte warte kurz.");
+      throw new AuthError(429, tx("shell.auth.tooManyAttempts"));
     }
     if (!res.ok) {
-      throw new AuthError(res.status, await readErrorMessage(res, "Die Anmeldung ist fehlgeschlagen. Bitte versuche es erneut."));
+      throw new AuthError(res.status, await readErrorMessage(res, tx("shell.login.failed")));
     }
 
     const data = (await res.json()) as AuthMeResponse;
     if (!data?.user) {
-      throw new AuthError(res.status, "Die Anmeldung ist fehlgeschlagen. Bitte versuche es erneut.");
+      throw new AuthError(res.status, tx("shell.login.failed"));
     }
     queryClient.clear();
     setUser(data.user);

@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/lib/i18n";
 
 interface SearchFiltersProps {
   uploadDate: UploadDateFilter;
@@ -19,34 +20,35 @@ interface SearchFiltersProps {
   onLanguageChange: (value: LanguageFilter) => void;
 }
 
+// Die label-Felder sind Wörterbuch-Schlüssel (locales/video.*.ts).
 const uploadDateOptions = [
-  { value: UploadDateFilter.ANY, label: "Beliebig" },
-  { value: UploadDateFilter.HOUR, label: "Letzte Stunde" },
-  { value: UploadDateFilter.TODAY, label: "Heute" },
-  { value: UploadDateFilter.WEEK, label: "Diese Woche" },
-  { value: UploadDateFilter.MONTH, label: "Dieser Monat" },
-  { value: UploadDateFilter.YEAR, label: "Dieses Jahr" },
+  { value: UploadDateFilter.ANY, label: "video.uploadDate.any" },
+  { value: UploadDateFilter.HOUR, label: "video.uploadDate.hour" },
+  { value: UploadDateFilter.TODAY, label: "video.uploadDate.today" },
+  { value: UploadDateFilter.WEEK, label: "video.uploadDate.week" },
+  { value: UploadDateFilter.MONTH, label: "video.uploadDate.month" },
+  { value: UploadDateFilter.YEAR, label: "video.uploadDate.year" },
 ];
 
 const durationOptions = [
-  { value: DurationFilter.ANY, label: "Beliebige Dauer" },
-  { value: DurationFilter.SHORT, label: "Kurz (< 4 Min.)" },
-  { value: DurationFilter.MEDIUM, label: "Mittel (4–20 Min.)" },
-  { value: DurationFilter.LONG, label: "Lang (> 20 Min.)" },
+  { value: DurationFilter.ANY, label: "video.duration.any" },
+  { value: DurationFilter.SHORT, label: "video.duration.short" },
+  { value: DurationFilter.MEDIUM, label: "video.duration.medium" },
+  { value: DurationFilter.LONG, label: "video.duration.long" },
 ];
 
 const sortByOptions = [
-  { value: SortBy.RELEVANCE, label: "Relevanz" },
-  { value: SortBy.DATE, label: "Upload-Datum" },
-  { value: SortBy.VIEW_COUNT, label: "Aufrufe" },
-  { value: SortBy.RATING, label: "Bewertung" },
-  { value: SortBy.OUTLIER, label: "Outlier-Wert" },
+  { value: SortBy.RELEVANCE, label: "video.sort.relevance" },
+  { value: SortBy.DATE, label: "video.sort.date" },
+  { value: SortBy.VIEW_COUNT, label: "video.sort.viewCount" },
+  { value: SortBy.RATING, label: "video.sort.rating" },
+  { value: SortBy.OUTLIER, label: "video.sort.outlier" },
 ];
 
 const languageOptions = [
-  { value: LanguageFilter.ANY, label: "Alle Sprachen" },
-  { value: LanguageFilter.GERMAN, label: "Deutsch" },
-  { value: LanguageFilter.ENGLISH, label: "Englisch" },
+  { value: LanguageFilter.ANY, label: "video.language.any" },
+  { value: LanguageFilter.GERMAN, label: "video.language.german" },
+  { value: LanguageFilter.ENGLISH, label: "video.language.english" },
 ];
 
 export function SearchFilters({
@@ -59,10 +61,11 @@ export function SearchFilters({
   onSortByChange,
   onLanguageChange,
 }: SearchFiltersProps) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-wrap items-center gap-4">
       <div className="space-y-1.5">
-        <Label htmlFor="filter-upload-date" className="text-xs text-muted-foreground">Upload-Datum</Label>
+        <Label htmlFor="filter-upload-date" className="text-xs text-muted-foreground">{t("video.filter.uploadDate")}</Label>
         <Select value={uploadDate} onValueChange={onUploadDateChange}>
           <SelectTrigger id="filter-upload-date" className="w-[140px]" data-testid="select-upload-date">
             <SelectValue />
@@ -70,7 +73,7 @@ export function SearchFilters({
           <SelectContent>
             {uploadDateOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {option.label}
+                {t(option.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -78,7 +81,7 @@ export function SearchFilters({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="filter-duration" className="text-xs text-muted-foreground">Dauer</Label>
+        <Label htmlFor="filter-duration" className="text-xs text-muted-foreground">{t("video.filter.duration")}</Label>
         <Select value={duration} onValueChange={onDurationChange}>
           <SelectTrigger id="filter-duration" className="w-[150px]" data-testid="select-duration">
             <SelectValue />
@@ -86,7 +89,7 @@ export function SearchFilters({
           <SelectContent>
             {durationOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {option.label}
+                {t(option.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -94,7 +97,7 @@ export function SearchFilters({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="filter-sort-by" className="text-xs text-muted-foreground">Sortieren nach</Label>
+        <Label htmlFor="filter-sort-by" className="text-xs text-muted-foreground">{t("video.filter.sortBy")}</Label>
         <Select value={sortBy} onValueChange={onSortByChange}>
           <SelectTrigger id="filter-sort-by" className="w-[130px]" data-testid="select-sort-by">
             <SelectValue />
@@ -102,7 +105,7 @@ export function SearchFilters({
           <SelectContent>
             {sortByOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {option.label}
+                {t(option.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -110,7 +113,7 @@ export function SearchFilters({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="filter-language" className="text-xs text-muted-foreground">Sprache</Label>
+        <Label htmlFor="filter-language" className="text-xs text-muted-foreground">{t("video.filter.language")}</Label>
         <Select value={language} onValueChange={onLanguageChange}>
           <SelectTrigger id="filter-language" className="w-[140px]" data-testid="select-language">
             <SelectValue />
@@ -118,7 +121,7 @@ export function SearchFilters({
           <SelectContent>
             {languageOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {option.label}
+                {t(option.label)}
               </SelectItem>
             ))}
           </SelectContent>

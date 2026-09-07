@@ -1,6 +1,7 @@
 import { Lock, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useT } from "@/lib/i18n";
 
 interface ComingSoonFeature {
   icon: LucideIcon;
@@ -14,6 +15,7 @@ interface ComingSoonProps {
 }
 
 export function ComingSoon({ title, description, features }: ComingSoonProps) {
+  const t = useT();
   return (
     <div className="flex min-h-full items-center justify-center p-6">
       <Card className="w-full max-w-xl px-8 py-12 text-center">
@@ -26,13 +28,13 @@ export function ComingSoon({ title, description, features }: ComingSoonProps) {
               className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground"
               data-testid="badge-coming-soon"
             >
-              Bald
+              {t("misc.comingSoon.badge")}
             </Badge>
           </div>
           <h1 className="text-2xl font-bold" data-testid="text-coming-soon-title">
             {title}
           </h1>
-          <p className="text-muted-foreground">Demnächst verfügbar</p>
+          <p className="text-muted-foreground">{t("misc.comingSoon.available")}</p>
           <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-4 text-left sm:grid-cols-2">
             {features.map((feature) => (
               <div key={feature.label} className="flex items-center gap-2">

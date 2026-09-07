@@ -2,36 +2,43 @@ import type { Video } from "@shared/schema";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Calendar, ThumbsUp, MessageSquare } from "lucide-react";
+import { formatCompact, intlLocale, useI18n, type TranslateVars, type UiLanguage } from "@/lib/i18n";
+
+type Translate = (key: string, vars?: TranslateVars) => string;
 
 interface VideoCardProps {
   video: Video;
   onClick?: (video: Video) => void;
 }
 
-function formatViews(views?: number): string {
-  if (views === undefined) return "k. A.";
-  if (views >= 1000000) return `${(views / 1000000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio.`;
-  if (views >= 1000) return `${(views / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tsd.`;
-  return views.toLocaleString("de-DE");
+function formatViews(language: UiLanguage, views?: number): string {
+  return formatCompact(language, views);
 }
 
-function formatDate(dateString: string): string {
+function formatDate(t: Translate, dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
   const diffTime = now.getTime() - date.getTime();
   const diffDays = Math.ceil(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
 
   if (diffTime < 0) {
-    if (diffDays <= 1) return "Geplant für morgen";
-    return `Geplant in ${diffDays} Tagen`;
+    if (diffDays <= 1) return t("video.date.scheduledTomorrow");
+    return t("video.date.scheduledInDays", { days: diffDays });
   }
 
-  if (diffDays === 0) return "Heute";
-  if (diffDays === 1) return "Gestern";
-  if (diffDays < 7) return `vor ${diffDays} Tagen`;
-  if (diffDays < 30) return `vor ${Math.floor(diffDays / 7)} ${Math.floor(diffDays / 7) === 1 ? "Woche" : "Wochen"}`;
-  if (diffDays < 365) return `vor ${Math.floor(diffDays / 30)} ${Math.floor(diffDays / 30) === 1 ? "Monat" : "Monaten"}`;
-  return `vor ${Math.floor(diffDays / 365)} ${Math.floor(diffDays / 365) === 1 ? "Jahr" : "Jahren"}`;
+  if (diffDays === 0) return t("video.date.today");
+  if (diffDays === 1) return t("video.date.yesterday");
+  if (diffDays < 7) return t("video.date.daysAgo", { days: diffDays });
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return t(weeks === 1 ? "video.date.weekAgo" : "video.date.weeksAgo", { count: weeks });
+  }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return t(months === 1 ? "video.date.monthAgo" : "video.date.monthsAgo", { count: months });
+  }
+  const years = Math.floor(diffDays / 365);
+  return t(years === 1 ? "video.date.yearAgo" : "video.date.yearsAgo", { count: years });
 }
 
 function outlierBadgeClass(score: number): string {
@@ -41,9 +48,9 @@ function outlierBadgeClass(score: number): string {
   return "bg-secondary text-secondary-foreground";
 }
 
-function outlierTitle(video: Video): string {
-  const sample = video.channelSampleSize !== undefined ? ` (Stichprobe: ${video.channelSampleSize} Videos)` : "";
-  return `Outlier-Wert: Aufrufe im Verhältnis zum Median der letzten Uploads dieses Kanals${sample}`;
+function outlierTitle(t: Translate, video: Video): string {
+  const sample = video.channelSampleSize !== undefined ? t("video.outlierSample", { count: video.channelSampleSize }) : "";
+  return t("video.outlierTitle", { sample });
 }
 
 function formatDuration(duration?: string): string {
@@ -62,6 +69,7 @@ function formatDuration(duration?: string): string {
 }
 
 export function VideoCard({ video, onClick }: VideoCardProps) {
+  const { t, language } = useI18n();
   const isInteractive = Boolean(onClick);
   const openVideo = () => onClick?.(video);
 
@@ -81,7 +89,7 @@ export function VideoCard({ video, onClick }: VideoCardProps) {
       } : undefined}
       role={isInteractive ? "button" : undefined}
       tabIndex={isInteractive ? 0 : undefined}
-      aria-label={isInteractive ? `Details öffnen für ${video.title}` : undefined}
+      aria-label={isInteractive ? t("video.openDetails", { title: video.title }) : undefined}
       data-testid={`card-video-${video.id}`}
     >
       <div className="relative aspect-video bg-muted overflow-hidden">
@@ -95,10 +103,10 @@ export function VideoCard({ video, onClick }: VideoCardProps) {
         {video.outlierScore !== undefined && (
           <span
             className={`absolute top-2 left-2 rounded-md px-2 py-0.5 text-xs font-semibold shadow-sm ${outlierBadgeClass(video.outlierScore)}`}
-            title={outlierTitle(video)}
+            title={outlierTitle(t, video)}
             data-testid={`badge-outlier-${video.id}`}
           >
-            {video.outlierScore.toLocaleString("de-DE", { maximumFractionDigits: 1 })}x
+            {video.outlierScore.toLocaleString(intlLocale(language), { maximumFractionDigits: 1 })}x
           </span>
         )}
         {video.duration && (
@@ -130,13 +138,13 @@ export function VideoCard({ video, onClick }: VideoCardProps) {
           <span className="flex items-center gap-1">
             <Eye className="h-3.5 w-3.5" aria-hidden="true" />
             <span data-testid={`text-video-views-${video.id}`}>
-              {formatViews(video.viewCount)} Aufrufe
+              {t("video.viewsCount", { count: formatViews(language, video.viewCount) })}
             </span>
           </span>
 
           <span className="flex items-center gap-1">
             <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{formatDate(video.publishedAt)}</span>
+            <span>{formatDate(t, video.publishedAt)}</span>
           </span>
         </div>
 
@@ -145,13 +153,13 @@ export function VideoCard({ video, onClick }: VideoCardProps) {
             {video.likeCount !== undefined && (
               <span className="flex items-center gap-1">
                 <ThumbsUp className="h-3.5 w-3.5" aria-hidden="true" />
-                {formatViews(video.likeCount)}
+                {formatViews(language, video.likeCount)}
               </span>
             )}
             {video.commentCount !== undefined && (
               <span className="flex items-center gap-1">
                 <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
-                {formatViews(video.commentCount)}
+                {formatViews(language, video.commentCount)}
               </span>
             )}
           </div>

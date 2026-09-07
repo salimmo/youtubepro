@@ -1,5 +1,8 @@
 import type { WorkflowHistorySummary } from "@shared/workflow-history";
 import type { WorkflowRecordPayload, WorkflowSummaryPayload } from "@shared/auth-contracts";
+import { getActiveLanguage, translate, type TranslateVars } from "@/lib/i18n";
+
+const tx = (key: string, vars?: TranslateVars) => translate(getActiveLanguage(), key, vars);
 
 // Workflow-Speicher: Workflows liegen serverseitig pro Benutzer in PostgreSQL.
 // Dadurch sieht jeder Benutzer nur seine eigenen Workflows, unabhängig vom
@@ -19,13 +22,13 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   });
   if (response.status === 401) {
     window.dispatchEvent(new Event("yp:unauthorized"));
-    throw new Error("Anmeldung erforderlich.");
+    throw new Error(tx("shell.storage.loginRequired"));
   }
   if (response.status === 404) {
     throw new WorkflowNotFoundError();
   }
   if (!response.ok) {
-    let message = `Workflow-Speicher antwortete mit Status ${response.status}.`;
+    let message = tx("shell.storage.statusError", { status: response.status });
     try {
       const data = await response.json();
       if (data?.error) message = String(data.error);
@@ -40,7 +43,7 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 
 export class WorkflowNotFoundError extends Error {
   constructor() {
-    super("Workflow nicht gefunden.");
+    super(tx("shell.storage.notFound"));
     this.name = "WorkflowNotFoundError";
   }
 }

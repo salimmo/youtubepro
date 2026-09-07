@@ -9,6 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eye, ThumbsUp, MessageSquare, Calendar, Clock, ExternalLink, Tag, Sparkles, Zap, Activity } from "lucide-react";
+import { formatCompact, intlLocale, useI18n, type TranslateVars, type UiLanguage } from "@/lib/i18n";
+
+type Translate = (key: string, vars?: TranslateVars) => string;
 
 interface VideoDetailDialogProps {
   video: Video | null;
@@ -16,27 +19,24 @@ interface VideoDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function formatViews(views?: number): string {
-  if (views === undefined) return "k. A.";
-  if (views >= 1000000) return `${(views / 1000000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio.`;
-  if (views >= 1000) return `${(views / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tsd.`;
-  return views.toLocaleString("de-DE");
+function formatViews(language: UiLanguage, views?: number): string {
+  return formatCompact(language, views);
 }
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("de-DE", {
+function formatDate(language: UiLanguage, dateString: string): string {
+  return new Date(dateString).toLocaleDateString(intlLocale(language), {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 }
 
-function formatRatio(value: number): string {
-  return `${value.toLocaleString("de-DE", { maximumFractionDigits: 1 })}x`;
+function formatRatio(language: UiLanguage, value: number): string {
+  return `${value.toLocaleString(intlLocale(language), { maximumFractionDigits: 1 })}x`;
 }
 
-function formatDuration(duration?: string): string {
-  if (!duration) return "k. A.";
+function formatDuration(t: Translate, duration?: string): string {
+  if (!duration) return t("common.notAvailable");
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return duration;
 
@@ -45,12 +45,13 @@ function formatDuration(duration?: string): string {
   const seconds = match[3] ? parseInt(match[3]) : 0;
 
   if (hours > 0) {
-    return `${hours} Std. ${minutes} Min. ${seconds} Sek.`;
+    return t("video.durationHms", { hours, minutes, seconds });
   }
-  return `${minutes} Min. ${seconds} Sek.`;
+  return t("video.durationMs", { minutes, seconds });
 }
 
 export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDialogProps) {
+  const { t, language } = useI18n();
   if (!video) return null;
 
   const youtubeUrl = `https://www.youtube.com/watch?v=${video.id}`;
@@ -89,7 +90,7 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                   </a>
                   {video.channelStatistics?.subscriberCount !== undefined && (
                     <p className="text-xs text-muted-foreground">
-                      {formatViews(video.channelStatistics.subscriberCount)} Abonnenten
+                      {t("video.subscribers", { count: formatViews(language, video.channelStatistics.subscriberCount) })}
                     </p>
                   )}
                 </div>
@@ -101,7 +102,7 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                     data-testid="link-watch-youtube"
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    Auf YouTube ansehen
+                    {t("video.watchOnYouTube")}
                   </a>
                 </Button>
               </div>
@@ -109,23 +110,23 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
                   <Eye className="h-5 w-5 text-muted-foreground mb-1" />
-                  <span className="text-lg font-semibold">{formatViews(video.viewCount)}</span>
-                  <span className="text-xs text-muted-foreground">Aufrufe</span>
+                  <span className="text-lg font-semibold">{formatViews(language, video.viewCount)}</span>
+                  <span className="text-xs text-muted-foreground">{t("video.views")}</span>
                 </div>
                 <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
                   <ThumbsUp className="h-5 w-5 text-muted-foreground mb-1" />
-                  <span className="text-lg font-semibold">{formatViews(video.likeCount)}</span>
-                  <span className="text-xs text-muted-foreground">Likes</span>
+                  <span className="text-lg font-semibold">{formatViews(language, video.likeCount)}</span>
+                  <span className="text-xs text-muted-foreground">{t("video.likes")}</span>
                 </div>
                 <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
                   <MessageSquare className="h-5 w-5 text-muted-foreground mb-1" />
-                  <span className="text-lg font-semibold">{formatViews(video.commentCount)}</span>
-                  <span className="text-xs text-muted-foreground">Kommentare</span>
+                  <span className="text-lg font-semibold">{formatViews(language, video.commentCount)}</span>
+                  <span className="text-xs text-muted-foreground">{t("video.comments")}</span>
                 </div>
                 <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
                   <Clock className="h-5 w-5 text-muted-foreground mb-1" />
-                  <span className="text-lg font-semibold">{formatDuration(video.duration)}</span>
-                  <span className="text-xs text-muted-foreground">Dauer</span>
+                  <span className="text-lg font-semibold">{formatDuration(t, video.duration)}</span>
+                  <span className="text-xs text-muted-foreground">{t("video.duration")}</span>
                 </div>
               </div>
 
@@ -135,37 +136,40 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                     {video.outlierScore !== undefined && (
                       <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50" data-testid="stat-outlier-score">
                         <Sparkles className="h-5 w-5 text-muted-foreground mb-1" />
-                        <span className="text-lg font-semibold">{formatRatio(video.outlierScore)}</span>
-                        <span className="text-xs text-muted-foreground">Outlier-Wert</span>
+                        <span className="text-lg font-semibold">{formatRatio(language, video.outlierScore)}</span>
+                        <span className="text-xs text-muted-foreground">{t("video.outlierScore")}</span>
                       </div>
                     )}
                     {video.velocityScore !== undefined && (
                       <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50" data-testid="stat-velocity-score">
                         <Zap className="h-5 w-5 text-muted-foreground mb-1" />
-                        <span className="text-lg font-semibold">{formatRatio(video.velocityScore)}</span>
-                        <span className="text-xs text-muted-foreground">Tempo-Wert</span>
+                        <span className="text-lg font-semibold">{formatRatio(language, video.velocityScore)}</span>
+                        <span className="text-xs text-muted-foreground">{t("video.velocityScore")}</span>
                       </div>
                     )}
                     {video.viewsPerDay !== undefined && (
                       <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50" data-testid="stat-views-per-day">
                         <Activity className="h-5 w-5 text-muted-foreground mb-1" />
-                        <span className="text-lg font-semibold">{Math.round(video.viewsPerDay).toLocaleString("de-DE")}</span>
-                        <span className="text-xs text-muted-foreground">Aufrufe/Tag</span>
+                        <span className="text-lg font-semibold">{Math.round(video.viewsPerDay).toLocaleString(intlLocale(language))}</span>
+                        <span className="text-xs text-muted-foreground">{t("video.viewsPerDay")}</span>
                       </div>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {video.outlierScore !== undefined && (
                       <>
-                        Outlier-Wert = Aufrufe geteilt durch den Median der letzten Uploads dieses Kanals
+                        {t("video.outlierExplanation")}
                         {video.channelMedianViews !== undefined
-                          ? ` (Median: ${formatViews(video.channelMedianViews)}${video.channelSampleSize !== undefined ? `, Stichprobe: ${video.channelSampleSize} Videos` : ""})`
+                          ? t("video.outlierMedian", {
+                            median: formatViews(language, video.channelMedianViews),
+                            sample: video.channelSampleSize !== undefined ? t("video.outlierSampleSuffix", { count: video.channelSampleSize }) : "",
+                          })
                           : ""}
                         .{" "}
                       </>
                     )}
                     {video.velocityScore !== undefined && (
-                      <>Tempo-Wert = Aufrufe pro Tag im Verhältnis zum Median der Aufrufe pro Tag desselben Kanals.</>
+                      <>{t("video.velocityExplanation")}</>
                     )}
                   </p>
                 </div>
@@ -173,28 +177,28 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                <span>Veröffentlicht am {formatDate(video.publishedAt)}</span>
+                <span>{t("video.publishedOn", { date: formatDate(language, video.publishedAt) })}</span>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 {engagementRate !== null && (
-                  <Badge variant="outline">{engagementRate.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % öffentliches Engagement</Badge>
+                  <Badge variant="outline">{t("video.engagement", { rate: engagementRate.toLocaleString(intlLocale(language), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}</Badge>
                 )}
                 {video.definition && <Badge variant="secondary">{video.definition.toUpperCase()}</Badge>}
                 {video.hasCaptions !== undefined && (
-                  <Badge variant="secondary">{video.hasCaptions ? "Untertitel" : "Keine Untertitel"}</Badge>
+                  <Badge variant="secondary">{video.hasCaptions ? t("video.captions") : t("video.noCaptions")}</Badge>
                 )}
                 {(video.defaultAudioLanguage || video.defaultLanguage) && (
                   <Badge variant="secondary">{video.defaultAudioLanguage || video.defaultLanguage}</Badge>
                 )}
                 {video.hasPaidProductPlacement && (
-                  <Badge variant="outline">Bezahlte Werbung gekennzeichnet</Badge>
+                  <Badge variant="outline">{t("video.paidPromotion")}</Badge>
                 )}
               </div>
 
               {video.description && (
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Beschreibung</h4>
+                  <h4 className="font-medium text-sm">{t("video.description")}</h4>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-6">
                     {video.description}
                   </p>
@@ -205,7 +209,7 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Tag className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-medium text-sm">Tags</h4>
+                    <h4 className="font-medium text-sm">{t("video.tags")}</h4>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {video.tags.slice(0, 10).map((tag, index) => (
@@ -215,7 +219,7 @@ export function VideoDetailDialog({ video, open, onOpenChange }: VideoDetailDial
                     ))}
                     {video.tags.length > 10 && (
                       <Badge variant="outline" className="text-xs">
-                        +{video.tags.length - 10} weitere
+                        {t("video.moreTags", { count: video.tags.length - 10 })}
                       </Badge>
                     )}
                   </div>

@@ -43,38 +43,45 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
 import type { ChannelAnalysisResponse, ChannelVideo } from "@shared/channel-contracts";
+import {
+  formatCompact,
+  formatNumber,
+  getActiveLanguage,
+  intlLocale,
+  translate,
+  useI18n,
+  type UiLanguage,
+} from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Formatierung (bewusst aus video-card.tsx kopiert, damit die Dateien
-// unabhängig bleiben)
+// unabhängig bleiben). Die Helfer lesen die aktive Sprache modulweit; der
+// Seitenbaum wird beim Sprachwechsel neu eingehängt, daher immer aktuell.
 // ---------------------------------------------------------------------------
 
-const numberFormat = new Intl.NumberFormat("de-DE");
-const oneDecimal = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const dateFormat = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+function tr(key: string, vars?: Record<string, string | number>): string {
+  return translate(getActiveLanguage(), key, vars);
+}
 
 function formatCount(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "k. A.";
-  if (value >= 1000000) return `${(value / 1000000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio.`;
-  if (value >= 1000) return `${(value / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tsd.`;
-  return numberFormat.format(value);
+  return formatCompact(getActiveLanguage(), value);
 }
 
 function formatExact(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "k. A.";
-  return numberFormat.format(Math.round(value));
+  if (value === null || value === undefined) return tr("common.notAvailable");
+  return formatNumber(getActiveLanguage(), Math.round(value));
 }
 
 function formatScore(value: number | null | undefined): string {
   if (value === null || value === undefined) return "–";
-  return `${oneDecimal.format(value)}x`;
+  return `${formatNumber(getActiveLanguage(), value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}x`;
 }
 
 function formatDateExact(dateString: string | null | undefined): string {
-  if (!dateString) return "k. A.";
+  if (!dateString) return tr("common.notAvailable");
   const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return "k. A.";
-  return dateFormat.format(date);
+  if (Number.isNaN(date.getTime())) return tr("common.notAvailable");
+  return new Intl.DateTimeFormat(intlLocale(getActiveLanguage()), { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
 }
 
 function formatRelativeDate(dateString: string): string {
@@ -84,16 +91,23 @@ function formatRelativeDate(dateString: string): string {
   const diffDays = Math.ceil(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
 
   if (diffTime < 0) {
-    if (diffDays <= 1) return "Geplant für morgen";
-    return `Geplant in ${diffDays} Tagen`;
+    if (diffDays <= 1) return tr("channel.relative.scheduledTomorrow");
+    return tr("channel.relative.scheduledInDays", { count: diffDays });
   }
 
-  if (diffDays === 0) return "Heute";
-  if (diffDays === 1) return "Gestern";
-  if (diffDays < 7) return `vor ${diffDays} Tagen`;
-  if (diffDays < 30) return `vor ${Math.floor(diffDays / 7)} ${Math.floor(diffDays / 7) === 1 ? "Woche" : "Wochen"}`;
-  if (diffDays < 365) return `vor ${Math.floor(diffDays / 30)} ${Math.floor(diffDays / 30) === 1 ? "Monat" : "Monaten"}`;
-  return `vor ${Math.floor(diffDays / 365)} ${Math.floor(diffDays / 365) === 1 ? "Jahr" : "Jahren"}`;
+  if (diffDays === 0) return tr("channel.relative.today");
+  if (diffDays === 1) return tr("channel.relative.yesterday");
+  if (diffDays < 7) return tr("channel.relative.daysAgo", { count: diffDays });
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return tr(weeks === 1 ? "channel.relative.weekAgo" : "channel.relative.weeksAgo", { count: weeks });
+  }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return tr(months === 1 ? "channel.relative.monthAgo" : "channel.relative.monthsAgo", { count: months });
+  }
+  const years = Math.floor(diffDays / 365);
+  return tr(years === 1 ? "channel.relative.yearAgo" : "channel.relative.yearsAgo", { count: years });
 }
 
 function formatDuration(duration: string | null | undefined): string {
@@ -111,10 +125,10 @@ function formatDuration(duration: string | null | undefined): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-function formatCountry(code: string | null): string | null {
+function formatCountry(code: string | null, language: UiLanguage): string | null {
   if (!code) return null;
   try {
-    const names = new Intl.DisplayNames(["de"], { type: "region" });
+    const names = new Intl.DisplayNames([language], { type: "region" });
     return names.of(code) ?? code;
   } catch {
     return code;
@@ -183,8 +197,8 @@ async function readApiError(response: Response): Promise<ChannelRequestError> {
     const text = await response.text();
     if (/^\s*(<!doctype html|<html|<head|<body)/i.test(text)) {
       payload = {
-        error: `Der Server war nicht erreichbar (Status ${response.status}).`,
-        suggestion: "Statt einer API-Antwort kam eine HTML-Fehlerseite. Versuche es erneut und prüfe, ob ein VPN, Firmennetz oder Filter aktiv ist.",
+        error: tr("channel.error.serverUnreachableStatus", { status: response.status }),
+        suggestion: tr("channel.error.htmlPageSuggestion"),
         retryable: true,
       };
     } else if (text) {
@@ -195,7 +209,7 @@ async function readApiError(response: Response): Promise<ChannelRequestError> {
   }
   const message = typeof payload.error === "string" && payload.error
     ? payload.error
-    : `Die Kanalanalyse ist fehlgeschlagen (Status ${response.status}).`;
+    : tr("channel.error.failedStatus", { status: response.status });
   return new ChannelRequestError({
     message,
     status: response.status,
@@ -221,21 +235,21 @@ type SortKey = "outlier" | "velocity" | "views" | "newest" | "oldest" | "likes" 
 type LanguageFilter = "all" | "de" | "en" | "none";
 type ViewMode = "grid" | "table";
 
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "outlier", label: "Outlier-Wert" },
-  { value: "velocity", label: "Tempo-Wert" },
-  { value: "views", label: "Aufrufe" },
-  { value: "newest", label: "Neueste zuerst" },
-  { value: "oldest", label: "Älteste zuerst" },
-  { value: "likes", label: "Likes" },
-  { value: "comments", label: "Kommentare" },
+const SORT_OPTIONS: { value: SortKey; labelKey: string }[] = [
+  { value: "outlier", labelKey: "channel.sort.outlier" },
+  { value: "velocity", labelKey: "channel.sort.velocity" },
+  { value: "views", labelKey: "channel.sort.views" },
+  { value: "newest", labelKey: "channel.sort.newest" },
+  { value: "oldest", labelKey: "channel.sort.oldest" },
+  { value: "likes", labelKey: "channel.sort.likes" },
+  { value: "comments", labelKey: "channel.sort.comments" },
 ];
 
-const LANGUAGE_OPTIONS: { value: LanguageFilter; label: string }[] = [
-  { value: "all", label: "Alle Sprachen" },
-  { value: "de", label: "Deutsch" },
-  { value: "en", label: "Englisch" },
-  { value: "none", label: "Ohne Angabe" },
+const LANGUAGE_OPTIONS: { value: LanguageFilter; labelKey: string }[] = [
+  { value: "all", labelKey: "channel.language.all" },
+  { value: "de", labelKey: "channel.language.de" },
+  { value: "en", labelKey: "channel.language.en" },
+  { value: "none", labelKey: "channel.language.none" },
 ];
 
 function videoLanguage(video: ChannelVideo): string {
@@ -301,13 +315,14 @@ function StatTile({ label, value, hint }: { label: string; value: string; hint?:
 }
 
 function ChannelVideoCard({ video }: { video: ChannelVideo }) {
+  const { t } = useI18n();
   return (
     <a
       href={video.url}
       target="_blank"
       rel="noopener noreferrer"
       className="group block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      aria-label={`${video.title} auf YouTube öffnen`}
+      aria-label={t("channel.openOnYouTube", { title: video.title })}
       data-testid={`card-channel-video-${video.id}`}
     >
       <Card className="h-full overflow-hidden border-card-border bg-card transition-colors duration-300 hover:border-primary/50">
@@ -320,12 +335,12 @@ function ChannelVideoCard({ video }: { video: ChannelVideo }) {
             </div>
           )}
           <div className="absolute left-2 top-2 flex items-center gap-1.5">
-            <Badge className={`border-0 text-xs font-semibold tabular-nums shadow ${outlierBadgeClass(video.outlierScore)}`} title="Outlier-Wert">
+            <Badge className={`border-0 text-xs font-semibold tabular-nums shadow ${outlierBadgeClass(video.outlierScore)}`} title={t("channel.outlierBadgeTitle")}>
               {formatScore(video.outlierScore)}
             </Badge>
             {video.velocityScore !== null && (
-              <Badge variant="secondary" className="border-0 bg-black/70 text-[11px] tabular-nums text-white shadow" title="Tempo-Wert (Aufrufe pro Tag im Verhältnis zum Median)">
-                Tempo {formatScore(video.velocityScore)}
+              <Badge variant="secondary" className="border-0 bg-black/70 text-[11px] tabular-nums text-white shadow" title={t("channel.velocityBadgeTitle")}>
+                {t("channel.velocityPrefix")} {formatScore(video.velocityScore)}
               </Badge>
             )}
           </div>
@@ -342,7 +357,7 @@ function ChannelVideoCard({ video }: { video: ChannelVideo }) {
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-              {formatCount(video.viewCount)} Aufrufe
+              {t("channel.viewsSuffix", { count: formatCount(video.viewCount) })}
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
@@ -389,9 +404,10 @@ function VideoGridSkeleton() {
 }
 
 function LoadingState() {
+  const { t } = useI18n();
   return (
     <div className="space-y-6" role="status" aria-live="polite">
-      <span className="sr-only">Kanal wird analysiert …</span>
+      <span className="sr-only">{t("channel.loadingStatus")}</span>
       <Card className="border-card-border bg-card">
         <CardContent className="flex items-center gap-4 p-5">
           <Skeleton className="h-16 w-16 shrink-0 rounded-full" />
@@ -419,18 +435,18 @@ function LoadingState() {
 
 type SortableColumn = {
   key: SortKey | "date";
-  label: string;
+  labelKey: string;
   align?: "right";
 };
 
 const TABLE_COLUMNS: SortableColumn[] = [
-  { key: "date", label: "Veröffentlicht" },
-  { key: "views", label: "Aufrufe", align: "right" },
-  { key: "velocity", label: "Aufrufe/Tag", align: "right" },
-  { key: "outlier", label: "Outlier", align: "right" },
-  { key: "velocity", label: "Tempo", align: "right" },
-  { key: "likes", label: "Likes", align: "right" },
-  { key: "comments", label: "Kommentare", align: "right" },
+  { key: "date", labelKey: "channel.column.date" },
+  { key: "views", labelKey: "channel.column.views", align: "right" },
+  { key: "velocity", labelKey: "channel.column.viewsPerDay", align: "right" },
+  { key: "outlier", labelKey: "channel.column.outlier", align: "right" },
+  { key: "velocity", labelKey: "channel.column.velocity", align: "right" },
+  { key: "likes", labelKey: "channel.column.likes", align: "right" },
+  { key: "comments", labelKey: "channel.column.comments", align: "right" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -438,6 +454,7 @@ const TABLE_COLUMNS: SortableColumn[] = [
 // ---------------------------------------------------------------------------
 
 export default function ChannelPage() {
+  const { t, language } = useI18n();
   const [inputValue, setInputValue] = useState("");
   const [maxVideos, setMaxVideos] = useState<number>(100);
   const [request, setRequest] = useState<AnalysisRequest | null>(null);
@@ -490,9 +507,9 @@ export default function ChannelPage() {
         if (requestError instanceof DOMException && requestError.name === "AbortError") throw requestError;
         const offline = typeof navigator !== "undefined" && !navigator.onLine;
         throw new ChannelRequestError({
-          message: offline ? "Du scheinst offline zu sein." : "Der Server konnte nicht erreicht werden.",
+          message: offline ? t("channel.error.offline") : t("channel.error.unreachable"),
           status: 0,
-          suggestion: offline ? "Prüfe deine Internetverbindung und versuche es erneut." : "Versuche es in ein paar Sekunden erneut.",
+          suggestion: offline ? t("channel.error.offlineSuggestion") : t("channel.error.unreachableSuggestion"),
           retryable: true,
         });
       }
@@ -542,14 +559,14 @@ export default function ChannelPage() {
 
   const channel = data?.channel;
   const stats = data?.stats;
-  const country = channel ? formatCountry(channel.country) : null;
+  const country = channel ? formatCountry(channel.country, language) : null;
 
   return (
     <div className="mx-auto w-full max-w-[1680px] space-y-6 p-4 lg:p-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-foreground" data-testid="text-channel-title">Kanalanalyse</h1>
+        <h1 className="text-2xl font-bold text-foreground" data-testid="text-channel-title">{t("channel.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Gib ein Kanal-Handle, eine Kanal-URL oder eine Kanal-ID ein und sieh alle Videos mit Outlier-Wert.
+          {t("channel.subtitle")}
         </p>
       </div>
 
@@ -559,8 +576,8 @@ export default function ChannelPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input
               type="text"
-              aria-label="Kanal-Handle, Kanal-URL oder Kanal-ID"
-              placeholder="@Finanz4U oder https://www.youtube.com/@Finanz4U"
+              aria-label={t("channel.inputLabel")}
+              placeholder={t("channel.inputPlaceholder")}
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
               onKeyDown={handleKeyDown}
@@ -569,13 +586,13 @@ export default function ChannelPage() {
             />
           </div>
           <Select value={String(maxVideos)} onValueChange={(value) => setMaxVideos(Number(value))}>
-            <SelectTrigger className="h-11 w-full sm:w-40" aria-label="Anzahl Videos" data-testid="select-channel-max-videos">
+            <SelectTrigger className="h-11 w-full sm:w-40" aria-label={t("channel.maxVideosLabel")} data-testid="select-channel-max-videos">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="50">50 Videos</SelectItem>
-              <SelectItem value="100">100 Videos</SelectItem>
-              <SelectItem value="200">200 Videos</SelectItem>
+              <SelectItem value="50">{t("channel.videosOption", { count: 50 })}</SelectItem>
+              <SelectItem value="100">{t("channel.videosOption", { count: 100 })}</SelectItem>
+              <SelectItem value="200">{t("channel.videosOption", { count: 200 })}</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -589,13 +606,13 @@ export default function ChannelPage() {
             ) : (
               <Search className="mr-2 h-4 w-4" aria-hidden="true" />
             )}
-            Analysieren
+            {t("channel.analyze")}
           </Button>
         </div>
 
         {recentChannels.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2" aria-label="Zuletzt analysierte Kanäle">
-            <span className="text-xs text-muted-foreground">Zuletzt:</span>
+          <div className="flex flex-wrap items-center gap-2" aria-label={t("channel.recentLabel")}>
+            <span className="text-xs text-muted-foreground">{t("channel.recentPrefix")}</span>
             {recentChannels.map((entry) => (
               <button
                 key={entry}
@@ -615,8 +632,8 @@ export default function ChannelPage() {
       {request === null && (
         <EmptyState
           icon={Tv}
-          title="Kanal analysieren"
-          description="Gib oben einen Kanal ein. Du bekommst alle Videos mit Outlier- und Tempo-Wert, um die Ausreißer des Kanals auf einen Blick zu erkennen."
+          title={t("channel.emptyTitle")}
+          description={t("channel.emptyDescription")}
         />
       )}
 
@@ -632,7 +649,7 @@ export default function ChannelPage() {
             <div className="pt-1">
               <Button variant="outline" size="sm" onClick={() => void refetch()} data-testid="button-channel-retry">
                 <RefreshCw className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
-                Erneut versuchen
+                {t("common.retry")}
               </Button>
             </div>
           </AlertDescription>
@@ -657,7 +674,7 @@ export default function ChannelPage() {
                   <h2 className="text-xl font-semibold text-card-foreground">{channel.title}</h2>
                   {data.cached && (
                     <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
-                      aus Cache (max. 12 h alt)
+                      {t("channel.cachedBadge")}
                     </Badge>
                   )}
                 </div>
@@ -669,25 +686,25 @@ export default function ChannelPage() {
                     className="inline-flex items-center gap-1 text-primary hover:underline"
                     data-testid="link-channel-url"
                   >
-                    {channel.handle || channel.customUrl || "Kanal öffnen"}
+                    {channel.handle || channel.customUrl || t("channel.openChannel")}
                     <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                   </a>
                   {country && <span>{country}</span>}
-                  {channel.publishedAt && <span>Kanal seit {formatDateExact(channel.publishedAt)}</span>}
+                  {channel.publishedAt && <span>{t("channel.channelSince", { date: formatDateExact(channel.publishedAt) })}</span>}
                 </div>
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
                   <div className="flex items-baseline gap-2">
-                    <dt className="text-muted-foreground">Abonnenten</dt>
+                    <dt className="text-muted-foreground">{t("channel.subscribers")}</dt>
                     <dd className="font-medium tabular-nums text-card-foreground">
-                      {channel.hiddenSubscriberCount ? "verborgen" : formatCount(channel.subscriberCount)}
+                      {channel.hiddenSubscriberCount ? t("channel.subscribersHidden") : formatCount(channel.subscriberCount)}
                     </dd>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <dt className="text-muted-foreground">Videos gesamt</dt>
+                    <dt className="text-muted-foreground">{t("channel.totalVideos")}</dt>
                     <dd className="font-medium tabular-nums text-card-foreground">{formatExact(channel.videoCount)}</dd>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <dt className="text-muted-foreground">Aufrufe gesamt</dt>
+                    <dt className="text-muted-foreground">{t("channel.totalViews")}</dt>
                     <dd className="font-medium tabular-nums text-card-foreground">{formatCount(channel.viewCount)}</dd>
                   </div>
                 </dl>
@@ -701,32 +718,32 @@ export default function ChannelPage() {
                   data-testid="button-channel-refresh"
                 >
                   <RefreshCw className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
-                  Aktualisieren
+                  {t("channel.refresh")}
                 </Button>
               </div>
             </CardContent>
           </Card>
 
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            <StatTile label="Analysierte Videos" value={formatExact(stats.analyzedVideos)} />
-            <StatTile label="Median Aufrufe" value={formatCount(stats.medianViews)} hint={stats.medianViews !== null ? formatExact(stats.medianViews) : undefined} />
-            <StatTile label="Durchschnitt Aufrufe" value={formatCount(stats.meanViews)} hint={stats.meanViews !== null ? formatExact(stats.meanViews) : undefined} />
-            <StatTile label="Median Aufrufe/Tag" value={formatCount(stats.medianViewsPerDay)} />
+            <StatTile label={t("channel.stat.analyzedVideos")} value={formatExact(stats.analyzedVideos)} />
+            <StatTile label={t("channel.stat.medianViews")} value={formatCount(stats.medianViews)} hint={stats.medianViews !== null ? formatExact(stats.medianViews) : undefined} />
+            <StatTile label={t("channel.stat.meanViews")} value={formatCount(stats.meanViews)} hint={stats.meanViews !== null ? formatExact(stats.meanViews) : undefined} />
+            <StatTile label={t("channel.stat.medianViewsPerDay")} value={formatCount(stats.medianViewsPerDay)} />
             <StatTile
-              label="Zeitraum"
-              value={stats.oldestAnalyzedAt && stats.newestAnalyzedAt ? `${formatDateExact(stats.oldestAnalyzedAt)} – ${formatDateExact(stats.newestAnalyzedAt)}` : "k. A."}
+              label={t("channel.stat.period")}
+              value={stats.oldestAnalyzedAt && stats.newestAnalyzedAt ? `${formatDateExact(stats.oldestAnalyzedAt)} – ${formatDateExact(stats.newestAnalyzedAt)}` : t("common.notAvailable")}
             />
           </div>
 
           {stats.lowConfidence && (
             <div className="flex items-start gap-2 rounded-md border border-warning-subtle bg-warning-subtle p-3 text-sm text-warning" role="status">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>Weniger als 10 Videos analysiert. Outlier-Werte sind bei so kleinen Stichproben wenig aussagekräftig.</span>
+              <span>{t("channel.lowConfidence")}</span>
             </div>
           )}
 
           {data.warnings.length > 0 && (
-            <ul className="space-y-1 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground" aria-label="Hinweise">
+            <ul className="space-y-1 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground" aria-label={t("channel.warningsLabel")}>
               {data.warnings.map((warning, index) => (
                 <li key={index} className="flex items-start gap-2">
                   <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -739,29 +756,29 @@ export default function ChannelPage() {
           <div className="flex items-start gap-2 rounded-md border border-info-subtle bg-info-subtle p-3 text-xs text-muted-foreground">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" aria-hidden="true" />
             <p>
-              Outlier-Wert = Aufrufe des Videos geteilt durch den Median aller analysierten Videos dieses Kanals. 3,0x bedeutet: dreimal so viele Aufrufe wie ein typisches Video. Tempo-Wert = dasselbe für Aufrufe pro Tag, gleicht das Alter der Videos aus.
+              {t("channel.explanation")}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
-                <SelectTrigger className="w-full sm:w-44" aria-label="Sortierung" data-testid="select-channel-sort">
+                <SelectTrigger className="w-full sm:w-44" aria-label={t("channel.sortLabel")} data-testid="select-channel-sort">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {SORT_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    <SelectItem key={option.value} value={option.value}>{t(option.labelKey)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select value={languageFilter} onValueChange={(value) => setLanguageFilter(value as LanguageFilter)}>
-                <SelectTrigger className="w-full sm:w-40" aria-label="Sprachfilter" data-testid="select-channel-language">
+                <SelectTrigger className="w-full sm:w-40" aria-label={t("channel.languageFilterLabel")} data-testid="select-channel-language">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {LANGUAGE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    <SelectItem key={option.value} value={option.value}>{t(option.labelKey)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -769,8 +786,8 @@ export default function ChannelPage() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   type="search"
-                  aria-label="Nach Titel filtern"
-                  placeholder="Nach Titel filtern …"
+                  aria-label={t("channel.titleFilterLabel")}
+                  placeholder={t("channel.titleFilterPlaceholder")}
                   value={titleFilter}
                   onChange={(event) => setTitleFilter(event.target.value)}
                   className="pl-9"
@@ -780,20 +797,20 @@ export default function ChannelPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground" data-testid="text-channel-video-count">
-                {numberFormat.format(filteredVideos.length)} von {numberFormat.format(data.videos.length)} Videos
+                {t("channel.videoCount", { shown: formatNumber(language, filteredVideos.length), total: formatNumber(language, data.videos.length) })}
               </span>
               <ToggleGroup
                 type="single"
                 value={viewMode}
                 onValueChange={(value) => { if (value) setViewMode(value as ViewMode); }}
-                aria-label="Ansicht"
+                aria-label={t("channel.viewLabel")}
                 variant="outline"
                 size="sm"
               >
-                <ToggleGroupItem value="grid" aria-label="Rasteransicht" data-testid="toggle-channel-view-grid">
+                <ToggleGroupItem value="grid" aria-label={t("channel.viewGrid")} data-testid="toggle-channel-view-grid">
                   <LayoutGrid className="h-4 w-4" aria-hidden="true" />
                 </ToggleGroupItem>
-                <ToggleGroupItem value="table" aria-label="Tabellenansicht" data-testid="toggle-channel-view-table">
+                <ToggleGroupItem value="table" aria-label={t("channel.viewTable")} data-testid="toggle-channel-view-table">
                   <Table2 className="h-4 w-4" aria-hidden="true" />
                 </ToggleGroupItem>
               </ToggleGroup>
@@ -803,8 +820,8 @@ export default function ChannelPage() {
           {filteredVideos.length === 0 ? (
             <EmptyState
               icon={Search}
-              title="Keine Videos gefunden"
-              description="Kein Video passt zu Filter oder Suchbegriff. Setze den Sprachfilter zurück oder ändere den Suchbegriff."
+              title={t("channel.noVideosTitle")}
+              description={t("channel.noVideosDescription")}
             />
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="grid-channel-videos">
@@ -818,22 +835,22 @@ export default function ChannelPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[104px]">Vorschau</TableHead>
-                      <TableHead className="min-w-[240px]">Titel</TableHead>
+                      <TableHead className="w-[104px]">{t("channel.column.preview")}</TableHead>
+                      <TableHead className="min-w-[240px]">{t("channel.column.title")}</TableHead>
                       {TABLE_COLUMNS.map((column) => (
-                        <TableHead key={column.label} className={column.align === "right" ? "text-right" : undefined}>
+                        <TableHead key={column.labelKey} className={column.align === "right" ? "text-right" : undefined}>
                           <button
                             type="button"
                             onClick={() => handleHeaderSort(column.key)}
                             className={`inline-flex items-center gap-1 whitespace-nowrap hover:text-foreground ${column.align === "right" ? "flex-row-reverse" : ""}`}
-                            aria-label={`Nach ${column.label} sortieren`}
+                            aria-label={t("channel.sortBy", { column: t(column.labelKey) })}
                           >
-                            {column.label}
+                            {t(column.labelKey)}
                             {headerSortIcon(column.key)}
                           </button>
                         </TableHead>
                       ))}
-                      <TableHead className="text-right">Dauer</TableHead>
+                      <TableHead className="text-right">{t("channel.column.duration")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

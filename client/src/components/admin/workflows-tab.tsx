@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useT } from "@/lib/i18n";
 import { DIFFICULTY_LABELS, IDEA_FORMAT_LABELS, labelFor } from "@/lib/labels";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDateTime, formatNumber, formatRelative, parseApiError, truncate, userLabel } from "./utils";
@@ -156,37 +157,19 @@ function text(value: unknown): string {
 
 // ---------- Formatierung ----------
 
-const STEP_LABELS: Record<WorkflowStepName, string> = {
-  research: "Recherche",
-  script: "Skript",
-  thumbnail: "Thumbnail",
-};
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
-const UPLOAD_DATE_LABELS: Record<string, string> = {
-  any: "Beliebig",
-  hour: "Letzte Stunde",
-  today: "Heute",
-  week: "Diese Woche",
-  month: "Dieser Monat",
-  year: "Dieses Jahr",
-};
+// Label aus dem Wörterbuch (admin.workflows.<group>.<value>); unbekannte Werte
+// werden unverändert angezeigt.
+function optionLabel(t: Translate, group: "step" | "uploadDate" | "duration" | "sort", value: string | null | undefined): string {
+  if (!value) return "";
+  const key = `admin.workflows.${group}.${value}`;
+  const label = t(key);
+  return label === key ? value : label;
+}
 
-const DURATION_LABELS: Record<string, string> = {
-  any: "Beliebig",
-  short: "Kurz",
-  medium: "Mittel",
-  long: "Lang",
-};
-
-const SORT_LABELS: Record<string, string> = {
-  relevance: "Relevanz",
-  date: "Datum",
-  viewCount: "Aufrufe",
-  rating: "Bewertung",
-};
-
-function stepLabel(step: string | null | undefined): string {
-  return step && step in STEP_LABELS ? STEP_LABELS[step as WorkflowStepName] : step || "–";
+function stepLabel(t: Translate, step: string | null | undefined): string {
+  return optionLabel(t, "step", step) || "–";
 }
 
 // Zeitstempel im Workflow sind Millisekunden; die Helfer aus utils erwarten Strings.
@@ -207,18 +190,20 @@ function buildListUrl(userId: string, includeDeleted: boolean): string {
 // ---------- Bausteine ----------
 
 function StepBadge({ step }: { step: string | null | undefined }) {
+  const t = useT();
   return (
     <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
-      {stepLabel(step)}
+      {stepLabel(t, step)}
     </Badge>
   );
 }
 
 function ContentBadges({ workflow }: { workflow: AdminWorkflowSummary }) {
+  const t = useT();
   const items: Array<{ key: string; label: string; short: string; present: boolean; Icon: typeof Search }> = [
-    { key: "r", label: "Recherche", short: "R", present: Boolean(workflow.hasResearch), Icon: Search },
-    { key: "s", label: "Skript", short: "S", present: Boolean(workflow.hasScript), Icon: FileText },
-    { key: "t", label: "Thumbnail", short: "T", present: Boolean(workflow.hasThumbnail), Icon: ImageIcon },
+    { key: "r", label: t("admin.workflows.step.research"), short: "R", present: Boolean(workflow.hasResearch), Icon: Search },
+    { key: "s", label: t("admin.workflows.step.script"), short: "S", present: Boolean(workflow.hasScript), Icon: FileText },
+    { key: "t", label: t("admin.workflows.step.thumbnail"), short: "T", present: Boolean(workflow.hasThumbnail), Icon: ImageIcon },
   ];
   return (
     <div className="flex items-center gap-1">
@@ -227,7 +212,7 @@ function ContentBadges({ workflow }: { workflow: AdminWorkflowSummary }) {
           <TooltipTrigger asChild>
             <Badge
               variant="outline"
-              aria-label={`${label}: ${present ? "vorhanden" : "nicht vorhanden"}`}
+              aria-label={`${label}: ${present ? t("admin.workflows.present") : t("admin.workflows.absent")}`}
               className={present
                 ? "gap-1 border-green-500/40 bg-green-500/10 px-1.5 text-green-500"
                 : "gap-1 px-1.5 text-muted-foreground/50"}
@@ -236,7 +221,7 @@ function ContentBadges({ workflow }: { workflow: AdminWorkflowSummary }) {
               {short}
             </Badge>
           </TooltipTrigger>
-          <TooltipContent>{label} {present ? "vorhanden" : "nicht vorhanden"}</TooltipContent>
+          <TooltipContent>{label} {present ? t("admin.workflows.present") : t("admin.workflows.absent")}</TooltipContent>
         </Tooltip>
       ))}
     </div>
@@ -289,13 +274,15 @@ function PreText({ children }: { children: string }) {
   );
 }
 
-function EmptyHint({ children = "Nicht vorhanden." }: { children?: string }) {
-  return <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>;
+function EmptyHint({ children }: { children?: string }) {
+  const t = useT();
+  return <p className="py-6 text-center text-sm text-muted-foreground">{children ?? t("admin.workflows.notPresent")}</p>;
 }
 
 // ---------- Detail: Recherche ----------
 
 function ResearchPanel({ research }: { research: StoredResearch }) {
+  const t = useT();
   const videos = asList<StoredVideo>(research.videos);
   const filters = research.filters ?? {};
   const insights = research.insights && typeof research.insights === "object" ? research.insights : null;
@@ -305,46 +292,46 @@ function ResearchPanel({ research }: { research: StoredResearch }) {
 
   return (
     <div className="space-y-6">
-      <Section title="Suche">
+      <Section title={t("admin.workflows.search")}>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Suchbegriff" value={text(research.query)} />
-          <Field label="Gesamttreffer" value={formatNumber(research.totalResults)} />
-          <Field label="Durchgeführt am" value={formatDateTime(msToIso(research.timestamp))} />
+          <Field label={t("admin.workflows.query")} value={text(research.query)} />
+          <Field label={t("admin.workflows.totalResults")} value={formatNumber(research.totalResults)} />
+          <Field label={t("admin.workflows.performedAt")} value={formatDateTime(msToIso(research.timestamp))} />
         </div>
         <div className="flex flex-wrap gap-1.5">
           {filters.uploadDate && (
-            <Badge variant="outline">Zeitraum: {labelFor(UPLOAD_DATE_LABELS, filters.uploadDate)}</Badge>
+            <Badge variant="outline">{t("admin.workflows.filterPeriod", { value: optionLabel(t, "uploadDate", filters.uploadDate) })}</Badge>
           )}
           {filters.duration && (
-            <Badge variant="outline">Dauer: {labelFor(DURATION_LABELS, filters.duration)}</Badge>
+            <Badge variant="outline">{t("admin.workflows.filterDuration", { value: optionLabel(t, "duration", filters.duration) })}</Badge>
           )}
           {filters.sortBy && (
-            <Badge variant="outline">Sortierung: {labelFor(SORT_LABELS, filters.sortBy)}</Badge>
+            <Badge variant="outline">{t("admin.workflows.filterSort", { value: optionLabel(t, "sort", filters.sortBy) })}</Badge>
           )}
         </div>
       </Section>
 
-      <Section title={`Videos (${formatNumber(videos.length)})`}>
+      <Section title={t("admin.workflows.videos", { count: formatNumber(videos.length) })}>
         {videos.length === 0 ? (
-          <EmptyHint>Keine Videos gespeichert.</EmptyHint>
+          <EmptyHint>{t("admin.workflows.noVideos")}</EmptyHint>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-24">Vorschau</TableHead>
-                  <TableHead>Titel</TableHead>
-                  <TableHead>Kanal</TableHead>
-                  <TableHead className="text-right">Aufrufe</TableHead>
-                  <TableHead className="text-right">Likes</TableHead>
-                  <TableHead className="text-right">Kommentare</TableHead>
-                  <TableHead>Veröffentlicht</TableHead>
+                  <TableHead className="w-24">{t("admin.workflows.col.preview")}</TableHead>
+                  <TableHead>{t("admin.workflows.col.title")}</TableHead>
+                  <TableHead>{t("admin.workflows.col.channel")}</TableHead>
+                  <TableHead className="text-right">{t("admin.workflows.col.views")}</TableHead>
+                  <TableHead className="text-right">{t("admin.workflows.col.likes")}</TableHead>
+                  <TableHead className="text-right">{t("admin.workflows.col.comments")}</TableHead>
+                  <TableHead>{t("admin.workflows.col.published")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {videos.map((video, index) => {
                   const id = text(video.id);
-                  const title = text(video.title) || "Ohne Titel";
+                  const title = text(video.title) || t("admin.workflows.untitled");
                   return (
                     <TableRow key={id || index}>
                       <TableCell>
@@ -398,7 +385,7 @@ function ResearchPanel({ research }: { research: StoredResearch }) {
       {insights && (
         <>
           {questions.length > 0 && (
-            <Section title="Zuschauerfragen">
+            <Section title={t("admin.workflows.viewerQuestions")}>
               <div className="space-y-2">
                 {questions.map((item, index) => (
                   <div key={index} className="rounded-lg border border-border p-3">
@@ -411,16 +398,16 @@ function ResearchPanel({ research }: { research: StoredResearch }) {
           )}
 
           {audience && (
-            <Section title="Zielgruppe">
+            <Section title={t("admin.workflows.targetAudience")}>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Primäre Zielgruppe" value={text(audience.primaryDemographic)} />
-                <Field label="Altersspanne" value={text(audience.ageRange)} />
+                <Field label={t("admin.workflows.primaryDemographic")} value={text(audience.primaryDemographic)} />
+                <Field label={t("admin.workflows.ageRange")} value={text(audience.ageRange)} />
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Interessen</p>
+                  <p className="text-xs text-muted-foreground">{t("admin.workflows.interests")}</p>
                   <BadgeList items={textList(audience.interests)} />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Schmerzpunkte</p>
+                  <p className="text-xs text-muted-foreground">{t("admin.workflows.painPoints")}</p>
                   <BulletList items={textList(audience.painPoints)} />
                 </div>
               </div>
@@ -428,13 +415,13 @@ function ResearchPanel({ research }: { research: StoredResearch }) {
           )}
 
           {niche && (
-            <Section title="Nischenanalyse">
+            <Section title={t("admin.workflows.nicheAnalysis")}>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Wettbewerb" value={text(niche.competitionLevel)} />
-                <Field label="Wachstumstrend" value={text(niche.growthTrend)} />
-                <Field label="Monetarisierungspotenzial" value={text(niche.monetizationPotential)} />
+                <Field label={t("admin.workflows.competition")} value={text(niche.competitionLevel)} />
+                <Field label={t("admin.workflows.growthTrend")} value={text(niche.growthTrend)} />
+                <Field label={t("admin.workflows.monetization")} value={text(niche.monetizationPotential)} />
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Empfohlene Formate</p>
+                  <p className="text-xs text-muted-foreground">{t("admin.workflows.recommendedFormats")}</p>
                   <BadgeList items={textList(niche.recommendedFormats)} />
                 </div>
               </div>
@@ -442,13 +429,13 @@ function ResearchPanel({ research }: { research: StoredResearch }) {
           )}
 
           {textList(insights.contentGaps).length > 0 && (
-            <Section title="Content-Lücken">
+            <Section title={t("admin.workflows.contentGaps")}>
               <BulletList items={textList(insights.contentGaps)} />
             </Section>
           )}
 
           {textList(insights.trendingSubtopics).length > 0 && (
-            <Section title="Unterthemen">
+            <Section title={t("admin.workflows.subtopics")}>
               <BadgeList items={textList(insights.trendingSubtopics)} />
             </Section>
           )}
@@ -461,12 +448,13 @@ function ResearchPanel({ research }: { research: StoredResearch }) {
 // ---------- Detail: Idee ----------
 
 function IdeaCard({ idea, compact = false }: { idea: StoredIdea; compact?: boolean }) {
+  const t = useT();
   const format = labelFor(IDEA_FORMAT_LABELS, text(idea.format));
   const difficulty = labelFor(DIFFICULTY_LABELS, text(idea.difficulty));
   return (
     <div className={compact ? "rounded-lg border border-border p-3" : "rounded-lg border border-primary/40 bg-primary/5 p-4"}>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className={compact ? "text-sm font-medium" : "text-base font-semibold"}>{text(idea.title) || "Ohne Titel"}</p>
+        <p className={compact ? "text-sm font-medium" : "text-base font-semibold"}>{text(idea.title) || t("admin.workflows.untitled")}</p>
         <div className="flex flex-wrap gap-1.5">
           {format && <Badge variant="outline">{format}</Badge>}
           {difficulty && <Badge variant="outline">{difficulty}</Badge>}
@@ -478,13 +466,13 @@ function IdeaCard({ idea, compact = false }: { idea: StoredIdea; compact?: boole
       {!compact && (
         <div className="mt-4 space-y-4">
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Keywords</p>
+            <p className="text-xs text-muted-foreground">{t("admin.workflows.keywords")}</p>
             <BadgeList items={textList(idea.keywords)} />
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Ehrliches Versprechen" value={text(idea.honestPromise)} />
-            <Field label="Payoff" value={text(idea.payoff)} />
-            <Field label="Thumbnail-Konzept" value={text(idea.thumbnailConcept)} />
+            <Field label={t("admin.workflows.honestPromise")} value={text(idea.honestPromise)} />
+            <Field label={t("admin.workflows.payoff")} value={text(idea.payoff)} />
+            <Field label={t("admin.workflows.thumbnailConcept")} value={text(idea.thumbnailConcept)} />
           </div>
         </div>
       )}
@@ -493,6 +481,7 @@ function IdeaCard({ idea, compact = false }: { idea: StoredIdea; compact?: boole
 }
 
 function IdeaPanel({ idea }: { idea: StoredIdeaState }) {
+  const t = useT();
   const selected = idea.selectedIdea && typeof idea.selectedIdea === "object" ? idea.selectedIdea : null;
   const generated = asList<StoredIdea>(idea.generatedIdeas).filter((item) => item && typeof item === "object");
   const others = selected
@@ -502,20 +491,20 @@ function IdeaPanel({ idea }: { idea: StoredIdeaState }) {
   return (
     <div className="space-y-6">
       {(idea.niche || idea.audience) && (
-        <Section title="Kontext">
+        <Section title={t("admin.workflows.context")}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nische" value={text(idea.niche)} />
-            <Field label="Zielgruppe" value={text(idea.audience)} />
+            <Field label={t("admin.workflows.niche")} value={text(idea.niche)} />
+            <Field label={t("admin.workflows.audience")} value={text(idea.audience)} />
           </div>
         </Section>
       )}
 
-      <Section title="Ausgewählte Idee">
-        {selected ? <IdeaCard idea={selected} /> : <EmptyHint>Keine Idee ausgewählt.</EmptyHint>}
+      <Section title={t("admin.workflows.selectedIdea")}>
+        {selected ? <IdeaCard idea={selected} /> : <EmptyHint>{t("admin.workflows.noIdeaSelected")}</EmptyHint>}
       </Section>
 
       {others.length > 0 && (
-        <Section title={`Weitere generierte Ideen (${formatNumber(others.length)})`}>
+        <Section title={t("admin.workflows.moreIdeas", { count: formatNumber(others.length) })}>
           <div className="space-y-2">
             {others.map((item, index) => <IdeaCard key={`${text(item.title)}-${index}`} idea={item} compact />)}
           </div>
@@ -528,48 +517,49 @@ function IdeaPanel({ idea }: { idea: StoredIdeaState }) {
 // ---------- Detail: Skript ----------
 
 function ScriptPanel({ script }: { script: StoredScript }) {
+  const t = useT();
   const result = script.result && typeof script.result === "object" ? script.result : {};
   const titles = textList(result.titles);
   const body = text(script.script);
 
   return (
     <div className="space-y-6">
-      <Section title="Eckdaten">
+      <Section title={t("admin.workflows.keyFacts")}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Thema" value={text(script.topic)} />
-          <Field label="Format" value={labelFor(IDEA_FORMAT_LABELS, text(script.format))} />
-          <Field label="Zielgruppe" value={text(script.audience)} />
-          <Field label="Wörter" value={formatNumber(script.wordCount)} />
-          <Field label="Geschätzte Dauer" value={text(script.estimatedDuration)} />
-          <Field label="Erstellt am" value={formatDateTime(msToIso(script.timestamp))} />
+          <Field label={t("admin.workflows.topic")} value={text(script.topic)} />
+          <Field label={t("admin.workflows.format")} value={labelFor(IDEA_FORMAT_LABELS, text(script.format))} />
+          <Field label={t("admin.workflows.audience")} value={text(script.audience)} />
+          <Field label={t("admin.workflows.words")} value={formatNumber(script.wordCount)} />
+          <Field label={t("admin.workflows.estimatedDuration")} value={text(script.estimatedDuration)} />
+          <Field label={t("admin.workflows.createdAt")} value={formatDateTime(msToIso(script.timestamp))} />
         </div>
       </Section>
 
       {(titles.length > 0 || script.title) && (
-        <Section title="Titelvorschläge">
+        <Section title={t("admin.workflows.titleSuggestions")}>
           <BulletList items={titles.length > 0 ? titles : [text(script.title)]} />
         </Section>
       )}
 
       {result.hook && (
-        <Section title="Hook">
+        <Section title={t("admin.workflows.hook")}>
           <p className="text-sm">{result.hook}</p>
         </Section>
       )}
 
-      <Section title="Skript">
-        {body ? <PreText>{body}</PreText> : <EmptyHint>Kein Skripttext gespeichert.</EmptyHint>}
+      <Section title={t("admin.workflows.script")}>
+        {body ? <PreText>{body}</PreText> : <EmptyHint>{t("admin.workflows.noScriptText")}</EmptyHint>}
       </Section>
 
       {(result.payoff || result.primaryCta) && (
         <div className="grid gap-6 sm:grid-cols-2">
           {result.payoff && (
-            <Section title="Payoff">
+            <Section title={t("admin.workflows.payoff")}>
               <p className="text-sm">{result.payoff}</p>
             </Section>
           )}
           {result.primaryCta && (
-            <Section title="Call-to-Action">
+            <Section title={t("admin.workflows.cta")}>
               <p className="text-sm">{result.primaryCta}</p>
             </Section>
           )}
@@ -582,40 +572,41 @@ function ScriptPanel({ script }: { script: StoredScript }) {
 // ---------- Detail: Thumbnail ----------
 
 function ThumbnailPanel({ thumbnail, fileBase }: { thumbnail: StoredThumbnail; fileBase: string }) {
+  const t = useT();
   const data = text(thumbnail.thumbnailData);
   const hasImage = data.startsWith("data:image/");
   const fileName = `${fileBase || "thumbnail"}.png`;
 
   return (
     <div className="space-y-6">
-      <Section title="Bild">
+      <Section title={t("admin.workflows.image")}>
         {hasImage ? (
           <div className="space-y-3">
             <img
               src={data}
-              alt={text(thumbnail.mainText) || "Thumbnail"}
+              alt={text(thumbnail.mainText) || t("admin.workflows.thumbnailAlt")}
               className="w-full max-w-2xl rounded-lg border border-border"
             />
             <Button asChild variant="outline" size="sm">
               <a href={data} download={fileName} data-testid="link-workflow-thumbnail-download">
                 <Download className="mr-2 h-4 w-4" />
-                Herunterladen
+                {t("common.download")}
               </a>
             </Button>
           </div>
         ) : (
-          <EmptyHint>Kein Bild gespeichert.</EmptyHint>
+          <EmptyHint>{t("admin.workflows.noImage")}</EmptyHint>
         )}
       </Section>
 
-      <Section title="Einstellungen">
+      <Section title={t("admin.workflows.settings")}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Thema" value={text(thumbnail.topic)} />
-          <Field label="Haupttext" value={text(thumbnail.mainText)} />
-          <Field label="Untertext" value={text(thumbnail.subText)} />
-          <Field label="Stil" value={text(thumbnail.thumbnailStyle)} />
-          <Field label="Modell" value={text(thumbnail.resultModel)} />
-          <Field label="Erstellt am" value={formatDateTime(msToIso(thumbnail.timestamp))} />
+          <Field label={t("admin.workflows.topic")} value={text(thumbnail.topic)} />
+          <Field label={t("admin.workflows.mainText")} value={text(thumbnail.mainText)} />
+          <Field label={t("admin.workflows.subText")} value={text(thumbnail.subText)} />
+          <Field label={t("admin.workflows.style")} value={text(thumbnail.thumbnailStyle)} />
+          <Field label={t("admin.workflows.model")} value={text(thumbnail.resultModel)} />
+          <Field label={t("admin.workflows.createdAt")} value={formatDateTime(msToIso(thumbnail.timestamp))} />
         </div>
       </Section>
     </div>
@@ -625,6 +616,7 @@ function ThumbnailPanel({ thumbnail, fileBase }: { thumbnail: StoredThumbnail; f
 // ---------- Detail-Dialog ----------
 
 function WorkflowDetailDialog({ workflowId, onClose }: { workflowId: string | null; onClose: () => void }) {
+  const t = useT();
   const open = workflowId !== null;
   const query = useQuery<AdminWorkflowDetailResponse>({
     queryKey: ["/api/admin/workflows", workflowId],
@@ -651,7 +643,7 @@ function WorkflowDetailDialog({ workflowId, onClose }: { workflowId: string | nu
     ?? (["research", "idea", "script", "thumbnail"] as const).find((key) => availability[key])
     ?? "research";
 
-  const title = workflow?.title || state.title || "Workflow";
+  const title = workflow?.title || state.title || t("admin.workflows.fallbackTitle");
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
@@ -662,34 +654,38 @@ function WorkflowDetailDialog({ workflowId, onClose }: { workflowId: string | nu
             {workflow && <StepBadge step={workflow.currentStep} />}
             {workflow?.deletedAt && (
               <Badge variant="outline" className="border-destructive/40 bg-destructive/10 text-destructive">
-                Gelöscht
+                {t("admin.workflows.deleted")}
               </Badge>
             )}
           </DialogTitle>
           <DialogDescription>
             {workflow
-              ? `${userLabel(workflow.displayName, workflow.username)} · angelegt ${formatDateTime(msToIso(workflow.createdAt))} · aktualisiert ${formatDateTime(msToIso(workflow.updatedAt))}${workflow.deletedAt ? ` · gelöscht ${formatDateTime(workflow.deletedAt)}` : ""}`
-              : "Gespeicherter Workflow-Zustand eines Benutzers."}
+              ? `${t("admin.workflows.detailMeta", {
+                user: userLabel(workflow.displayName, workflow.username),
+                created: formatDateTime(msToIso(workflow.createdAt)),
+                updated: formatDateTime(msToIso(workflow.updatedAt)),
+              })}${workflow.deletedAt ? ` ${t("admin.workflows.detailMetaDeleted", { deleted: formatDateTime(workflow.deletedAt) })}` : ""}`
+              : t("admin.workflows.detailFallbackDescription")}
           </DialogDescription>
         </DialogHeader>
 
         {query.isLoading ? (
           <div className="flex min-h-48 items-center justify-center text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Workflow wird geladen …
+            {t("admin.workflows.loadingDetail")}
           </div>
         ) : query.isError ? (
           <Alert variant="destructive">
-            <AlertTitle>Workflow nicht verfügbar</AlertTitle>
+            <AlertTitle>{t("admin.workflows.errorDetailTitle")}</AlertTitle>
             <AlertDescription>{parseApiError(query.error).message}</AlertDescription>
           </Alert>
         ) : (
           <Tabs key={workflowId ?? "none"} defaultValue={defaultTab} className="space-y-4">
             <TabsList className="flex w-full flex-wrap justify-start">
-              <TabsTrigger value="research" disabled={!availability.research}>Recherche</TabsTrigger>
-              <TabsTrigger value="idea" disabled={!availability.idea}>Idee</TabsTrigger>
-              <TabsTrigger value="script" disabled={!availability.script}>Skript</TabsTrigger>
-              <TabsTrigger value="thumbnail" disabled={!availability.thumbnail}>Thumbnail</TabsTrigger>
+              <TabsTrigger value="research" disabled={!availability.research}>{t("admin.workflows.tab.research")}</TabsTrigger>
+              <TabsTrigger value="idea" disabled={!availability.idea}>{t("admin.workflows.tab.idea")}</TabsTrigger>
+              <TabsTrigger value="script" disabled={!availability.script}>{t("admin.workflows.tab.script")}</TabsTrigger>
+              <TabsTrigger value="thumbnail" disabled={!availability.thumbnail}>{t("admin.workflows.tab.thumbnail")}</TabsTrigger>
             </TabsList>
             <TabsContent value="research">
               {research ? <ResearchPanel research={research} /> : <EmptyHint />}
@@ -715,6 +711,7 @@ function WorkflowDetailDialog({ workflowId, onClose }: { workflowId: string | nu
 // ---------- Tab ----------
 
 export function WorkflowsTab() {
+  const t = useT();
   const [userId, setUserId] = useState<string>(ALL);
   const [includeDeleted, setIncludeDeleted] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -734,9 +731,9 @@ export function WorkflowsTab() {
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
           <div>
-            <CardTitle>Workflows</CardTitle>
+            <CardTitle>{t("admin.workflows.title")}</CardTitle>
             <CardDescription>
-              Gespeicherte Workflows aller Benutzer, neueste zuerst. Auch vom Benutzer gelöschte Workflows bleiben hier sichtbar.
+              {t("admin.workflows.description")}
             </CardDescription>
           </div>
           <Button
@@ -749,19 +746,19 @@ export function WorkflowsTab() {
             {listQuery.isFetching
               ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               : <RefreshCw className="mr-2 h-4 w-4" />}
-            Aktualisieren
+            {t("admin.workflows.refresh")}
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:max-w-2xl">
             <div className="space-y-2">
-              <Label htmlFor="workflows-filter-user">Benutzer</Label>
+              <Label htmlFor="workflows-filter-user">{t("admin.workflows.filterUser")}</Label>
               <Select value={userId} onValueChange={setUserId}>
                 <SelectTrigger id="workflows-filter-user" data-testid="select-workflows-user">
-                  <SelectValue placeholder="Alle Benutzer" />
+                  <SelectValue placeholder={t("admin.workflows.allUsers")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL}>Alle Benutzer</SelectItem>
+                  <SelectItem value={ALL}>{t("admin.workflows.allUsers")}</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={String(user.id)}>
                       {userLabel(user.displayName, user.username)}
@@ -771,7 +768,7 @@ export function WorkflowsTab() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="workflows-include-deleted">Gelöschte anzeigen</Label>
+              <Label htmlFor="workflows-include-deleted">{t("admin.workflows.showDeleted")}</Label>
               <div className="flex h-10 items-center gap-3">
                 <Switch
                   id="workflows-include-deleted"
@@ -780,7 +777,7 @@ export function WorkflowsTab() {
                   data-testid="switch-workflows-include-deleted"
                 />
                 <span className="text-sm text-muted-foreground">
-                  {includeDeleted ? "Gelöschte Workflows werden angezeigt" : "Nur aktive Workflows"}
+                  {includeDeleted ? t("admin.workflows.showingDeleted") : t("admin.workflows.onlyActive")}
                 </span>
               </div>
             </div>
@@ -789,29 +786,29 @@ export function WorkflowsTab() {
           {listQuery.isLoading ? (
             <div className="flex min-h-48 items-center justify-center text-muted-foreground">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Workflows werden geladen …
+              {t("admin.workflows.loading")}
             </div>
           ) : listQuery.isError ? (
             <Alert variant="destructive">
-              <AlertTitle>Workflows nicht verfügbar</AlertTitle>
+              <AlertTitle>{t("admin.workflows.errorTitle")}</AlertTitle>
               <AlertDescription>{parseApiError(listQuery.error).message}</AlertDescription>
             </Alert>
           ) : workflows.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              Noch keine Workflows.
+              {t("admin.workflows.empty")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Titel</TableHead>
-                  <TableHead>Benutzer</TableHead>
-                  <TableHead>Suchbegriff</TableHead>
-                  <TableHead>Schritt</TableHead>
-                  <TableHead>Inhalt</TableHead>
-                  <TableHead>Aktualisiert</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-28"><span className="sr-only">Aktionen</span></TableHead>
+                  <TableHead>{t("admin.workflows.col.title")}</TableHead>
+                  <TableHead>{t("admin.workflows.col.user")}</TableHead>
+                  <TableHead>{t("admin.workflows.col.query")}</TableHead>
+                  <TableHead>{t("admin.workflows.col.step")}</TableHead>
+                  <TableHead>{t("admin.workflows.col.content")}</TableHead>
+                  <TableHead>{t("admin.workflows.col.updated")}</TableHead>
+                  <TableHead>{t("admin.workflows.col.status")}</TableHead>
+                  <TableHead className="w-28"><span className="sr-only">{t("admin.workflows.col.actions")}</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -824,7 +821,7 @@ export function WorkflowsTab() {
                       data-testid={`row-workflow-${workflow.id}`}
                     >
                       <TableCell className="max-w-xs font-medium" title={workflow.title || undefined}>
-                        {truncate(workflow.title, 60) || "Ohne Titel"}
+                        {truncate(workflow.title, 60) || t("admin.workflows.untitled")}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {workflow.displayName || workflow.username || "–"}
@@ -837,7 +834,7 @@ export function WorkflowsTab() {
                           <>
                             {truncate(workflow.researchQuery, 50)}
                             <span className="block text-xs">
-                              {formatNumber(workflow.videoCount)} {workflow.videoCount === 1 ? "Video" : "Videos"}
+                              {t(workflow.videoCount === 1 ? "admin.workflows.videoCountOne" : "admin.workflows.videoCountMany", { count: formatNumber(workflow.videoCount) })}
                             </span>
                           </>
                         ) : "–"}
@@ -860,14 +857,14 @@ export function WorkflowsTab() {
                                 variant="outline"
                                 className="cursor-default border-destructive/40 bg-destructive/10 text-destructive"
                               >
-                                Gelöscht
+                                {t("admin.workflows.deleted")}
                               </Badge>
                             </TooltipTrigger>
-                            <TooltipContent>Gelöscht am {formatDateTime(workflow.deletedAt)}</TooltipContent>
+                            <TooltipContent>{t("admin.workflows.deletedAt", { date: formatDateTime(workflow.deletedAt) })}</TooltipContent>
                           </Tooltip>
                         ) : (
                           <Badge variant="outline" className="border-green-500/40 bg-green-500/10 text-green-500">
-                            Aktiv
+                            {t("admin.workflows.active")}
                           </Badge>
                         )}
                       </TableCell>
@@ -879,7 +876,7 @@ export function WorkflowsTab() {
                           data-testid={`button-view-workflow-${workflow.id}`}
                         >
                           <Eye className="mr-2 h-4 w-4" />
-                          Ansehen
+                          {t("admin.workflows.view")}
                         </Button>
                       </TableCell>
                     </TableRow>

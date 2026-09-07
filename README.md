@@ -79,6 +79,15 @@ Der Server lauscht standardmäßig auf `127.0.0.1:5000`. Öffne `http://127.0.0.
 
 Du kannst auch ohne API-Schlüssel starten und sie als Admin in den **Einstellungen** eingeben. Die Einstellungen schreiben Ersetzungen in die ignorierte `.env`-Datei mit Berechtigungen nur für den Besitzer. Gespeicherte Werte werden nie an den Browser zurückgegeben.
 
+## Kanalanalyse, Outlier-Werte und Sprachfilter
+
+- **Kanal**: Handle (`@Finanz4U`), Kanal-URL oder Kanal-ID eingeben. Die Seite lädt bis zu 200 Uploads mit Aufrufen, Likes, Kommentaren und Dauer und berechnet je Video den **Outlier-Wert** (Aufrufe geteilt durch den Median aller analysierten Videos des Kanals, wie bei 1of10) und den **Tempo-Wert** (dasselbe für Aufrufe pro Tag, altersbereinigt). Sortierung nach Outlier, Tempo, Aufrufen, Datum, Likes, Kommentaren; Sprachfilter; Grid- und Tabellenansicht. Ergebnisse werden 12 Stunden in PostgreSQL zwischengespeichert, „Aktualisieren“ umgeht den Cache. Unter 10 analysierten Videos wird der Wert als wenig belastbar markiert.
+- **Recherche**: Jedes Video trägt seinen Outlier-Wert gegenüber den letzten 30 Uploads seines Kanals (Baseline 24 Stunden gecacht, etwa 2 Kontingent-Einheiten je neuem Kanal). Neue Sortierung „Outlier-Wert“, Karte „Outlier-Videos“, Sprachfilter Deutsch/Englisch (YouTube-Sprachpräferenz plus Ausblenden abweichend gekennzeichneter Videos), Export-Spalten.
+
+## Sprache der Oberfläche
+
+Oben in der Seitenleiste lässt sich per Flagge zwischen Deutsch und Englisch umschalten. Die Wahl wird am Benutzerkonto gespeichert und gilt auch für KI-Ausgaben (Insights, Ideen, Skripte, Thumbnail-Text) und Fehlermeldungen des Servers. Wörterbücher liegen unter `client/src/locales/<bereich>.<de|en>.ts` und werden automatisch geladen.
+
 ## Login, Rollen und Aktivitätsprotokoll
 
 Die App hat ein eigenes Login mit zwei Rollen. Alle Daten dazu liegen in PostgreSQL.

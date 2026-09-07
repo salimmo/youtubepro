@@ -1,4 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getActiveLanguage, translate, type TranslateVars } from "@/lib/i18n";
+
+const tx = (key: string, vars?: TranslateVars) => translate(getActiveLanguage(), key, vars);
 
 const UNAUTHORIZED_EVENT = "yp:unauthorized";
 // Für diese Pfade kein globales Abmelde-Event auslösen (sonst Endlosschleife).
@@ -22,9 +25,9 @@ function describeNonJsonBody(status: number, text: string): string | null {
   if (!/^<!doctype html|^<html|^<head|^<body/i.test(trimmed)) return null;
   const title = /<title[^>]*>([^<]{1,120})<\/title>/i.exec(trimmed)?.[1]?.trim();
   return JSON.stringify({
-    error: `Der Server war nicht erreichbar (Status ${status}).`,
-    suggestion: "Statt einer API-Antwort kam eine HTML-Fehlerseite, vermutlich von einem Proxy, einer Firewall oder einem Bot-Schutz zwischen Browser und Server. Versuche es erneut und prüfe, ob ein VPN, Firmennetz oder Filter aktiv ist.",
-    detail: title ? `Seitentitel: ${title}` : "HTML-Seite ohne Titel",
+    error: tx("shell.api.htmlError", { status }),
+    suggestion: tx("shell.api.htmlSuggestion"),
+    detail: title ? tx("shell.api.htmlDetailTitle", { title }) : tx("shell.api.htmlDetailNoTitle"),
     category: status >= 500 ? "provider_server" : "unknown",
     retryable: true,
   });
@@ -76,7 +79,7 @@ export const getQueryFn: <T>(options: {
       if (unauthorizedBehavior === "returnNull") {
         return null;
       }
-      throw new Error("Nicht autorisierte Anfrage.");
+      throw new Error(tx("shell.api.unauthorized"));
     }
 
     await throwIfResNotOk(res);

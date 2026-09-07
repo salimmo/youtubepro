@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export default function LoginPage() {
     if (submitting) return;
     const trimmedUsername = username.trim();
     if (!trimmedUsername || !password) {
-      setError("Bitte gib Benutzername und Passwort ein.");
+      setError(t("shell.login.missingCredentials"));
       return;
     }
     setSubmitting(true);
@@ -29,7 +31,7 @@ export default function LoginPage() {
     try {
       await login(trimmedUsername, password);
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : "Die Anmeldung ist fehlgeschlagen. Bitte versuche es erneut.");
+      setError(err instanceof Error && err.message ? err.message : t("shell.login.failed"));
       setPassword("");
     } finally {
       setSubmitting(false);
@@ -37,17 +39,17 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-dvh w-full items-center justify-center bg-background p-4" aria-label="Anmeldung">
+    <main className="flex min-h-dvh w-full items-center justify-center bg-background p-4" aria-label={t("shell.login.ariaLabel")}>
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
           <img src="/youtube-pro.svg" alt="" aria-hidden="true" className="mb-2 h-14 w-14" />
           <CardTitle className="text-2xl" data-testid="text-login-title">YouTube Pro</CardTitle>
-          <CardDescription>Melde dich an, um mit deiner Recherche fortzufahren.</CardDescription>
+          <CardDescription>{t("shell.login.subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-2">
-              <Label htmlFor="login-username">Benutzername</Label>
+              <Label htmlFor="login-username">{t("shell.login.username")}</Label>
               <Input
                 id="login-username"
                 name="username"
@@ -66,7 +68,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="login-password">Passwort</Label>
+              <Label htmlFor="login-password">{t("shell.login.password")}</Label>
               <Input
                 id="login-password"
                 name="password"
@@ -94,7 +96,7 @@ export default function LoginPage() {
               ) : (
                 <LogIn className="h-4 w-4" aria-hidden="true" />
               )}
-              {submitting ? "Anmeldung läuft …" : "Anmelden"}
+              {submitting ? t("shell.login.submitting") : t("shell.login.submit")}
             </Button>
           </form>
         </CardContent>

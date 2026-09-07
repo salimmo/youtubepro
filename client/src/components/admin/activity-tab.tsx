@@ -4,7 +4,6 @@ import { Eye, Loader2, RefreshCw } from "lucide-react";
 import {
   ACTIVITY_ACTION_LABELS,
   ACTIVITY_ACTIONS,
-  type ActivityAction,
   type ActivityListResponse,
   type AdminUser,
 } from "@shared/auth-contracts";
@@ -28,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useT } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { ContentDialog } from "./content-dialog";
 import { formatDateTime, formatDuration, parseApiError, truncate, userLabel } from "./utils";
@@ -35,9 +35,13 @@ import { formatDateTime, formatDuration, parseApiError, truncate, userLabel } fr
 const ALL = "all";
 const PAGE_SIZE = 50;
 
-function actionLabel(action: string | null | undefined): string {
+type Translate = (key: string) => string;
+
+// Die Anzeige läuft über das Wörterbuch (admin.action.<action>); die Konstante
+// aus dem Vertrag dient nur zur Prüfung, ob die Aktion bekannt ist.
+function actionLabel(t: Translate, action: string | null | undefined): string {
   return action && action in ACTIVITY_ACTION_LABELS
-    ? ACTIVITY_ACTION_LABELS[action as ActivityAction]
+    ? t(`admin.action.${action}`)
     : action || "–";
 }
 
@@ -51,6 +55,7 @@ function buildActivityUrl(userId: string, action: string, before: number | null)
 }
 
 export function ActivityTab() {
+  const t = useT();
   const [userId, setUserId] = useState<string>(ALL);
   const [action, setAction] = useState<string>(ALL);
   const [contentId, setContentId] = useState<number | null>(null);
@@ -73,9 +78,9 @@ export function ActivityTab() {
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
           <div>
-            <CardTitle>Aktivitäten</CardTitle>
+            <CardTitle>{t("admin.activity.title")}</CardTitle>
             <CardDescription>
-              Alle Aktionen der Benutzer, neueste zuerst. Gespeicherte Inhalte kannst du direkt ansehen.
+              {t("admin.activity.description")}
             </CardDescription>
           </div>
           <Button
@@ -88,19 +93,19 @@ export function ActivityTab() {
             {activityQuery.isFetching
               ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               : <RefreshCw className="mr-2 h-4 w-4" />}
-            Aktualisieren
+            {t("admin.activity.refresh")}
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:max-w-2xl">
             <div className="space-y-2">
-              <Label htmlFor="activity-filter-user">Benutzer</Label>
+              <Label htmlFor="activity-filter-user">{t("admin.activity.filterUser")}</Label>
               <Select value={userId} onValueChange={setUserId}>
                 <SelectTrigger id="activity-filter-user" data-testid="select-activity-user">
-                  <SelectValue placeholder="Alle Benutzer" />
+                  <SelectValue placeholder={t("admin.activity.allUsers")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL}>Alle Benutzer</SelectItem>
+                  <SelectItem value={ALL}>{t("admin.activity.allUsers")}</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={String(user.id)}>
                       {userLabel(user.displayName, user.username)}
@@ -110,15 +115,15 @@ export function ActivityTab() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="activity-filter-action">Aktion</Label>
+              <Label htmlFor="activity-filter-action">{t("admin.activity.filterAction")}</Label>
               <Select value={action} onValueChange={setAction}>
                 <SelectTrigger id="activity-filter-action" data-testid="select-activity-action">
-                  <SelectValue placeholder="Alle Aktionen" />
+                  <SelectValue placeholder={t("admin.activity.allActions")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL}>Alle Aktionen</SelectItem>
+                  <SelectItem value={ALL}>{t("admin.activity.allActions")}</SelectItem>
                   {ACTIVITY_ACTIONS.map((item) => (
-                    <SelectItem key={item} value={item}>{ACTIVITY_ACTION_LABELS[item]}</SelectItem>
+                    <SelectItem key={item} value={item}>{t(`admin.action.${item}`)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -128,28 +133,28 @@ export function ActivityTab() {
           {activityQuery.isLoading ? (
             <div className="flex min-h-48 items-center justify-center text-muted-foreground">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Aktivitäten werden geladen …
+              {t("admin.activity.loading")}
             </div>
           ) : activityQuery.isError ? (
             <Alert variant="destructive">
-              <AlertTitle>Aktivitäten nicht verfügbar</AlertTitle>
+              <AlertTitle>{t("admin.activity.errorTitle")}</AlertTitle>
               <AlertDescription>{parseApiError(activityQuery.error).message}</AlertDescription>
             </Alert>
           ) : entries.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              Keine Aktivitäten für diese Auswahl.
+              {t("admin.activity.empty")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Zeitpunkt</TableHead>
-                  <TableHead>Benutzer</TableHead>
-                  <TableHead>Aktion</TableHead>
-                  <TableHead>Zusammenfassung</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Dauer</TableHead>
-                  <TableHead>Inhalt</TableHead>
+                  <TableHead>{t("admin.activity.col.time")}</TableHead>
+                  <TableHead>{t("admin.activity.col.user")}</TableHead>
+                  <TableHead>{t("admin.activity.col.action")}</TableHead>
+                  <TableHead>{t("admin.activity.col.summary")}</TableHead>
+                  <TableHead>{t("admin.activity.col.status")}</TableHead>
+                  <TableHead className="text-right">{t("admin.activity.col.duration")}</TableHead>
+                  <TableHead>{t("admin.activity.col.content")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -166,7 +171,7 @@ export function ActivityTab() {
                           <span className="block text-xs text-muted-foreground">@{entry.username}</span>
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{actionLabel(entry.action)}</TableCell>
+                      <TableCell className="whitespace-nowrap">{actionLabel(t, entry.action)}</TableCell>
                       <TableCell className="max-w-md text-muted-foreground" title={entry.summary || undefined}>
                         {truncate(entry.summary) || "–"}
                       </TableCell>
@@ -192,7 +197,7 @@ export function ActivityTab() {
                             data-testid={`button-view-content-${entry.contentId}`}
                           >
                             <Eye className="mr-2 h-4 w-4" />
-                            Ansehen
+                            {t("admin.activity.view")}
                           </Button>
                         ) : (
                           <span className="text-muted-foreground">–</span>
@@ -214,7 +219,7 @@ export function ActivityTab() {
                 data-testid="button-activity-load-more"
               >
                 {activityQuery.isFetchingNextPage && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Mehr laden
+                {t("admin.activity.loadMore")}
               </Button>
             </div>
           )}

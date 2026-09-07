@@ -41,12 +41,13 @@ import {
   DISCOVERY_SURFACE_LABELS,
   labelFor,
 } from "@/lib/labels";
+import { useI18n, translate, getActiveLanguage, formatCompact } from "@/lib/i18n";
 
-const ENRICHMENT_KEY_LABELS: Record<string, string> = {
-  search: "Suche",
-  videoDetails: "Videodetails",
-  channels: "Kanäle",
-};
+function enrichmentKeyLabel(name: string): string {
+  const key = `research.enrichmentKey.${name}`;
+  const label = translate(getActiveLanguage(), key);
+  return label === key ? name : label;
+}
 
 type ResearchInsights = ResearchInsightsResponse;
 
@@ -104,7 +105,7 @@ class ResearchRequestError extends Error {
 // die Ursache ohne Blick ins Server-Log erkennbar ist.
 function withDetail(error: ResearchRequestError): string {
   const base = error.suggestion || error.message;
-  return error.detail ? `${base} Anbieter-Meldung: ${error.detail}` : base;
+  return error.detail ? `${base} ${translate(getActiveLanguage(), "common.providerMessage")}: ${error.detail}` : base;
 }
 
 function normalizeErrorCategory(status: number, category: unknown, message: string): ApiErrorCategory {
@@ -128,9 +129,9 @@ async function readApiError(response: Response): Promise<ResearchRequestError> {
     if (/^\s*(<!doctype html|<html|<head|<body)/i.test(text)) {
       const title = /<title[^>]*>([^<]{1,120})<\/title>/i.exec(text)?.[1]?.trim();
       payload = {
-        error: `Der Server war nicht erreichbar (Status ${response.status}).`,
-        suggestion: "Statt einer API-Antwort kam eine HTML-Fehlerseite, vermutlich von einem Proxy, einer Firewall oder einem Bot-Schutz zwischen Browser und Server. Versuche es erneut und prüfe, ob ein VPN, Firmennetz oder Filter aktiv ist.",
-        detail: title ? `Seitentitel: ${title}` : "HTML-Seite ohne Titel",
+        error: translate(getActiveLanguage(), "research.error.htmlServerUnreachable", { status: response.status }),
+        suggestion: translate(getActiveLanguage(), "research.error.htmlSuggestion"),
+        detail: title ? translate(getActiveLanguage(), "research.error.htmlPageTitle", { title }) : translate(getActiveLanguage(), "research.error.htmlNoTitle"),
         category: "provider_server",
         retryable: true,
       };
@@ -140,7 +141,7 @@ async function readApiError(response: Response): Promise<ResearchRequestError> {
   } catch {
     payload = {};
   }
-  const message = typeof payload.error === "string" ? payload.error : response.statusText || "Anfrage fehlgeschlagen";
+  const message = typeof payload.error === "string" ? payload.error : response.statusText || translate(getActiveLanguage(), "research.error.requestFailed");
   return new ResearchRequestError({
     message,
     status: response.status,
@@ -153,7 +154,7 @@ async function readApiError(response: Response): Promise<ResearchRequestError> {
 }
 
 function warningText(warning: ApiWarning): string {
-  return warning.message || warning.code || "Einige Anreicherungsdaten sind nicht verfügbar.";
+  return warning.message || warning.code || translate(getActiveLanguage(), "research.warning.enrichmentUnavailable");
 }
 
 function scanLabel(value: string, fallback: string): string {
@@ -164,33 +165,35 @@ function scanLabel(value: string, fallback: string): string {
 }
 
 function errorPresentation(category: ApiErrorCategory) {
+  const language = getActiveLanguage();
   switch (category) {
     case "missing_key":
-      return { title: "YouTube-API-Schlüssel erforderlich", icon: KeyRound };
+      return { title: translate(language, "research.errorTitle.missingKey"), icon: KeyRound };
     case "invalid_key":
-      return { title: "YouTube-API-Schlüssel wurde abgelehnt", icon: KeyRound };
+      return { title: translate(language, "research.errorTitle.invalidKey"), icon: KeyRound };
     case "quota":
-      return { title: "YouTube-API-Kontingent nicht verfügbar", icon: AlertCircle };
+      return { title: translate(language, "research.errorTitle.quota"), icon: AlertCircle };
     case "timeout":
-      return { title: "YouTube hat zu lange für die Antwort gebraucht", icon: WifiOff };
+      return { title: translate(language, "research.errorTitle.timeout"), icon: WifiOff };
     case "offline":
-      return { title: "Du scheinst offline zu sein", icon: WifiOff };
+      return { title: translate(language, "research.errorTitle.offline"), icon: WifiOff };
     case "server":
-      return { title: "Recherche-Dienst ist vorübergehend nicht verfügbar", icon: AlertCircle };
+      return { title: translate(language, "research.errorTitle.server"), icon: AlertCircle };
     default:
-      return { title: "YouTube-Suche konnte nicht abgeschlossen werden", icon: AlertCircle };
+      return { title: translate(language, "research.errorTitle.unknown"), icon: AlertCircle };
   }
 }
 
 function aiErrorTitle(category: ApiErrorCategory | null): string {
+  const language = getActiveLanguage();
   switch (category) {
-    case "missing_key": return "Gemini-API-Schlüssel erforderlich";
-    case "invalid_key": return "Gemini-API-Schlüssel wurde abgelehnt";
-    case "quota": return "Gemini-Kontingent nicht verfügbar";
-    case "timeout": return "Gemini hat zu lange für die Antwort gebraucht";
-    case "offline": return "Du scheinst offline zu sein";
-    case "server": return "KI-Dienst ist vorübergehend nicht verfügbar";
-    default: return "KI-Insights nicht verfügbar";
+    case "missing_key": return translate(language, "research.aiErrorTitle.missingKey");
+    case "invalid_key": return translate(language, "research.aiErrorTitle.invalidKey");
+    case "quota": return translate(language, "research.aiErrorTitle.quota");
+    case "timeout": return translate(language, "research.aiErrorTitle.timeout");
+    case "offline": return translate(language, "research.aiErrorTitle.offline");
+    case "server": return translate(language, "research.aiErrorTitle.server");
+    default: return translate(language, "research.aiErrorTitle.unknown");
   }
 }
 
@@ -198,9 +201,7 @@ const CHART_COLORS = ["#f28b82", "#7aa2d6", "#73b3a6", "#a78bca", "#d4a85a"];
 const BAR_COLORS = ["#ef9a90", "#86a9d5", "#7fb7aa", "#a995c9", "#d2af6d", "#8fa5b8"];
 
 function formatNumber(num: number): string {
-  if (num >= 1000000) return `${(num / 1000000).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mio.`;
-  if (num >= 1000) return `${(num / 1000).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Tsd.`;
-  return num.toLocaleString("de-DE");
+  return formatCompact(getActiveLanguage(), num);
 }
 
 function OverviewSkeleton() {
@@ -248,8 +249,9 @@ function InsightsSkeleton() {
 }
 
 function IdeasSkeleton() {
+  const { t } = useI18n();
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Fundierte Ideen werden generiert">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label={t("research.ideasGeneratingAria")}>
       {Array.from({ length: 6 }).map((_, index) => (
         <Card key={index}>
           <CardHeader className="space-y-3">
@@ -269,6 +271,7 @@ function IdeasSkeleton() {
 
 export default function ResearchDashboard() {
   const [, setLocation] = useLocation();
+  const { t, locale } = useI18n();
   const { state: workflowState, setCachedResearch, setIdeaData, clearHighlight, goToStep } = useWorkflow();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -466,7 +469,7 @@ export default function ResearchDashboard() {
         if (requestError instanceof DOMException && requestError.name === "AbortError") throw requestError;
         const offline = typeof navigator !== "undefined" && !navigator.onLine;
         throw new ResearchRequestError({
-          message: offline ? "Du scheinst offline zu sein." : "Der YouTube-Suchdienst konnte nicht erreicht werden.",
+          message: offline ? t("research.error.offline") : t("research.error.searchUnreachable"),
           status: 0,
           category: offline ? "offline" : "server",
           retryable: true,
@@ -576,7 +579,7 @@ export default function ResearchDashboard() {
       const normalizedError = requestError instanceof ResearchRequestError
         ? requestError
         : new ResearchRequestError({
-            message: requestError instanceof Error ? requestError.message : "KI-Insights konnten nicht generiert werden.",
+            message: requestError instanceof Error ? requestError.message : t("research.error.insightsFailed"),
             status: 0,
             category: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "unknown",
             retryable: true,
@@ -602,7 +605,7 @@ export default function ResearchDashboard() {
     const evidenceClaims = insights.evidenceClaims || [];
     if (evidenceClaims.length === 0) {
       ideasFetchedRef.current = snapshotId;
-      setIdeasError("Dieser Snapshot stammt aus der Zeit vor fundierten Evidenz-Aussagen. Aktualisiere die Recherche, um quellenverknüpfte Ideen zu generieren.");
+      setIdeasError(t("research.error.legacySnapshot"));
       setIdeasErrorCategory("unknown");
       return;
     }
@@ -656,7 +659,7 @@ export default function ResearchDashboard() {
       const normalizedError = requestError instanceof ResearchRequestError
         ? requestError
         : new ResearchRequestError({
-            message: requestError instanceof Error ? requestError.message : "Fundierte Ideen konnten nicht generiert werden.",
+            message: requestError instanceof Error ? requestError.message : t("research.error.ideasFailed"),
             status: 0,
             category: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "unknown",
             retryable: true,
@@ -758,7 +761,7 @@ export default function ResearchDashboard() {
     if (exporting) return;
     const report = buildCurrentReport();
     if (!report) {
-      setExportError("Exporte werden verfügbar, sobald KI-Insights und Fundierte Ideen erfolgreich abgeschlossen sind.");
+      setExportError(t("research.error.exportNotReady"));
       return;
     }
 
@@ -773,7 +776,7 @@ export default function ResearchDashboard() {
       else downloadResearchCsv(report);
     } catch (error) {
       console.error(`Failed to generate ${format.toUpperCase()} export:`, error);
-      setExportError(`Der ${format.toUpperCase()}-Export konnte nicht erstellt werden. Bitte erneut versuchen.`);
+      setExportError(t("research.error.exportFailed", { format: format.toUpperCase() }));
     } finally {
       setExporting(null);
     }
@@ -902,7 +905,7 @@ export default function ResearchDashboard() {
     ? error
     : isError
       ? new ResearchRequestError({
-          message: error instanceof Error ? error.message : "YouTube-Suche fehlgeschlagen.",
+          message: error instanceof Error ? error.message : t("research.error.searchFailed"),
           status: 0,
           category: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "unknown",
           retryable: true,
@@ -950,8 +953,8 @@ export default function ResearchDashboard() {
                 <Input
                   ref={searchInputRef}
                   type="search"
-                  aria-label="YouTube-Videos suchen"
-                  placeholder="YouTube-Videos nach Keyword, Thema oder Kanal suchen …"
+                  aria-label={t("research.searchAriaLabel")}
+                  placeholder={t("research.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -971,7 +974,7 @@ export default function ResearchDashboard() {
                 ) : (
                   <Search className="h-4 w-4 mr-2" />
                 )}
-                Suchen
+                {t("common.search")}
               </Button>
             </div>
 
@@ -987,7 +990,7 @@ export default function ResearchDashboard() {
             />
             {hasSearched && (
               <p className="text-xs text-muted-foreground">
-                Filter sind Entwürfe, bis du auf Suchen klickst. Sie zu ändern verbraucht kein YouTube-API-Kontingent.
+                {t("research.filtersDraftHint")}
               </p>
             )}
           </div>
@@ -1007,12 +1010,12 @@ export default function ResearchDashboard() {
                   <div className="flex flex-wrap gap-2">
                     {keyError && (
                       <Button size="sm" variant="outline" onClick={() => setLocation("/settings")}>
-                        Einstellungen öffnen
+                        {t("research.openSettings")}
                       </Button>
                     )}
                     {(searchError.retryable || !keyError) && (
                       <Button size="sm" variant="outline" onClick={() => void refetch()}>
-                        Suche erneut versuchen
+                        {t("research.retrySearch")}
                       </Button>
                     )}
                   </div>
@@ -1026,7 +1029,7 @@ export default function ResearchDashboard() {
               <div>
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <VideoIcon className="h-5 w-5" />
-                  Videos
+                  {t("research.videosHeading")}
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {Array.from({ length: 6 }).map((_, i) => (
@@ -1037,7 +1040,7 @@ export default function ResearchDashboard() {
               <div>
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <Lightbulb className="h-5 w-5" />
-                  KI-Insights
+                  {t("research.aiInsightsHeading")}
                 </h2>
                 <InsightsSkeleton />
               </div>
@@ -1046,11 +1049,14 @@ export default function ResearchDashboard() {
             <div className="space-y-8">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <p className="text-sm text-muted-foreground" data-testid="text-results-count">
-                  Etwa {effectiveData?.totalResults?.toLocaleString("de-DE") || 0} Treffer für "{submittedQuery}".
-                  {" "}Analysiert wird dieser Snapshot mit {effectiveData?.videos.length || 0} Videos
-                  {effectiveData?.retrievedAt
-                    ? ` vom ${new Date(effectiveData.retrievedAt).toLocaleString("de-DE")}`
-                    : ""}.
+                  {t("research.resultsSummary", {
+                    total: effectiveData?.totalResults?.toLocaleString(locale) || 0,
+                    query: submittedQuery,
+                    count: effectiveData?.videos.length || 0,
+                    retrieved: effectiveData?.retrievedAt
+                      ? t("research.resultsRetrievedAt", { date: new Date(effectiveData.retrievedAt).toLocaleString(locale) })
+                      : "",
+                  })}
                 </p>
                 <div className="flex items-center gap-3 flex-wrap">
                   <Button
@@ -1060,7 +1066,7 @@ export default function ResearchDashboard() {
                     data-testid="button-refresh"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Aktualisieren
+                    {t("research.refresh")}
                   </Button>
                   <Button
                     variant="outline"
@@ -1074,7 +1080,7 @@ export default function ResearchDashboard() {
                     ) : (
                       <Download className="h-4 w-4 mr-2" />
                     )}
-                    {exportPipelineLoading ? "PDF wartet" : exporting === "pdf" ? "PDF wird erstellt" : "PDF herunterladen"}
+                    {exportPipelineLoading ? t("research.export.waiting", { format: "PDF" }) : exporting === "pdf" ? t("research.export.creating", { format: "PDF" }) : t("research.export.download", { format: "PDF" })}
                   </Button>
                   <Button
                     variant="outline"
@@ -1088,7 +1094,7 @@ export default function ResearchDashboard() {
                     ) : (
                       <FileSpreadsheet className="h-4 w-4 mr-2" />
                     )}
-                    {exportPipelineLoading ? "XLS wartet" : exporting === "xls" ? "XLS wird erstellt" : "XLS herunterladen"}
+                    {exportPipelineLoading ? t("research.export.waiting", { format: "XLS" }) : exporting === "xls" ? t("research.export.creating", { format: "XLS" }) : t("research.export.download", { format: "XLS" })}
                   </Button>
                   <Button
                     variant="outline"
@@ -1102,11 +1108,11 @@ export default function ResearchDashboard() {
                     ) : (
                       <Table2 className="h-4 w-4 mr-2" />
                     )}
-                    {exportPipelineLoading ? "CSV wartet" : exporting === "csv" ? "CSV wird erstellt" : "CSV herunterladen"}
+                    {exportPipelineLoading ? t("research.export.waiting", { format: "CSV" }) : exporting === "csv" ? t("research.export.creating", { format: "CSV" }) : t("research.export.download", { format: "CSV" })}
                   </Button>
                   {insightsError && (
                     <Button onClick={handleContinueWithoutAI} className="gap-1" data-testid="button-continue-without-ai">
-                      Ohne KI weiter zum Skript
+                      {t("research.continueWithoutAi")}
                       <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   )}
@@ -1115,14 +1121,14 @@ export default function ResearchDashboard() {
 
               {exportPipelineLoading && (
                 <p id="export-pipeline-status" className="text-xs text-muted-foreground" role="status" aria-live="polite">
-                  Vollständige Exporte werden automatisch freigeschaltet, sobald KI-Insights und Fundierte Ideen für diesen Snapshot abgeschlossen sind.
+                  {t("research.exportPipelineStatus")}
                 </p>
               )}
 
               {exportError && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Export konnte nicht erstellt werden</AlertTitle>
+                  <AlertTitle>{t("research.exportErrorTitle")}</AlertTitle>
                   <AlertDescription>{exportError}</AlertDescription>
                 </Alert>
               )}
@@ -1130,9 +1136,9 @@ export default function ResearchDashboard() {
               {insightsError && (
                 <Alert data-testid={`alert-insights-${insightsErrorCategory || "unknown"}`}>
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>KI-Insights sind nicht verfügbar</AlertTitle>
+                  <AlertTitle>{t("research.insightsUnavailableTitle")}</AlertTitle>
                   <AlertDescription>
-                    Du kannst es am Ende dieser Seite erneut versuchen oder bewusst ohne KI fortfahren. Dein Überblick aus öffentlichen Daten und die Quellvideos bleiben verfügbar.
+                    {t("research.insightsUnavailableDescription")}
                   </AlertDescription>
                 </Alert>
               )}
@@ -1140,7 +1146,7 @@ export default function ResearchDashboard() {
               {hasPartialEnrichment && (
                 <Alert data-testid="alert-partial-enrichment">
                   <Database className="h-4 w-4" />
-                  <AlertTitle>Unvollständige YouTube-Anreicherung</AlertTitle>
+                  <AlertTitle>{t("research.partialEnrichmentTitle")}</AlertTitle>
                   <AlertDescription>
                     {partialWarnings.length > 0 ? (
                       <ul className="list-disc space-y-1 pl-5">
@@ -1151,11 +1157,11 @@ export default function ResearchDashboard() {
                     ) : (
                       <p>
                         {incompleteEnrichmentStages.map(([name, stage]) => (
-                          `${labelFor(ENRICHMENT_KEY_LABELS, name)}: ${stage.returned}/${stage.requested} zurückgegeben`
+                          t("research.partialEnrichmentStage", { label: enrichmentKeyLabel(name), returned: stage.returned, requested: stage.requested })
                         )).join("; ")}.
                       </p>
                     )}
-                    <p className="mt-2">Nicht verfügbare Felder bleiben k. A. und werden aus abgeleiteten Raten ausgeschlossen.</p>
+                    <p className="mt-2">{t("research.partialEnrichmentNote")}</p>
                   </AlertDescription>
                 </Alert>
               )}
@@ -1166,18 +1172,18 @@ export default function ResearchDashboard() {
                     <div>
                       <h2 id="research-overview-heading" className="text-lg font-semibold flex items-center gap-2">
                         <BarChart3 className="h-5 w-5" />
-                        Snapshot-Überblick
+                        {t("research.overviewHeading")}
                       </h2>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Öffentliche Metadaten der YouTube Data API für die zurückgegebene Stichprobe, keine Kanalinhaber-Analytics.
+                        {t("research.overviewDescription")}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="outline" className="border-success-subtle bg-success-subtle text-success">
-                        Beobachtete öffentliche Daten
+                        {t("research.badge.observedPublicData")}
                       </Badge>
                       <Badge variant="outline" className="border-info-subtle bg-info-subtle text-info">
-                        {analytics.uniqueChannels} Kanäle
+                        {t("research.badge.channels", { count: analytics.uniqueChannels })}
                       </Badge>
                     </div>
                   </div>
@@ -1187,49 +1193,49 @@ export default function ResearchDashboard() {
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-muted-foreground mb-1">
                           <Eye className="h-4 w-4" />
-                          <span className="text-xs font-medium">Aufrufe der Stichprobe</span>
+                          <span className="text-xs font-medium">{t("research.stat.sampleViews")}</span>
                         </div>
                         <p className="text-2xl font-bold" data-testid="stat-total-views">
                           {formatNumber(analytics.totalViews)}
                         </p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">Summe über alle zurückgegebenen Videos</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{t("research.stat.sampleViewsHint")}</p>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-muted-foreground mb-1">
                           <TrendingUp className="h-4 w-4" />
-                          <span className="text-xs font-medium">Median-Aufrufe</span>
+                          <span className="text-xs font-medium">{t("research.stat.medianViews")}</span>
                         </div>
                         <p className="text-2xl font-bold" data-testid="stat-avg-views">
                           {formatNumber(analytics.medianViews)}
                         </p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">Weniger verzerrt durch virale Ausreißer</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{t("research.stat.medianViewsHint")}</p>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-muted-foreground mb-1">
                           <Activity className="h-4 w-4" />
-                          <span className="text-xs font-medium">Median-Aufrufe / Tag</span>
+                          <span className="text-xs font-medium">{t("research.stat.medianDailyViews")}</span>
                         </div>
                         <p className="text-2xl font-bold" data-testid="stat-median-views-day">
                           {formatNumber(analytics.medianDailyViews)}
                         </p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">Altersbereinigtes Momentum</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{t("research.stat.medianDailyViewsHint")}</p>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-muted-foreground mb-1">
                           <Users className="h-4 w-4" />
-                          <span className="text-xs font-medium">Sichtbare Interaktionsrate</span>
+                          <span className="text-xs font-medium">{t("research.stat.engagementRate")}</span>
                         </div>
                         <p className="text-2xl font-bold" data-testid="stat-avg-engagement">
-                          {analytics.avgEngagement === "N/A" ? "k. A." : `${String(analytics.avgEngagement).replace(".", ",")} %`}
+                          {analytics.avgEngagement === "N/A" ? t("common.notAvailable") : t("research.percentValue", { value: Number(analytics.avgEngagement).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                         </p>
                         <p className="mt-1 text-[11px] text-muted-foreground">
-                          Likes plus Kommentare pro Aufruf, {analytics.coverage.engagement}/{analytics.totalVideos} vollständig
+                          {t("research.stat.engagementRateHint", { complete: analytics.coverage.engagement, total: analytics.totalVideos })}
                         </p>
                       </CardContent>
                     </Card>
@@ -1237,24 +1243,24 @@ export default function ResearchDashboard() {
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-muted-foreground mb-1">
                           <TrendingUp className="h-4 w-4" />
-                          <span className="text-xs font-medium">Durchschnittliche Aufrufe</span>
+                          <span className="text-xs font-medium">{t("research.stat.avgViews")}</span>
                         </div>
                         <p className="text-2xl font-bold" data-testid="stat-avg-views">
                           {formatNumber(analytics.avgViews)}
                         </p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">Zusammen mit dem Median nützlich zur Einschätzung der Schiefe</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{t("research.stat.avgViewsHint")}</p>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-muted-foreground mb-1">
                           <VideoIcon className="h-4 w-4" />
-                          <span className="text-xs font-medium">Analysierte Videos</span>
+                          <span className="text-xs font-medium">{t("research.stat.videosAnalyzed")}</span>
                         </div>
                         <p className="text-2xl font-bold" data-testid="stat-videos-analyzed">
                           {analytics.totalVideos}
                         </p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">Maximal 50 pro Suchanfrage</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{t("research.stat.videosAnalyzedHint")}</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -1264,7 +1270,7 @@ export default function ResearchDashboard() {
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                           <BarChart3 className="h-4 w-4" />
-                          Top-Videos nach Aufrufen
+                          {t("research.topVideosByViews")}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -1296,7 +1302,7 @@ export default function ResearchDashboard() {
                                     </div>
                                   </div>
                                   <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                                    {video.viewCount === undefined ? "k. A." : formatNumber(video.viewCount)}
+                                    {video.viewCount === undefined ? t("common.notAvailable") : formatNumber(video.viewCount)}
                                   </span>
                                 </div>
                               </a>
@@ -1310,9 +1316,9 @@ export default function ResearchDashboard() {
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                           <Clock className="h-4 w-4" />
-                          Dauer-Mix
+                          {t("research.durationMix")}
                         </CardTitle>
-                        <p className="text-xs text-muted-foreground">Formatverteilung in der zurückgegebenen Stichprobe.</p>
+                        <p className="text-xs text-muted-foreground">{t("research.durationMixDescription")}</p>
                       </CardHeader>
                       <CardContent className="grid items-center gap-4 sm:grid-cols-[170px_1fr] xl:grid-cols-1 2xl:grid-cols-[170px_1fr]">
                         <div className="mx-auto h-[170px] w-[170px]">
@@ -1335,7 +1341,7 @@ export default function ResearchDashboard() {
                                 ))}
                               </Pie>
                               <Tooltip
-                                formatter={(value: number) => [`${value} Videos`, "Stichprobe"]}
+                                formatter={(value: number) => [t("research.videosCount", { count: value }), t("research.tooltip.sample")]}
                                 contentStyle={{
                                   background: "hsl(var(--popover))",
                                   border: "1px solid hsl(var(--border))",
@@ -1358,7 +1364,7 @@ export default function ResearchDashboard() {
                                 />
                                 <div className="min-w-0 flex-1">
                                   <p className="truncate text-sm font-medium">{item.name}</p>
-                                  <p className="text-xs text-muted-foreground">{percentage} % der Stichprobe</p>
+                                  <p className="text-xs text-muted-foreground">{t("research.percentOfSample", { percent: percentage })}</p>
                                 </div>
                                 <span className="text-sm font-semibold">{item.value}</span>
                               </div>
@@ -1374,7 +1380,7 @@ export default function ResearchDashboard() {
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                           <Activity className="h-4 w-4" />
-                          Momentum-Spitzenreiter
+                          {t("research.momentumLeaders")}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -1393,26 +1399,26 @@ export default function ResearchDashboard() {
                             </div>
                             <div className="text-right">
                               <p className="text-sm font-semibold">{formatNumber(Math.round(viewsPerDay))}</p>
-                              <p className="text-[11px] text-muted-foreground">Aufrufe/Tag</p>
+                              <p className="text-[11px] text-muted-foreground">{t("research.viewsPerDay")}</p>
                             </div>
                           </a>
                         ))}
                         <p className="text-xs text-muted-foreground">
-                          Aufrufe pro Tag gleichen das Videoalter aus. Das ist keine Echtzeit-Messung der Geschwindigkeit.
+                          {t("research.momentumNote")}
                         </p>
                         {analytics.breakoutLeaders.length > 0 && (
                           <div className="space-y-2 border-t border-border pt-4">
                             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                              Breakout im Verhältnis zu aktuellen Abonnenten
+                              {t("research.breakoutHeading")}
                             </p>
                             {analytics.breakoutLeaders.slice(0, 3).map(({ video, viewsPerSubscriber }) => (
                               <div key={video.id} className="flex items-center justify-between gap-3 text-sm">
                                 <span className="truncate">{video.title}</span>
-                                <Badge variant="outline">{viewsPerSubscriber.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x</Badge>
+                                <Badge variant="outline">{viewsPerSubscriber.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x</Badge>
                               </div>
                             ))}
                             <p className="text-xs text-muted-foreground">
-                              Verwendet aktuelle, gerundete öffentliche Abonnentenzahlen. Das ist ein Richtwert, nicht die Performance zum Veröffentlichungszeitpunkt.
+                              {t("research.breakoutNote")}
                             </p>
                           </div>
                         )}
@@ -1424,9 +1430,9 @@ export default function ResearchDashboard() {
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                           <Clock className="h-4 w-4" />
-                          Veröffentlichungsaktualität
+                          {t("research.recencyHeading")}
                         </CardTitle>
-                        <p className="text-xs text-muted-foreground">Aktualitätsmix, kein Beleg für Themenwachstum.</p>
+                        <p className="text-xs text-muted-foreground">{t("research.recencyDescription")}</p>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {analytics.recencyData.map((item, index) => {
@@ -1454,17 +1460,17 @@ export default function ResearchDashboard() {
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                           <Database className="h-4 w-4" />
-                          Datenabdeckung
+                          {t("research.coverageHeading")}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="grid gap-x-4 gap-y-3 2xl:grid-cols-2">
                         {[
-                          ["Aufrufe", analytics.coverage.views],
-                          ["Vollständiges Engagement", analytics.coverage.engagement],
-                          ["Öffentliche Abonnenten", analytics.coverage.subscribers],
-                          ["Öffentliche Tags", analytics.coverage.tags],
-                          ["Untertitel verfügbar", analytics.coverage.captions],
-                          ["HD-Auflösung", analytics.coverage.hd],
+                          [t("research.coverage.views"), analytics.coverage.views],
+                          [t("research.coverage.engagement"), analytics.coverage.engagement],
+                          [t("research.coverage.subscribers"), analytics.coverage.subscribers],
+                          [t("research.coverage.tags"), analytics.coverage.tags],
+                          [t("research.coverage.captions"), analytics.coverage.captions],
+                          [t("research.coverage.hd"), analytics.coverage.hd],
                         ].map(([label, count]) => {
                           const numericCount = Number(count);
                           const percentage = analytics.totalVideos > 0
@@ -1483,7 +1489,7 @@ export default function ResearchDashboard() {
                           );
                         })}
                         <p className="text-xs text-muted-foreground 2xl:col-span-2">
-                          Nicht verfügbare öffentliche Felder werden aus Raten ausgeschlossen und nie in null umgewandelt.
+                          {t("research.coverageNote")}
                         </p>
                       </CardContent>
                     </Card>
@@ -1495,10 +1501,10 @@ export default function ResearchDashboard() {
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                           <Sparkles className="h-4 w-4" />
-                          Outlier-Videos
+                          {t("research.outlierHeading")}
                         </CardTitle>
                         <p className="text-xs text-muted-foreground">
-                          Outlier-Wert = Aufrufe geteilt durch den Median der letzten Uploads desselben Kanals.
+                          {t("research.outlierDescription")}
                         </p>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -1518,10 +1524,10 @@ export default function ResearchDashboard() {
                             </div>
                             <div className="flex shrink-0 items-center gap-3 text-right">
                               <Badge variant="outline" className="font-semibold">
-                                {video.outlierScore.toLocaleString("de-DE", { maximumFractionDigits: 1 })}x
+                                {video.outlierScore.toLocaleString(locale, { maximumFractionDigits: 1 })}x
                               </Badge>
                               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                {video.viewCount === undefined ? "k. A." : formatNumber(video.viewCount)} Aufrufe
+                                {t("research.outlierViews", { views: video.viewCount === undefined ? t("common.notAvailable") : formatNumber(video.viewCount) })}
                               </span>
                             </div>
                           </a>
@@ -1535,7 +1541,7 @@ export default function ResearchDashboard() {
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                           <Hash className="h-4 w-4" />
-                          Wiederkehrende Tags
+                          {t("research.recurringTags")}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -1548,7 +1554,7 @@ export default function ResearchDashboard() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground">In dieser Stichprobe wurden keine öffentlichen Tags zurückgegeben.</p>
+                          <p className="text-sm text-muted-foreground">{t("research.noTags")}</p>
                         )}
                       </CardContent>
                     </Card>
@@ -1560,10 +1566,10 @@ export default function ResearchDashboard() {
                 <div>
                   <h2 id="research-videos-heading" className="text-lg font-semibold flex items-center gap-2">
                     <VideoIcon className="h-5 w-5" />
-                    Quellvideos ({displayedVideos.length})
+                    {t("research.sourceVideosHeading", { count: displayedVideos.length })}
                   </h2>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Alle zurückgegebenen Videos, die für Überblick und KI-Analyse verwendet wurden, erscheinen unten in der YouTube-Ergebnisreihenfolge.
+                    {t("research.sourceVideosDescription")}
                   </p>
                 </div>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -1581,16 +1587,16 @@ export default function ResearchDashboard() {
                 <div>
                   <h2 id="research-insights-heading" className="text-lg font-semibold flex items-center gap-2">
                     <Lightbulb className="h-5 w-5" />
-                    KI-Insights
+                    {t("research.aiInsightsHeading")}
                     {insightsLoading && (
                       <Badge variant="secondary" className="ml-2 ai-insights-glow">
                         <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                        Wird generiert, während du prüfst …
+                        {t("research.insightsGeneratingBadge")}
                       </Badge>
                     )}
                   </h2>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Generiert aus denselben öffentlichen Quellvideos oben, mit klarer Trennung von Beobachtung und Ableitung.
+                    {t("research.insightsDescription")}
                   </p>
                 </div>
 
@@ -1604,26 +1610,26 @@ export default function ResearchDashboard() {
                           <Sparkles className="mt-0.5 h-5 w-5 text-info" />
                           <div className="space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="font-semibold">Strategische Auswertung</h3>
-                              <Badge variant="outline">KI-Ableitung</Badge>
+                              <h3 className="font-semibold">{t("research.strategicSummary")}</h3>
+                              <Badge variant="outline">{t("research.aiInference")}</Badge>
                               {insights.methodology?.sampleSize !== undefined && (
-                                <Badge variant="secondary">{insights.methodology.sampleSize} Videos</Badge>
+                                <Badge variant="secondary">{t("research.videosCount", { count: insights.methodology.sampleSize })}</Badge>
                               )}
                             </div>
                             <p className="text-sm leading-relaxed">
-                              {insights.summary || "Insights, abgeleitet aus den öffentlichen Metadaten dieses Such-Snapshots."}
+                              {insights.summary || t("research.summaryFallback")}
                             </p>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
 
-                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Überblick der KI-Insights">
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label={t("research.insightsOverviewAria")}>
                       {[
-                        { label: "Fragen", value: insights.peopleAlsoAsk?.length || 0, icon: HelpCircle, color: "text-info bg-info-subtle" },
-                        { label: "Chancen", value: insights.contentGaps?.length || 0, icon: Lightbulb, color: "text-warning bg-warning-subtle" },
-                        { label: "Themen", value: insights.trendingSubtopics?.length || 0, icon: TrendingUp, color: "text-success bg-success-subtle" },
-                        { label: "Nächste Schritte", value: insights.recommendedActions?.length || 0, icon: ListChecks, color: "text-primary bg-primary/10" },
+                        { label: t("research.stat.questions"), value: insights.peopleAlsoAsk?.length || 0, icon: HelpCircle, color: "text-info bg-info-subtle" },
+                        { label: t("research.stat.opportunities"), value: insights.contentGaps?.length || 0, icon: Lightbulb, color: "text-warning bg-warning-subtle" },
+                        { label: t("research.stat.topics"), value: insights.trendingSubtopics?.length || 0, icon: TrendingUp, color: "text-success bg-success-subtle" },
+                        { label: t("research.stat.nextSteps"), value: insights.recommendedActions?.length || 0, icon: ListChecks, color: "text-primary bg-primary/10" },
                       ].map(({ label, value, icon: Icon, color }) => (
                         <div key={label} className="flex items-center gap-3 rounded-xl border border-border/70 bg-card p-4">
                           <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${color}`}>
@@ -1642,18 +1648,18 @@ export default function ResearchDashboard() {
                         <CardHeader>
                           <CardTitle className="text-base flex items-center gap-2">
                             <Compass className="h-4 w-4 text-info" />
-                            Recherche-Perspektive
+                            {t("research.perspectiveHeading")}
                           </CardTitle>
                           <p className="text-xs text-muted-foreground">
-                            Zuschauerbedürfnis und Entdeckungskontext, die jede Empfehlung unten leiten sollten.
+                            {t("research.perspectiveDescription")}
                           </p>
                         </CardHeader>
                         <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                           {[
-                            ["Primäre Absicht", insights.queryIntent.primaryIntent],
-                            ["Zuschauerbedürfnis", insights.queryIntent.viewerNeed],
-                            ["Wahrscheinliche Oberfläche", insights.queryIntent.discoverySurface],
-                            ["Glaubwürdigkeit", insights.queryIntent.credibilityNote],
+                            [t("research.perspective.primaryIntent"), insights.queryIntent.primaryIntent],
+                            [t("research.perspective.viewerNeed"), insights.queryIntent.viewerNeed],
+                            [t("research.perspective.discoverySurface"), insights.queryIntent.discoverySurface],
+                            [t("research.perspective.credibility"), insights.queryIntent.credibilityNote],
                           ].map(([label, value]) => (
                             <div key={label} className="rounded-lg border border-border/70 bg-muted/15 p-4">
                               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -1669,15 +1675,15 @@ export default function ResearchDashboard() {
                         <CardHeader className="pb-3">
                           <CardTitle className="flex items-center gap-2 text-base">
                             <Activity className="h-4 w-4 text-info" aria-hidden="true" />
-                            Evidenz-Bilanz
+                            {t("research.evidenceBalanceHeading")}
                           </CardTitle>
-                          <p className="text-xs text-muted-foreground">Überblick darüber, was bekannt ist, was abgeleitet wurde und was noch creator-seitig validiert werden muss.</p>
+                          <p className="text-xs text-muted-foreground">{t("research.evidenceBalanceDescription")}</p>
                         </CardHeader>
                         <CardContent className="grid gap-3 lg:grid-cols-3">
                         {[
                           {
-                            title: "Beobachtet",
-                            description: "Sichtbar in der öffentlichen Stichprobe",
+                            title: t("research.evidence.observed"),
+                            description: t("research.evidence.observedDescription"),
                             items: insights.evidenceSignals.observed,
                             icon: CheckCircle2,
                             color: "border-success-subtle bg-success-subtle",
@@ -1685,8 +1691,8 @@ export default function ResearchDashboard() {
                             text: "text-success",
                           },
                           {
-                            title: "Abgeleitet",
-                            description: "Nützliche Hypothesen",
+                            title: t("research.evidence.inferred"),
+                            description: t("research.evidence.inferredDescription"),
                             items: insights.evidenceSignals.inferred,
                             icon: Lightbulb,
                             color: "border-warning-subtle bg-warning-subtle",
@@ -1694,8 +1700,8 @@ export default function ResearchDashboard() {
                             text: "text-warning",
                           },
                           {
-                            title: "Erfordert YouTube Studio",
-                            description: "Braucht Inhaber-Analytics",
+                            title: t("research.evidence.requiresStudio"),
+                            description: t("research.evidence.requiresStudioDescription"),
                             items: insights.evidenceSignals.requiresStudio,
                             icon: FlaskConical,
                             color: "border-info-subtle bg-info-subtle",
@@ -1723,7 +1729,7 @@ export default function ResearchDashboard() {
                               />
                             </div>
                             <details className="mt-3 text-sm text-foreground">
-                              <summary className="cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground">Ergebnisse anzeigen</summary>
+                              <summary className="cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground">{t("research.showResults")}</summary>
                               <ul className="mt-3 space-y-2">
                                 {items?.map((item, index) => (
                                   <li key={index} className="flex items-start gap-2">
@@ -1746,14 +1752,14 @@ export default function ResearchDashboard() {
                             <div>
                               <CardTitle className="flex items-center gap-2 text-base">
                                 <Database className="h-4 w-4" aria-hidden="true" />
-                                Evidenz-Protokoll
-                                <Badge variant="secondary">{insights.evidenceClaims.length} Aussagen</Badge>
+                                {t("research.evidenceLedgerHeading")}
+                                <Badge variant="secondary">{t("research.claimsCount", { count: insights.evidenceClaims.length })}</Badge>
                               </CardTitle>
-                              <p className="mt-1 text-xs text-muted-foreground">Öffne den Prüfpfad auf Quellenebene, wenn du eine Empfehlung verifizieren willst.</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{t("research.evidenceLedgerDescription")}</p>
                             </div>
                             <CollapsibleTrigger asChild>
                               <Button type="button" variant="outline" size="sm" className="shrink-0 gap-2">
-                                {evidenceLedgerOpen ? "Details ausblenden" : "Evidenz anzeigen"}
+                                {evidenceLedgerOpen ? t("research.hideDetails") : t("research.showEvidence")}
                                 {evidenceLedgerOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                               </Button>
                             </CollapsibleTrigger>
@@ -1764,7 +1770,7 @@ export default function ResearchDashboard() {
                             <article key={claim.id} className="rounded-lg border border-border/70 bg-muted/10 p-4">
                               <div className="flex flex-wrap items-center gap-2">
                                 <Badge variant="outline">{labelFor(EVIDENCE_CLASS_LABELS, claim.evidenceClass)}</Badge>
-                                <Badge variant="secondary">Konfidenz: {labelFor(CONFIDENCE_LABELS, claim.confidence)}</Badge>
+                                <Badge variant="secondary">{t("research.confidence", { value: labelFor(CONFIDENCE_LABELS, claim.confidence) })}</Badge>
                                 <span className="font-mono text-[11px] text-muted-foreground">{claim.id}</span>
                               </div>
                               <p className="mt-3 text-sm leading-relaxed">{claim.claim}</p>
@@ -1786,12 +1792,12 @@ export default function ResearchDashboard() {
                                   })
                                 ) : (
                                   <span className="rounded-full border border-warning-subtle bg-warning-subtle px-2.5 py-1 text-warning">
-                                    Aggregierte Ableitung für Snapshot {claim.snapshotId.slice(0, 10)}
+                                    {t("research.aggregatedInference", { id: claim.snapshotId.slice(0, 10) })}
                                   </span>
                                 )}
                               </div>
                               <p className="mt-3 text-xs text-muted-foreground">
-                                Einschränkung: {claim.limitations.join(" ")}
+                                {t("research.limitation", { text: claim.limitations.join(" ") })}
                               </p>
                             </article>
                           ))}
@@ -1805,10 +1811,10 @@ export default function ResearchDashboard() {
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                           <HelpCircle className="h-4 w-4" />
-                          Zuschauerfragen zum Beantworten
+                          {t("research.viewerQuestionsHeading")}
                         </CardTitle>
                         <p className="text-xs text-muted-foreground">
-                          Wahrscheinliche Fragen, abgeleitet aus Titeln, Beschreibungen und Tags. Das sind keine Google-"People Also Ask"-Daten.
+                          {t("research.viewerQuestionsDescription")}
                         </p>
                       </CardHeader>
                       <CardContent className="space-y-2">
@@ -1845,21 +1851,21 @@ export default function ResearchDashboard() {
                         <CardHeader>
                           <CardTitle className="text-base flex items-center gap-2">
                             <Target className="h-4 w-4" />
-                            Wahrscheinliche Zielgruppe
+                            {t("research.audienceHeading")}
                           </CardTitle>
-                          <p className="text-xs text-muted-foreground">KI-Ableitung, keine YouTube-Zielgruppendemografie.</p>
+                          <p className="text-xs text-muted-foreground">{t("research.audienceDescription")}</p>
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-1">Primäre Demografie</p>
+                            <p className="text-sm font-medium text-muted-foreground mb-1">{t("research.audience.primaryDemographic")}</p>
                             <p className="text-sm">{insights.targetAudience?.primaryDemographic}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-1">Altersspanne</p>
+                            <p className="text-sm font-medium text-muted-foreground mb-1">{t("research.audience.ageRange")}</p>
                             <Badge variant="secondary">{insights.targetAudience?.ageRange}</Badge>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Interessen</p>
+                            <p className="text-sm font-medium text-muted-foreground mb-2">{t("research.audience.interests")}</p>
                             <div className="flex flex-wrap gap-2">
                               {insights.targetAudience?.interests?.map((interest, i) => (
                                 <Badge key={i} variant="outline">{interest}</Badge>
@@ -1867,7 +1873,7 @@ export default function ResearchDashboard() {
                             </div>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Schmerzpunkte</p>
+                            <p className="text-sm font-medium text-muted-foreground mb-2">{t("research.audience.painPoints")}</p>
                             <ul className="text-sm space-y-1">
                               {insights.targetAudience?.painPoints?.map((point, i) => (
                                 <li key={i} className="flex items-start gap-2">
@@ -1884,13 +1890,13 @@ export default function ResearchDashboard() {
                         <CardHeader>
                           <CardTitle className="text-base flex items-center gap-2">
                             <BarChart3 className="h-4 w-4" />
-                            Nischenanalyse
+                            {t("research.nicheHeading")}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <p className="text-sm font-medium text-muted-foreground mb-1">Wettbewerbssignal</p>
+                              <p className="text-sm font-medium text-muted-foreground mb-1">{t("research.niche.competitionSignal")}</p>
                               <Badge
                                 variant="outline"
                                 className={insights.nicheAnalysis?.competitionLevel?.toLowerCase().includes("high")
@@ -1901,14 +1907,14 @@ export default function ResearchDashboard() {
                               </Badge>
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-muted-foreground mb-1">Aktualitäts-/Nachfragesignal</p>
+                              <p className="text-sm font-medium text-muted-foreground mb-1">{t("research.niche.demandSignal")}</p>
                               <Badge variant="outline" className="border-success-subtle bg-success-subtle text-success">
                                 {insights.nicheAnalysis?.growthTrend?.split(" ")[0]}
                               </Badge>
                             </div>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Beobachteter Veröffentlichungsrhythmus</p>
+                            <p className="text-sm font-medium text-muted-foreground mb-2">{t("research.niche.postingRhythm")}</p>
                             <div className="flex flex-wrap gap-2">
                               {insights.nicheAnalysis?.bestPostingTimes?.map((time, i) => (
                                 <Badge key={i} variant="outline">{time}</Badge>
@@ -1916,7 +1922,7 @@ export default function ResearchDashboard() {
                             </div>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Empfohlene Formate</p>
+                            <p className="text-sm font-medium text-muted-foreground mb-2">{t("research.niche.recommendedFormats")}</p>
                             <ul className="text-sm space-y-1">
                               {insights.nicheAnalysis?.recommendedFormats?.map((format, i) => (
                                 <li key={i} className="flex items-start gap-2">
@@ -1927,7 +1933,7 @@ export default function ResearchDashboard() {
                             </ul>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-1">Hypothese zur kommerziellen Absicht</p>
+                            <p className="text-sm font-medium text-muted-foreground mb-1">{t("research.niche.commercialIntent")}</p>
                             <p className="text-sm">{insights.nicheAnalysis?.monetizationPotential}</p>
                           </div>
                         </CardContent>
@@ -1939,7 +1945,7 @@ export default function ResearchDashboard() {
                         <CardHeader>
                           <CardTitle className="text-base flex items-center gap-2">
                             <Lightbulb className="h-4 w-4" />
-                            Chancen-Hypothesen
+                            {t("research.opportunitiesHeading")}
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -1949,7 +1955,7 @@ export default function ResearchDashboard() {
                                 <details>
                                   <summary className="cursor-pointer select-none font-medium">
                                     <span className="mr-2 text-info">{i + 1}.</span>
-                                    {scanLabel(gap, `Chance ${i + 1}`)}
+                                    {scanLabel(gap, t("research.opportunityFallback", { n: i + 1 }))}
                                   </summary>
                                   <p className="mt-2 pl-6 leading-relaxed text-muted-foreground">{gap}</p>
                                 </details>
@@ -1963,7 +1969,7 @@ export default function ResearchDashboard() {
                         <CardHeader>
                           <CardTitle className="text-base flex items-center gap-2">
                             <TrendingUp className="h-4 w-4" />
-                            Wiederkehrende Unterthemen
+                            {t("research.subtopicsHeading")}
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -1983,10 +1989,10 @@ export default function ResearchDashboard() {
                         <CardHeader>
                           <CardTitle className="text-base flex items-center gap-2">
                             <ListChecks className="h-4 w-4" />
-                            Empfohlene nächste Schritte
+                            {t("research.nextStepsHeading")}
                           </CardTitle>
                           <p className="text-xs text-muted-foreground">
-                            Geordnete Maßnahmen aus der aktuellen Stichprobe, bereit zur Übernahme in die Ideen.
+                            {t("research.nextStepsDescription")}
                           </p>
                         </CardHeader>
                         <CardContent>
@@ -2001,7 +2007,7 @@ export default function ResearchDashboard() {
                                 </div>
                                 <h4 className="font-semibold">{action.title}</h4>
                                 <details className="mt-3 rounded-lg bg-muted/25 px-3 py-2">
-                                  <summary className="cursor-pointer select-none text-xs font-medium text-info">Warum dieser Schritt</summary>
+                                  <summary className="cursor-pointer select-none text-xs font-medium text-info">{t("research.whyThisStep")}</summary>
                                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{action.rationale}</p>
                                 </details>
                               </div>
@@ -2018,13 +2024,13 @@ export default function ResearchDashboard() {
                             <div>
                               <CardTitle className="flex items-center gap-2 text-base">
                                 <Database className="h-4 w-4" />
-                                Evidenz und Grenzen
+                                {t("research.methodologyHeading")}
                               </CardTitle>
-                              <p className="mt-1 text-xs text-muted-foreground">Grundlage der öffentlichen API, Umfang und nicht verfügbare Inhaber-Metriken.</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{t("research.methodologyDescription")}</p>
                             </div>
                             <CollapsibleTrigger asChild>
                               <Button type="button" variant="ghost" size="sm" className="shrink-0 gap-2">
-                                {methodologyOpen ? "Ausblenden" : "Grenzen prüfen"}
+                                {methodologyOpen ? t("research.hide") : t("research.checkLimits")}
                                 {methodologyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                               </Button>
                             </CollapsibleTrigger>
@@ -2032,11 +2038,11 @@ export default function ResearchDashboard() {
                           <CollapsibleContent>
                             <CardContent className="grid gap-4 border-t border-border/70 pt-5 md:grid-cols-[1fr_2fr]">
                           <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Grundlage</p>
+                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("research.methodology.basis")}</p>
                             <p className="mt-1 text-sm">{insights.methodology.basis}</p>
                           </div>
                           <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Einschränkungen</p>
+                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("research.methodology.limitations")}</p>
                             <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
                               {insights.methodology.limitations.map((limitation, index) => (
                                 <li key={index} className="flex gap-2">
@@ -2057,14 +2063,14 @@ export default function ResearchDashboard() {
                     <CardContent className="py-12 text-center">
                       <Lightbulb className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                       <h3 className="font-semibold mb-2">
-                        {insightsError ? aiErrorTitle(insightsErrorCategory) : "KI-Insights bereit zur Generierung"}
+                        {insightsError ? aiErrorTitle(insightsErrorCategory) : t("research.insightsReadyTitle")}
                       </h3>
                       <p className="text-sm text-muted-foreground mb-4">
-                        {insightsError || "KI-Insights werden aus dem aktuellen öffentlichen Metadaten-Snapshot generiert."}
+                        {insightsError || t("research.insightsReadyDescription")}
                       </p>
                       <div className="flex flex-wrap justify-center gap-2">
                         {(insightsErrorCategory === "missing_key" || insightsErrorCategory === "invalid_key") && (
-                          <Button variant="outline" onClick={() => setLocation("/settings")}>Einstellungen öffnen</Button>
+                          <Button variant="outline" onClick={() => setLocation("/settings")}>{t("research.openSettings")}</Button>
                         )}
                         <Button
                           onClick={() => {
@@ -2079,7 +2085,7 @@ export default function ResearchDashboard() {
                           ) : (
                             <Lightbulb className="h-4 w-4 mr-2" />
                           )}
-                          {insightsError ? "Insights erneut versuchen" : "Insights generieren"}
+                          {insightsError ? t("research.retryInsights") : t("research.generateInsights")}
                         </Button>
                       </div>
                     </CardContent>
@@ -2096,22 +2102,22 @@ export default function ResearchDashboard() {
                   <div>
                     <h2 id="research-ideas-heading" className="flex items-center gap-2 text-lg font-semibold">
                       <Sparkles className="h-5 w-5 text-info" aria-hidden="true" />
-                      Fundierte Ideen
+                      {t("research.ideasHeading")}
                       {ideasLoading && (
                         <Badge variant="secondary" role="status" aria-live="polite">
                           <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
-                          Wird aus diesem Snapshot generiert
+                          {t("research.ideasGeneratingBadge")}
                         </Badge>
                       )}
                     </h2>
                     <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-                      Diese Pakete werden ausschließlich aus den validierten Insights und der Quellvideo-Evidenz oben generiert. Wähle eines aus, prüfe Versprechen und Testregel und geh dann weiter zum Skript-Writer.
+                      {t("research.ideasDescription")}
                     </p>
                   </div>
                   {selectedIdea && (
                     <Button onClick={handleProceedToScript} className="gap-2" data-testid="button-proceed-script">
                       <PlayCircle className="h-4 w-4" aria-hidden="true" />
-                      Weiter zum Skript-Writer
+                      {t("research.proceedToScript")}
                     </Button>
                   )}
                 </div>
@@ -2121,12 +2127,12 @@ export default function ResearchDashboard() {
                 ) : ideasError ? (
                   <Alert data-testid={`alert-ideas-${ideasErrorCategory || "unknown"}`}>
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Fundierte Ideen sind nicht verfügbar</AlertTitle>
+                    <AlertTitle>{t("research.ideasUnavailableTitle")}</AlertTitle>
                     <AlertDescription className="space-y-3">
                       <p>{ideasError}</p>
                       <div className="flex flex-wrap gap-2">
                         {(ideasErrorCategory === "missing_key" || ideasErrorCategory === "invalid_key") && (
-                          <Button size="sm" variant="outline" onClick={() => setLocation("/settings")}>Einstellungen öffnen</Button>
+                          <Button size="sm" variant="outline" onClick={() => setLocation("/settings")}>{t("research.openSettings")}</Button>
                         )}
                         <Button
                           size="sm"
@@ -2138,10 +2144,10 @@ export default function ResearchDashboard() {
                             void fetchIdeas();
                           }}
                         >
-                          Fundierte Ideen erneut versuchen
+                          {t("research.retryIdeas")}
                         </Button>
                         <Button size="sm" variant="ghost" onClick={handleContinueWithoutAI}>
-                          Ohne KI weiter zum Skript
+                          {t("research.continueWithoutAi")}
                         </Button>
                       </div>
                     </AlertDescription>
@@ -2166,7 +2172,7 @@ export default function ResearchDashboard() {
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Idee {index + 1}</p>
+                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("research.ideaLabel", { n: index + 1 })}</p>
                                 <h3 className="mt-1 font-semibold leading-snug">{idea.title}</h3>
                               </div>
                               <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${
@@ -2186,11 +2192,11 @@ export default function ResearchDashboard() {
 
                             <div className="mt-4 space-y-3 border-t border-border/70 pt-4 text-sm">
                               <div>
-                                <p className="text-xs font-medium uppercase tracking-wide text-info">Ehrliches Versprechen</p>
+                                <p className="text-xs font-medium uppercase tracking-wide text-info">{t("research.idea.honestPromise")}</p>
                                 <p className="mt-1">{idea.honestPromise}</p>
                               </div>
                               <div>
-                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Einlösung</p>
+                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("research.idea.payoff")}</p>
                                 <p className="mt-1">{idea.payoff}</p>
                               </div>
                               <div className="flex items-start gap-2">
@@ -2198,20 +2204,20 @@ export default function ResearchDashboard() {
                                 <p>{idea.thumbnailConcept}</p>
                               </div>
                               <div className="rounded-lg bg-info-subtle p-3">
-                                <p className="text-xs font-medium uppercase tracking-wide text-info">Studio-Test</p>
+                                <p className="text-xs font-medium uppercase tracking-wide text-info">{t("research.idea.studioTest")}</p>
                                 <p className="mt-1">{idea.studioMetric}</p>
                                 <p className="mt-1 text-xs text-muted-foreground">{idea.experimentRule}</p>
                               </div>
                             </div>
 
-                            <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Verwendete Evidenz">
+                            <div className="mt-4 flex flex-wrap gap-1.5" aria-label={t("research.evidenceUsedAria")}>
                               {Array.from(new Set(idea.evidenceClaims.map((claim) => claim.evidenceClass))).map((evidenceClass) => (
                                 <Badge key={evidenceClass} variant="outline" className="text-[11px]">
                                   {labelFor(EVIDENCE_CLASS_LABELS, evidenceClass)}
                                 </Badge>
                               ))}
                               <Badge variant="secondary" className="text-[11px]">
-                                {new Set(idea.evidenceClaims.flatMap((claim) => claim.sourceVideoIds)).size} Quellvideos
+                                {t("research.sourceVideosCount", { count: new Set(idea.evidenceClaims.flatMap((claim) => claim.sourceVideoIds)).size })}
                               </Badge>
                             </div>
                           </button>
@@ -2222,14 +2228,14 @@ export default function ResearchDashboard() {
                     <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="font-medium">
-                          {selectedIdea ? `Ausgewählt: ${selectedIdea.title}` : "Wähle eine fundierte Idee aus, um fortzufahren"}
+                          {selectedIdea ? t("research.selectedIdea", { title: selectedIdea.title }) : t("research.selectIdeaPrompt")}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Die Auswahl wird in diesem Workflow gespeichert. Der Skript-Writer erhält Versprechen, Einlösung, Thumbnail-Konzept, Evidenz-Aussagen und Studio-Experiment.
+                          {t("research.selectionNote")}
                         </p>
                       </div>
                       <Button onClick={handleProceedToScript} disabled={!selectedIdea} className="shrink-0 gap-2">
-                        Weiter zum Skript-Writer
+                        {t("research.proceedToScript")}
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
@@ -2238,18 +2244,18 @@ export default function ResearchDashboard() {
                   <Card>
                     <CardContent className="py-10 text-center" role="status" aria-live="polite">
                       <Loader2 className="mx-auto mb-3 h-7 w-7 animate-spin text-info" aria-hidden="true" />
-                      <p className="font-medium">Warten auf validierte KI-Insights</p>
-                      <p className="mt-1 text-sm text-muted-foreground">Die Ideen starten automatisch, sobald der aktuelle Snapshot die Evidenz-Validierung bestanden hat.</p>
+                      <p className="font-medium">{t("research.waitingInsightsTitle")}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{t("research.waitingInsightsDescription")}</p>
                     </CardContent>
                   </Card>
                 ) : !insights ? (
                   <Card>
                     <CardContent className="py-10 text-center">
                       <Lightbulb className="mx-auto mb-3 h-7 w-7 text-muted-foreground" aria-hidden="true" />
-                      <p className="font-medium">Fundierte Ideen erfordern validierte Insights</p>
-                      <p className="mt-1 text-sm text-muted-foreground">Versuche die Insights oben erneut oder geh ohne KI weiter zum Skript-Writer, falls der Anbieter nicht verfügbar ist.</p>
+                      <p className="font-medium">{t("research.ideasRequireInsightsTitle")}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{t("research.ideasRequireInsightsDescription")}</p>
                       {insightsError && (
-                        <Button variant="outline" className="mt-4" onClick={handleContinueWithoutAI}>Ohne KI weiter zum Skript</Button>
+                        <Button variant="outline" className="mt-4" onClick={handleContinueWithoutAI}>{t("research.continueWithoutAi")}</Button>
                       )}
                     </CardContent>
                   </Card>
@@ -2259,14 +2265,14 @@ export default function ResearchDashboard() {
           ) : searchError ? null : hasSearched ? (
             <EmptyState
               icon={VideoIcon}
-              title="Keine Videos gefunden"
-              description={`Wir konnten keine Videos zu "${submittedQuery}" finden. Probiere andere Suchbegriffe oder passe deine Filter an.`}
+              title={t("research.emptyNoVideosTitle")}
+              description={t("research.emptyNoVideosDescription", { query: submittedQuery })}
             />
           ) : (
             <EmptyState
               icon={Search}
-              title="Starte deine Recherche"
-              description="Suche nach YouTube-Videos, um Trends zu analysieren, Content-Ideen zu entdecken und deine Nische zu recherchieren."
+              title={t("research.emptyStartTitle")}
+              description={t("research.emptyStartDescription")}
             />
           )}
         </div>

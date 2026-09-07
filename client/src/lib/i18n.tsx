@@ -18,7 +18,37 @@ export const UI_LANGUAGE_HEADER = "X-UI-Language";
 
 type Dictionary = Record<string, string>;
 
-const modules = import.meta.glob<{ default: Dictionary }>("../locales/*.{de,en}.ts", { eager: true });
+type DictionaryModules = Record<string, { default: Dictionary }>;
+
+// Unter Node (Tests via tsx) gibt es kein import.meta.glob; dort werden die
+// Wörterbücher synchron aus dem locales-Ordner geladen, damit Helfer wie
+// labels.ts und research-export.ts dieselben Texte liefern wie im Browser.
+function loadDictionaryModulesInNode(): DictionaryModules {
+  const fs = process.getBuiltinModule("node:fs");
+  const path = process.getBuiltinModule("node:path");
+  const { fileURLToPath } = process.getBuiltinModule("node:url");
+  const { createRequire } = process.getBuiltinModule("node:module");
+  const requireModule = createRequire(import.meta.url);
+  const localesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../locales");
+  const result: DictionaryModules = {};
+  for (const file of fs.readdirSync(localesDir)) {
+    if (!/\.(de|en)\.ts$/.test(file)) continue;
+    const loaded = requireModule(path.join(localesDir, file)) as { default?: Dictionary } | Dictionary;
+    const dictionary = (loaded as { default?: Dictionary }).default ?? (loaded as Dictionary);
+    result[`../locales/${file}`] = { default: dictionary };
+  }
+  return result;
+}
+
+function loadDictionaryModules(): DictionaryModules {
+  const inNode = typeof window === "undefined"
+    && typeof process !== "undefined"
+    && typeof process.getBuiltinModule === "function";
+  if (inNode) return loadDictionaryModulesInNode();
+  return import.meta.glob<{ default: Dictionary }>("../locales/*.{de,en}.ts", { eager: true });
+}
+
+const modules = loadDictionaryModules();
 
 function collect(language: UiLanguage): Dictionary {
   const merged: Dictionary = {};
@@ -35,6 +65,8 @@ const dictionaries: Record<UiLanguage, Dictionary> = {
 };
 
 export function detectInitialLanguage(): UiLanguage {
+  // Ohne Browser (Tests, Server-Bundles) bleibt Deutsch der Standard.
+  if (typeof window === "undefined") return "de";
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored === "de" || stored === "en") return stored;

@@ -16,40 +16,42 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useWorkflow } from "@/lib/workflow-context";
+import { getActiveLanguage, translate, useT } from "@/lib/i18n";
 
 const MAX_INPUT_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_GENERATION_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_REFERENCE_IMAGES = 3;
 
+// Zweiter Eintrag ist jeweils der Übersetzungsschlüssel des Labels.
 const thumbnailStyles = [
-  ["bold", "Kräftig und dramatisch"], ["minimal", "Klar und minimalistisch"], ["gaming", "Gaming"],
-  ["vlog", "Vlog und Lifestyle"], ["tutorial", "Lehrreich"], ["cinematic", "Filmisch"],
-  ["tech", "Tech und modern"], ["lifestyle", "Lifestyle und Wellness"],
+  ["bold", "thumbnail.style.bold"], ["minimal", "thumbnail.style.minimal"], ["gaming", "thumbnail.style.gaming"],
+  ["vlog", "thumbnail.style.vlog"], ["tutorial", "thumbnail.style.tutorial"], ["cinematic", "thumbnail.style.cinematic"],
+  ["tech", "thumbnail.style.tech"], ["lifestyle", "thumbnail.style.lifestyle"],
 ] as const;
 const compositionOptions = [
-  ["centered", "Zentriert"], ["rule-of-thirds", "Drittelregel"], ["close-up", "Nahaufnahme"],
-  ["wide-shot", "Totale"], ["split-screen", "Geteilter Bildschirm"], ["diagonal", "Diagonal"],
+  ["centered", "thumbnail.composition.centered"], ["rule-of-thirds", "thumbnail.composition.ruleOfThirds"], ["close-up", "thumbnail.composition.closeUp"],
+  ["wide-shot", "thumbnail.composition.wideShot"], ["split-screen", "thumbnail.composition.splitScreen"], ["diagonal", "thumbnail.composition.diagonal"],
 ] as const;
 const cameraAngleOptions = [
-  ["eye-level", "Augenhöhe"], ["low-angle", "Froschperspektive"], ["high-angle", "Vogelperspektive"],
-  ["dutch-angle", "Schräge Kamera"], ["overhead", "Von oben"], ["three-quarter", "Dreiviertelansicht"],
+  ["eye-level", "thumbnail.camera.eyeLevel"], ["low-angle", "thumbnail.camera.lowAngle"], ["high-angle", "thumbnail.camera.highAngle"],
+  ["dutch-angle", "thumbnail.camera.dutchAngle"], ["overhead", "thumbnail.camera.overhead"], ["three-quarter", "thumbnail.camera.threeQuarter"],
 ] as const;
 const lightingOptions = [
-  ["natural", "Natürlich"], ["dramatic", "Dramatisch"], ["golden-hour", "Goldene Stunde"],
-  ["studio", "Studio"], ["neon", "Neon und RGB"], ["backlit", "Gegenlicht"], ["soft", "Weich und diffus"],
+  ["natural", "thumbnail.lighting.natural"], ["dramatic", "thumbnail.lighting.dramatic"], ["golden-hour", "thumbnail.lighting.goldenHour"],
+  ["studio", "thumbnail.lighting.studio"], ["neon", "thumbnail.lighting.neon"], ["backlit", "thumbnail.lighting.backlit"], ["soft", "thumbnail.lighting.soft"],
 ] as const;
 const colorSchemeOptions = [
-  ["vibrant", "Leuchtend"], ["muted", "Gedämpft und elegant"], ["warm", "Warme Töne"],
-  ["cool", "Kühle Töne"], ["monochrome", "Monochrom"], ["complementary", "Komplementär"],
-  ["brand-colors", "Markenfarben"],
+  ["vibrant", "thumbnail.color.vibrant"], ["muted", "thumbnail.color.muted"], ["warm", "thumbnail.color.warm"],
+  ["cool", "thumbnail.color.cool"], ["monochrome", "thumbnail.color.monochrome"], ["complementary", "thumbnail.color.complementary"],
+  ["brand-colors", "thumbnail.color.brandColors"],
 ] as const;
 const textPositionOptions = [
-  ["left", "Links"], ["right", "Rechts"], ["center", "Mitte"], ["top", "Oben"],
-  ["bottom", "Unten"], ["none", "Kein Textbereich"],
+  ["left", "thumbnail.textPosition.left"], ["right", "thumbnail.textPosition.right"], ["center", "thumbnail.textPosition.center"], ["top", "thumbnail.textPosition.top"],
+  ["bottom", "thumbnail.textPosition.bottom"], ["none", "thumbnail.textPosition.none"],
 ] as const;
 const imageRoleOptions = [
-  ["subject", "Motiv oder Person"], ["style", "Stilrichtung"],
-  ["background", "Hintergrund"], ["composition", "Komposition"],
+  ["subject", "thumbnail.role.subject"], ["style", "thumbnail.role.style"],
+  ["background", "thumbnail.role.background"], ["composition", "thumbnail.role.composition"],
 ] as const;
 
 type ThumbnailStyle = (typeof thumbnailStyles)[number][0];
@@ -69,15 +71,19 @@ type OutcomePreset = {
   colorScheme: ThumbnailColorScheme; textPosition: ThumbnailTextPosition;
 };
 
+// label, mainText und description sind Übersetzungsschlüssel.
 const outcomePresets: OutcomePreset[] = [
-  { id: "tutorial", label: "Tutorial oder Demo", mainText: "So funktioniert es", description: "Zeige die Handlung und das sichtbare Ergebnis in einer einfachen, erklärenden Szene.", style: "tutorial", composition: "rule-of-thirds", cameraAngle: "three-quarter", lighting: "studio", colorScheme: "complementary", textPosition: "right" },
-  { id: "comparison", label: "Vergleich oder Versus", mainText: "Im Vergleich", description: "Gib beiden Optionen das gleiche visuelle Gewicht und mache die Vergleichsgrundlage klar erkennbar.", style: "minimal", composition: "split-screen", cameraAngle: "eye-level", lighting: "studio", colorScheme: "complementary", textPosition: "top" },
-  { id: "result", label: "Ergebnis-Enthüllung", mainText: "Das Ergebnis", description: "Stelle das echte Ergebnis in den Vordergrund, ohne eine unbelegte Vorher-Nachher-Behauptung aufzustellen.", style: "bold", composition: "close-up", cameraAngle: "eye-level", lighting: "dramatic", colorScheme: "vibrant", textPosition: "left" },
-  { id: "case-study", label: "Fallstudie", mainText: "Was sich geändert hat", description: "Zeige das echte Motiv und eine konkrete, belegbare Veränderung aus der Fallstudie.", style: "minimal", composition: "rule-of-thirds", cameraAngle: "eye-level", lighting: "natural", colorScheme: "muted", textPosition: "right" },
-  { id: "news", label: "News oder Update", mainText: "Was sich geändert hat", description: "Zeige das Update selbst mit klarer Hierarchie und ohne künstliche Dringlichkeit.", style: "tech", composition: "wide-shot", cameraAngle: "eye-level", lighting: "studio", colorScheme: "cool", textPosition: "left" },
-  { id: "list", label: "Liste oder Ranking", mainText: "Top-Auswahl", description: "Zeige den führenden Eintrag und genug Nebenhinweise, um eine Rangfolge zu vermitteln.", style: "bold", composition: "diagonal", cameraAngle: "high-angle", lighting: "dramatic", colorScheme: "complementary", textPosition: "left" },
-  { id: "review", label: "Produkt- oder Tool-Review", mainText: "Lohnt es sich?", description: "Zeige das genaue Produkt deutlich und stelle die Bewertungsfrage, ohne ein Urteil vorwegzunehmen.", style: "tech", composition: "centered", cameraAngle: "three-quarter", lighting: "studio", colorScheme: "cool", textPosition: "right" },
+  { id: "tutorial", label: "thumbnail.preset.tutorial.label", mainText: "thumbnail.preset.tutorial.mainText", description: "thumbnail.preset.tutorial.description", style: "tutorial", composition: "rule-of-thirds", cameraAngle: "three-quarter", lighting: "studio", colorScheme: "complementary", textPosition: "right" },
+  { id: "comparison", label: "thumbnail.preset.comparison.label", mainText: "thumbnail.preset.comparison.mainText", description: "thumbnail.preset.comparison.description", style: "minimal", composition: "split-screen", cameraAngle: "eye-level", lighting: "studio", colorScheme: "complementary", textPosition: "top" },
+  { id: "result", label: "thumbnail.preset.result.label", mainText: "thumbnail.preset.result.mainText", description: "thumbnail.preset.result.description", style: "bold", composition: "close-up", cameraAngle: "eye-level", lighting: "dramatic", colorScheme: "vibrant", textPosition: "left" },
+  { id: "case-study", label: "thumbnail.preset.caseStudy.label", mainText: "thumbnail.preset.caseStudy.mainText", description: "thumbnail.preset.caseStudy.description", style: "minimal", composition: "rule-of-thirds", cameraAngle: "eye-level", lighting: "natural", colorScheme: "muted", textPosition: "right" },
+  { id: "news", label: "thumbnail.preset.news.label", mainText: "thumbnail.preset.news.mainText", description: "thumbnail.preset.news.description", style: "tech", composition: "wide-shot", cameraAngle: "eye-level", lighting: "studio", colorScheme: "cool", textPosition: "left" },
+  { id: "list", label: "thumbnail.preset.list.label", mainText: "thumbnail.preset.list.mainText", description: "thumbnail.preset.list.description", style: "bold", composition: "diagonal", cameraAngle: "high-angle", lighting: "dramatic", colorScheme: "complementary", textPosition: "left" },
+  { id: "review", label: "thumbnail.preset.review.label", mainText: "thumbnail.preset.review.mainText", description: "thumbnail.preset.review.description", style: "tech", composition: "centered", cameraAngle: "three-quarter", lighting: "studio", colorScheme: "cool", textPosition: "right" },
 ];
+
+// Für Helfer außerhalb von React-Komponenten.
+const tr = (key: string, vars?: Record<string, string | number>) => translate(getActiveLanguage(), key, vars);
 
 function localFailure(error: string, suggestion: string): RequestFailure {
   return { error, code: "THUMBNAIL_CLIENT_VALIDATION", category: "invalid_response", retryable: false, suggestion };
@@ -90,9 +96,9 @@ async function readFailure(response: Response): Promise<RequestFailure> {
     if (/^\s*(<!doctype html|<html|<head|<body)/i.test(text)) {
       const title = /<title[^>]*>([^<]{1,120})<\/title>/i.exec(text)?.[1]?.trim();
       body = {
-        error: `Der Server war nicht erreichbar (Status ${response.status}).`,
-        suggestion: "Statt einer API-Antwort kam eine HTML-Fehlerseite, vermutlich von einem Proxy, einer Firewall oder einem Bot-Schutz zwischen Browser und Server. Versuche es erneut und prüfe, ob ein VPN, Firmennetz oder Filter aktiv ist.",
-        detail: title ? `Seitentitel: ${title}` : "HTML-Seite ohne Titel",
+        error: tr("thumbnail.error.serverUnreachable", { status: response.status }),
+        suggestion: tr("thumbnail.error.htmlResponseSuggestion"),
+        detail: title ? tr("thumbnail.error.pageTitle", { title }) : tr("thumbnail.error.htmlWithoutTitle"),
         category: "provider_server",
         retryable: true,
       };
@@ -101,11 +107,11 @@ async function readFailure(response: Response): Promise<RequestFailure> {
     }
   } catch { body = {}; }
   return {
-    error: body.error || `Anfrage fehlgeschlagen mit Status ${response.status}`,
+    error: body.error || tr("thumbnail.error.requestFailed", { status: response.status }),
     code: body.code || `HTTP_${response.status}`,
     category: body.category || (response.status === 429 ? "quota" : "unknown"),
     retryable: body.retryable ?? response.status >= 429,
-    suggestion: body.suggestion || "Versuche es einmal erneut. Wenn das Problem bleibt, prüfe die Einstellungen und die Server-Logs.",
+    suggestion: body.suggestion || tr("thumbnail.error.genericSuggestion"),
     detail: typeof body.detail === "string" ? body.detail : undefined,
   };
 }
@@ -114,7 +120,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("Die ausgewählte Datei konnte nicht gelesen werden."));
+    reader.onerror = () => reject(new Error(tr("thumbnail.error.fileRead")));
     reader.readAsDataURL(file);
   });
 }
@@ -123,35 +129,36 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new window.Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Die ausgewählte Datei konnte nicht als Bild dekodiert werden."));
+    image.onerror = () => reject(new Error(tr("thumbnail.error.imageDecode")));
     image.src = dataUrl;
   });
 }
 
 async function prepareReferenceImage(file: File): Promise<string> {
-  if (file.type !== "image/png" && file.type !== "image/jpeg") throw new Error("Wähle ein PNG- oder JPEG-Bild.");
-  if (file.size > MAX_INPUT_IMAGE_BYTES) throw new Error("Wähle ein Bild, das kleiner als 10 MB ist.");
+  if (file.type !== "image/png" && file.type !== "image/jpeg") throw new Error(tr("thumbnail.error.imageType"));
+  if (file.size > MAX_INPUT_IMAGE_BYTES) throw new Error(tr("thumbnail.error.imageTooLarge"));
   const original = await readFileAsDataUrl(file);
   const image = await loadImage(original);
   if (image.naturalWidth < 128 || image.naturalHeight < 128 || image.naturalWidth > 4096 || image.naturalHeight > 4096) {
-    throw new Error("Die Bildmaße müssen zwischen 128 und 4096 Pixeln liegen.");
+    throw new Error(tr("thumbnail.error.imageDimensions"));
   }
   const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(image.naturalWidth * scale);
   canvas.height = Math.round(image.naturalHeight * scale);
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("Dieser Browser konnte das Bild nicht vorbereiten.");
+  if (!context) throw new Error(tr("thumbnail.error.canvasUnavailable"));
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
   const prepared = canvas.toDataURL("image/jpeg", 0.86);
   const approximateBytes = Math.ceil((prepared.length - prepared.indexOf(",") - 1) * 0.75);
-  if (approximateBytes > MAX_GENERATION_IMAGE_BYTES) throw new Error("Das vorbereitete Bild ist immer noch größer als 5 MB. Wähle ein einfacheres oder kleineres Bild.");
+  if (approximateBytes > MAX_GENERATION_IMAGE_BYTES) throw new Error(tr("thumbnail.error.preparedTooLarge"));
   return prepared;
 }
 
 function FailurePanel({ failure, busy, onRetry, onSettings }: { failure: RequestFailure; busy: boolean; onRetry: () => void; onSettings: () => void }) {
+  const t = useT();
   const needsSettings = failure.category === "missing_key" || failure.category === "invalid_key";
   return (
     <Alert variant="destructive" data-testid="thumbnail-error">
@@ -159,10 +166,10 @@ function FailurePanel({ failure, busy, onRetry, onSettings }: { failure: Request
       <AlertTitle>{failure.error}</AlertTitle>
       <AlertDescription className="space-y-3">
         <p>{failure.suggestion}</p>
-        {failure.detail && <p className="text-xs opacity-80">Anbieter-Meldung: {failure.detail}</p>}
+        {failure.detail && <p className="text-xs opacity-80">{t("common.providerMessage")}: {failure.detail}</p>}
         <div className="flex flex-wrap gap-2">
-          {failure.retryable && <Button type="button" size="sm" variant="outline" onClick={onRetry} disabled={busy}><RefreshCw className="mr-2 h-4 w-4" />Erneut versuchen</Button>}
-          {needsSettings && <Button type="button" size="sm" variant="outline" onClick={onSettings}><Settings className="mr-2 h-4 w-4" />Einstellungen öffnen</Button>}
+          {failure.retryable && <Button type="button" size="sm" variant="outline" onClick={onRetry} disabled={busy}><RefreshCw className="mr-2 h-4 w-4" />{t("common.retry")}</Button>}
+          {needsSettings && <Button type="button" size="sm" variant="outline" onClick={onSettings}><Settings className="mr-2 h-4 w-4" />{t("thumbnail.error.openSettings")}</Button>}
         </div>
       </AlertDescription>
     </Alert>
@@ -170,18 +177,20 @@ function FailurePanel({ failure, busy, onRetry, onSettings }: { failure: Request
 }
 
 function LabeledSelect({ id, label, value, options, onChange }: { id: string; label: string; value: string; options: ReadonlyArray<SelectOption>; onChange: (value: string) => void }) {
+  const t = useT();
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger id={id}><SelectValue /></SelectTrigger>
-        <SelectContent>{options.map(([optionValue, optionLabel]) => <SelectItem key={optionValue} value={optionValue}>{optionLabel}</SelectItem>)}</SelectContent>
+        <SelectContent>{options.map(([optionValue, optionLabelKey]) => <SelectItem key={optionValue} value={optionValue}>{t(optionLabelKey)}</SelectItem>)}</SelectContent>
       </Select>
     </div>
   );
 }
 
 export default function ThumbnailPage() {
+  const t = useT();
   const { state: workflowState, setThumbnailData: cacheThumbnailData } = useWorkflow();
   const [, setLocation] = useLocation();
   const lastGenerationMode = useRef<"create" | "variation">("create");
@@ -285,7 +294,7 @@ export default function ThumbnailPage() {
 
   const applyPreset = (preset: OutcomePreset) => {
     setPresetId(preset.id);
-    setThumbnailStyle(preset.style); setMainText(preset.mainText); setDescription(preset.description);
+    setThumbnailStyle(preset.style); setMainText(t(preset.mainText)); setDescription(t(preset.description));
     setComposition(preset.composition); setCameraAngle(preset.cameraAngle); setLighting(preset.lighting);
     setColorScheme(preset.colorScheme); setTextPosition(preset.textPosition); setGenerationError(null);
   };
@@ -293,7 +302,7 @@ export default function ThumbnailPage() {
   const addReferenceFiles = async (files: File[]) => {
     const available = MAX_REFERENCE_IMAGES - references.length;
     if (available <= 0) {
-      setGenerationError(localFailure("Referenzlimit erreicht", "Entferne ein Bild, bevor du ein weiteres hinzufügst. Du kannst bis zu drei Referenzen verwenden."));
+      setGenerationError(localFailure(t("thumbnail.error.referenceLimitTitle"), t("thumbnail.error.referenceLimitSuggestion")));
       return;
     }
     const selectedFiles = files.slice(0, available);
@@ -304,7 +313,7 @@ export default function ThumbnailPage() {
       setReferences((current) => [...current, ...prepared].slice(0, MAX_REFERENCE_IMAGES));
       setRightsConfirmed(false); setGenerationError(null);
     } catch (error) {
-      setGenerationError(localFailure("Referenzbild nicht akzeptiert", error instanceof Error ? error.message : "Wähle ein anderes PNG- oder JPEG-Bild."));
+      setGenerationError(localFailure(t("thumbnail.error.referenceRejectedTitle"), error instanceof Error ? error.message : t("thumbnail.error.referenceRejectedSuggestion")));
     } finally { setReferencesLoading(false); }
   };
 
@@ -320,9 +329,9 @@ export default function ThumbnailPage() {
   };
 
   const generateThumbnail = async (mode: "create" | "variation" = "create") => {
-    if (!topic.trim()) { setGenerationError(localFailure("Thema erforderlich", "Gib ein konkretes Videothema an, bevor du generierst.")); return; }
-    if (references.length > 0 && !rightsConfirmed) { setGenerationError(localFailure("Bestätigung der Nutzungsrechte erforderlich", "Bestätige, dass du die Erlaubnis hast, jede hochgeladene Referenz zu verwenden.")); return; }
-    if (mode === "variation" && !variationDirection.trim()) { setGenerationError(localFailure("Richtung für die Variante erforderlich", "Beschreibe, was sich in der nächsten Variante ändern soll.")); return; }
+    if (!topic.trim()) { setGenerationError(localFailure(t("thumbnail.error.topicRequiredTitle"), t("thumbnail.error.topicRequiredSuggestion"))); return; }
+    if (references.length > 0 && !rightsConfirmed) { setGenerationError(localFailure(t("thumbnail.error.rightsRequiredTitle"), t("thumbnail.error.rightsRequiredSuggestion"))); return; }
+    if (mode === "variation" && !variationDirection.trim()) { setGenerationError(localFailure(t("thumbnail.error.variationRequiredTitle"), t("thumbnail.error.variationRequiredSuggestion"))); return; }
     const requestReferences = mode === "variation" && thumbnailData
       ? [{ image: thumbnailData, role: "style" as const }, ...references.slice(0, 2).map(({ image, role }) => ({ image, role }))]
       : references.map(({ image, role }) => ({ image, role }));
@@ -341,11 +350,11 @@ export default function ThumbnailPage() {
       });
       if (!response.ok) throw await readFailure(response);
       const body = await response.json();
-      if (typeof body.imageData !== "string" || !body.imageData.startsWith("data:image/")) throw localFailure("Die Bildantwort war unvollständig", "Versuche es einmal erneut. Wenn das Problem bleibt, wähle in den Einstellungen ein anderes unterstütztes Bildmodell.");
+      if (typeof body.imageData !== "string" || !body.imageData.startsWith("data:image/")) throw localFailure(t("thumbnail.error.incompleteImageTitle"), t("thumbnail.error.incompleteImageSuggestion"));
       setThumbnailData(body.imageData); setResultModel(typeof body.model === "string" ? body.model : null);
       if (mode === "variation") setVariationDirection("");
     } catch (error) {
-      setGenerationError(error && typeof error === "object" && "code" in error ? error as RequestFailure : localFailure("Thumbnail konnte nicht generiert werden", "Prüfe die Serververbindung und versuche es erneut."));
+      setGenerationError(error && typeof error === "object" && "code" in error ? error as RequestFailure : localFailure(t("thumbnail.error.generationFailedTitle"), t("thumbnail.error.generationFailedSuggestion")));
     } finally { setGenerationLoading(false); }
   };
 
@@ -365,41 +374,41 @@ export default function ThumbnailPage() {
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ImageIcon className="h-5 w-5" aria-hidden="true" /></div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Thumbnail-Creator</h1>
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Beschreibe das Thumbnail einmal. Der Creator wendet das ausgewählte Recherche-Versprechen und die YouTube-Lesbarkeitsregeln an.</p>
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><Info className="h-3.5 w-3.5" />16:9-Ausgabe, ohne sichtbares App-Wasserzeichen. Die unsichtbare SynthID-Herkunftskennzeichnung bleibt erhalten.</p>
+              <h1 className="text-2xl font-semibold tracking-tight">{t("thumbnail.title")}</h1>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("thumbnail.intro")}</p>
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><Info className="h-3.5 w-3.5" />{t("thumbnail.outputNote")}</p>
             </div>
           </div>
           {configuredModel ? (
             <div className="max-w-sm rounded-lg border bg-card/70 px-3 py-2 text-xs"><p className="font-medium">{configuredModel.label}</p><p className="mt-0.5 text-muted-foreground">{configuredModel.id}</p></div>
           ) : modelStatusUnavailable ? (
-            <Button type="button" size="sm" variant="outline" onClick={() => setLocation("/settings")}><Settings className="mr-2 h-4 w-4" />Bildmodell prüfen</Button>
-          ) : <Skeleton className="h-12 w-48" aria-label="Konfiguriertes Bildmodell wird geladen" />}
+            <Button type="button" size="sm" variant="outline" onClick={() => setLocation("/settings")}><Settings className="mr-2 h-4 w-4" />{t("thumbnail.checkImageModel")}</Button>
+          ) : <Skeleton className="h-12 w-48" aria-label={t("thumbnail.modelLoading")} />}
         </header>
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]">
           <Card className="min-w-0 border-border/70 shadow-sm">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Thumbnail erstellen</CardTitle>
-              <p className="text-sm text-muted-foreground">Starte mit einem klaren Versprechen und einer visuellen Idee. Referenzen und Detaileinstellungen sind optional.</p>
+              <CardTitle className="text-lg">{t("thumbnail.createTitle")}</CardTitle>
+              <p className="text-sm text-muted-foreground">{t("thumbnail.createIntro")}</p>
             </CardHeader>
             <CardContent className="space-y-5">
               {selectedIdea && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
-                  <p className="font-medium text-foreground">Recherche-Idee geladen</p>
+                  <p className="font-medium text-foreground">{t("thumbnail.ideaLoaded")}</p>
                   <p className="mt-1 text-muted-foreground">{selectedIdea.thumbnailConcept}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">Versprechen: {selectedIdea.honestPromise}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{t("thumbnail.promise", { promise: selectedIdea.honestPromise })}</p>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="thumbnail-topic">Videothema oder Titel</Label>
-                <Input id="thumbnail-topic" value={topic} maxLength={200} onChange={(event) => setTopic(event.target.value)} placeholder="Worum geht es im Video?" data-testid="input-topic" />
+                <Label htmlFor="thumbnail-topic">{t("thumbnail.topicLabel")}</Label>
+                <Input id="thumbnail-topic" value={topic} maxLength={200} onChange={(event) => setTopic(event.target.value)} placeholder={t("thumbnail.topicPlaceholder")} data-testid="input-topic" />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="thumbnail-preset">Ausgangspunkt</Label>
+                  <Label htmlFor="thumbnail-preset">{t("thumbnail.presetLabel")}</Label>
                   <Select value={presetId} onValueChange={(value) => {
                     setPresetId(value);
                     const preset = outcomePresets.find((item) => item.id === value);
@@ -407,35 +416,35 @@ export default function ThumbnailPage() {
                   }}>
                     <SelectTrigger id="thumbnail-preset"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="custom">Mein Briefing verwenden</SelectItem>
-                      {outcomePresets.map((preset) => <SelectItem key={preset.id} value={preset.id}>{preset.label}</SelectItem>)}
+                      <SelectItem value="custom">{t("thumbnail.preset.custom")}</SelectItem>
+                      {outcomePresets.map((preset) => <SelectItem key={preset.id} value={preset.id}>{t(preset.label)}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="thumbnail-main-text">Text auf dem Thumbnail</Label>
-                  <Input id="thumbnail-main-text" value={mainText} maxLength={50} onChange={(event) => setMainText(event.target.value)} placeholder="Optional, 2 bis 5 Wörter" data-testid="input-thumbnail-text" />
+                  <Label htmlFor="thumbnail-main-text">{t("thumbnail.mainTextLabel")}</Label>
+                  <Input id="thumbnail-main-text" value={mainText} maxLength={50} onChange={(event) => setMainText(event.target.value)} placeholder={t("thumbnail.mainTextPlaceholder")} data-testid="input-thumbnail-text" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="thumbnail-description">Beschreibe das gewünschte Thumbnail</Label>
+                <Label htmlFor="thumbnail-description">{t("thumbnail.descriptionLabel")}</Label>
                 <div className="rounded-xl border border-border bg-muted/20 p-2 focus-within:ring-2 focus-within:ring-ring">
                   <Textarea
                     id="thumbnail-description"
                     value={description}
                     maxLength={1000}
                     onChange={(event) => setDescription(event.target.value)}
-                    placeholder="Beispiel: Eine Nahaufnahme eines Creators, der überrascht auf ein aufgeräumtes Analytics-Dashboard schaut, starker Kontrast, Motiv rechts, Platz für kurzen Text links."
+                    placeholder={t("thumbnail.descriptionPlaceholder")}
                     className="min-h-32 resize-y border-0 bg-transparent shadow-none focus-visible:ring-0"
                     data-testid="input-thumbnail-description"
                   />
-                  <div className="flex items-center justify-between px-1 pb-1 text-xs text-muted-foreground"><span>Motiv, Handlung, Umgebung und ehrliches Ergebnis</span><span>{description.length}/1000</span></div>
+                  <div className="flex items-center justify-between px-1 pb-1 text-xs text-muted-foreground"><span>{t("thumbnail.descriptionHint")}</span><span>{description.length}/1000</span></div>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-medium">Referenzbilder</p><p className="text-xs text-muted-foreground">Optional, bis zu drei freigegebene PNG- oder JPEG-Bilder.</p></div><span className="text-xs text-muted-foreground">{references.length}/{MAX_REFERENCE_IMAGES}</span></div>
+                <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-medium">{t("thumbnail.referencesTitle")}</p><p className="text-xs text-muted-foreground">{t("thumbnail.referencesHint")}</p></div><span className="text-xs text-muted-foreground">{references.length}/{MAX_REFERENCE_IMAGES}</span></div>
                 <input ref={referenceInputRef} id="thumbnail-references" type="file" accept="image/png,image/jpeg" multiple className="sr-only" onChange={handleReferenceUpload} disabled={references.length >= MAX_REFERENCE_IMAGES || referencesLoading} data-testid="input-add-reference" />
                 <div
                   className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/15 px-4 text-center"
@@ -443,53 +452,53 @@ export default function ThumbnailPage() {
                   onDrop={handleReferenceDrop}
                 >
                   {referencesLoading ? <Loader2 className="mb-2 h-5 w-5 animate-spin text-primary" /> : <ImagePlus className="mb-2 h-5 w-5 text-muted-foreground" />}
-                  <p className="text-sm font-medium">Bilder hierher ziehen</p>
-                  <Button type="button" size="sm" variant="ghost" className="mt-1" onClick={() => referenceInputRef.current?.click()} disabled={references.length >= MAX_REFERENCE_IMAGES || referencesLoading}>{referencesLoading ? "Bilder werden vorbereitet" : "oder Dateien auswählen"}</Button>
+                  <p className="text-sm font-medium">{t("thumbnail.dropHere")}</p>
+                  <Button type="button" size="sm" variant="ghost" className="mt-1" onClick={() => referenceInputRef.current?.click()} disabled={references.length >= MAX_REFERENCE_IMAGES || referencesLoading}>{referencesLoading ? t("thumbnail.preparingImages") : t("thumbnail.chooseFiles")}</Button>
                 </div>
 
                 {references.length > 0 && <div className="grid gap-3 sm:grid-cols-3">{references.map((reference, index) => (
                   <div key={`${reference.name}-${index}`} className="rounded-lg border border-border p-2">
-                    <img src={reference.image} alt={`Referenz ${index + 1}: ${reference.name}`} className="aspect-video w-full rounded-md bg-muted object-cover" />
+                    <img src={reference.image} alt={t("thumbnail.referenceAlt", { index: index + 1, name: reference.name })} className="aspect-video w-full rounded-md bg-muted object-cover" />
                     <div className="mt-2 flex items-center gap-1">
                       <Select value={reference.role} onValueChange={(role: ReferenceRole) => setReferences((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, role } : item))}>
-                        <SelectTrigger className="h-9 min-w-0 flex-1" aria-label={`Rolle für Referenz ${index + 1}`}><SelectValue /></SelectTrigger>
-                        <SelectContent>{imageRoleOptions.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-9 min-w-0 flex-1" aria-label={t("thumbnail.referenceRoleLabel", { index: index + 1 })}><SelectValue /></SelectTrigger>
+                        <SelectContent>{imageRoleOptions.map(([value, labelKey]) => <SelectItem key={value} value={value}>{t(labelKey)}</SelectItem>)}</SelectContent>
                       </Select>
-                      <Button type="button" size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => { setReferences((current) => current.filter((_, itemIndex) => itemIndex !== index)); setRightsConfirmed(false); }} aria-label={`Referenz ${index + 1} entfernen: ${reference.name}`}><Trash2 className="h-4 w-4" /></Button>
+                      <Button type="button" size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => { setReferences((current) => current.filter((_, itemIndex) => itemIndex !== index)); setRightsConfirmed(false); }} aria-label={t("thumbnail.referenceRemoveLabel", { index: index + 1, name: reference.name })}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </div>
                 ))}</div>}
 
-                {references.length > 0 && <div className="flex items-start gap-3 rounded-lg border border-border p-3"><Checkbox id="thumbnail-rights" checked={rightsConfirmed} onCheckedChange={(checked) => setRightsConfirmed(checked === true)} /><Label htmlFor="thumbnail-rights" className="text-sm font-normal leading-5">Ich habe die Erlaubnis, jedes hochgeladene Referenzbild zu verwenden.</Label></div>}
+                {references.length > 0 && <div className="flex items-start gap-3 rounded-lg border border-border p-3"><Checkbox id="thumbnail-rights" checked={rightsConfirmed} onCheckedChange={(checked) => setRightsConfirmed(checked === true)} /><Label htmlFor="thumbnail-rights" className="text-sm font-normal leading-5">{t("thumbnail.rightsLabel")}</Label></div>}
               </div>
 
               <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                <CollapsibleTrigger asChild><Button type="button" variant="ghost" className="w-full justify-between border-t border-border pt-4" aria-expanded={advancedOpen} data-testid="button-toggle-advanced"><span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Erweiterte Einstellungen</span><ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} /></Button></CollapsibleTrigger>
+                <CollapsibleTrigger asChild><Button type="button" variant="ghost" className="w-full justify-between border-t border-border pt-4" aria-expanded={advancedOpen} data-testid="button-toggle-advanced"><span className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />{t("thumbnail.advancedSettings")}</span><ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} /></Button></CollapsibleTrigger>
                 <CollapsibleContent className="pt-4"><div className="grid gap-4 sm:grid-cols-2">
-                  <LabeledSelect id="thumbnail-style" label="Visueller Stil" value={thumbnailStyle} options={thumbnailStyles} onChange={(value) => setThumbnailStyle(value as ThumbnailStyle)} />
-                  <div className="space-y-2"><Label htmlFor="thumbnail-subtext">Zweittext</Label><Input id="thumbnail-subtext" value={subText} maxLength={80} onChange={(event) => setSubText(event.target.value)} placeholder="Optionale ergänzende Zeile" data-testid="input-thumbnail-subtext" /></div>
-                  <LabeledSelect id="thumbnail-composition" label="Komposition" value={composition} options={compositionOptions} onChange={(value) => setComposition(value as ThumbnailComposition)} />
-                  <LabeledSelect id="thumbnail-camera-angle" label="Kameraperspektive" value={cameraAngle} options={cameraAngleOptions} onChange={(value) => setCameraAngle(value as ThumbnailCameraAngle)} />
-                  <LabeledSelect id="thumbnail-lighting" label="Licht" value={lighting} options={lightingOptions} onChange={(value) => setLighting(value as ThumbnailLighting)} />
-                  <LabeledSelect id="thumbnail-color" label="Farbschema" value={colorScheme} options={colorSchemeOptions} onChange={(value) => setColorScheme(value as ThumbnailColorScheme)} />
-                  <LabeledSelect id="thumbnail-text-position" label="Textposition" value={textPosition} options={textPositionOptions} onChange={(value) => { const position = value as ThumbnailTextPosition; setTextPosition(position); if (position === "none") { setMainText(""); setSubText(""); } }} />
-                  {references.length > 0 && <div className="flex items-start gap-3 pt-2"><Switch id="thumbnail-auto-blend" checked={autoBlend} onCheckedChange={setAutoBlend} /><div><Label htmlFor="thumbnail-auto-blend">Referenzen zu einer Szene verschmelzen</Label><p className="mt-1 text-xs text-muted-foreground">Ausgeschaltet dienen sie nur als Orientierung.</p></div></div>}
+                  <LabeledSelect id="thumbnail-style" label={t("thumbnail.styleLabel")} value={thumbnailStyle} options={thumbnailStyles} onChange={(value) => setThumbnailStyle(value as ThumbnailStyle)} />
+                  <div className="space-y-2"><Label htmlFor="thumbnail-subtext">{t("thumbnail.subTextLabel")}</Label><Input id="thumbnail-subtext" value={subText} maxLength={80} onChange={(event) => setSubText(event.target.value)} placeholder={t("thumbnail.subTextPlaceholder")} data-testid="input-thumbnail-subtext" /></div>
+                  <LabeledSelect id="thumbnail-composition" label={t("thumbnail.compositionLabel")} value={composition} options={compositionOptions} onChange={(value) => setComposition(value as ThumbnailComposition)} />
+                  <LabeledSelect id="thumbnail-camera-angle" label={t("thumbnail.cameraLabel")} value={cameraAngle} options={cameraAngleOptions} onChange={(value) => setCameraAngle(value as ThumbnailCameraAngle)} />
+                  <LabeledSelect id="thumbnail-lighting" label={t("thumbnail.lightingLabel")} value={lighting} options={lightingOptions} onChange={(value) => setLighting(value as ThumbnailLighting)} />
+                  <LabeledSelect id="thumbnail-color" label={t("thumbnail.colorLabel")} value={colorScheme} options={colorSchemeOptions} onChange={(value) => setColorScheme(value as ThumbnailColorScheme)} />
+                  <LabeledSelect id="thumbnail-text-position" label={t("thumbnail.textPositionLabel")} value={textPosition} options={textPositionOptions} onChange={(value) => { const position = value as ThumbnailTextPosition; setTextPosition(position); if (position === "none") { setMainText(""); setSubText(""); } }} />
+                  {references.length > 0 && <div className="flex items-start gap-3 pt-2"><Switch id="thumbnail-auto-blend" checked={autoBlend} onCheckedChange={setAutoBlend} /><div><Label htmlFor="thumbnail-auto-blend">{t("thumbnail.autoBlendLabel")}</Label><p className="mt-1 text-xs text-muted-foreground">{t("thumbnail.autoBlendHint")}</p></div></div>}
                 </div></CollapsibleContent>
               </Collapsible>
 
               {generationError && <FailurePanel failure={generationError} busy={generationLoading} onRetry={() => void generateThumbnail(lastGenerationMode.current)} onSettings={() => setLocation("/settings")} />}
-              <Button type="button" size="lg" className="min-h-12 w-full" onClick={() => void generateThumbnail("create")} disabled={generationLoading} data-testid="button-generate-thumbnail">{generationLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}{generationLoading ? "Thumbnail wird erstellt" : "Thumbnail erstellen"}</Button>
+              <Button type="button" size="lg" className="min-h-12 w-full" onClick={() => void generateThumbnail("create")} disabled={generationLoading} data-testid="button-generate-thumbnail">{generationLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}{generationLoading ? t("thumbnail.generating") : t("thumbnail.generate")}</Button>
             </CardContent>
           </Card>
 
-          <aside className="min-w-0 lg:sticky lg:top-5"><Card className="border-border/70 shadow-sm"><CardHeader><CardTitle className="text-lg">Vorschau</CardTitle></CardHeader><CardContent className="space-y-4">
-            {generationLoading ? <div className="space-y-3" role="status" aria-live="polite"><Skeleton className="aspect-video w-full" /><p className="text-sm text-muted-foreground">Ein 16:9-Bild wird mit dem konfigurierten Modell generiert. Das kann einen Moment dauern.</p></div> : thumbnailData ? <>
-              <div className="overflow-hidden rounded-lg border bg-muted"><img src={thumbnailData} alt="Generiertes YouTube-Thumbnail" className="aspect-video w-full object-cover" data-testid="img-generated-thumbnail" /></div>
-              <div className="flex flex-col gap-2 min-[400px]:flex-row"><Button type="button" variant="outline" className="min-h-11 flex-1" onClick={downloadThumbnail} data-testid="button-download-thumbnail"><Download className="mr-2 h-4 w-4" />Herunterladen</Button><Button type="button" variant="outline" className="min-h-11 flex-1" onClick={() => void generateThumbnail("create")} disabled={generationLoading}><RefreshCw className="mr-2 h-4 w-4" />Neue Version</Button></div>
-              {downloadedName && <p className="flex items-center gap-2 text-sm text-success" role="status"><CheckCircle2 className="h-4 w-4" />Heruntergeladen als {downloadedName}</p>}
-              <Collapsible open={variationOpen} onOpenChange={setVariationOpen}><CollapsibleTrigger asChild><Button type="button" variant="ghost" className="w-full justify-between"><span className="flex items-center gap-2"><Wand2 className="h-4 w-4" />Variante erstellen</span><ChevronDown className={`h-4 w-4 transition-transform ${variationOpen ? "rotate-180" : ""}`} /></Button></CollapsibleTrigger><CollapsibleContent className="space-y-2 pt-3"><Textarea id="thumbnail-variation" value={variationDirection} maxLength={500} onChange={(event) => setVariationDirection(event.target.value)} placeholder="Was soll sich in der nächsten Version ändern?" className="min-h-20" /><Button type="button" className="min-h-11 w-full" onClick={() => void generateThumbnail("variation")} disabled={generationLoading || !variationDirection.trim()} data-testid="button-generate-variation"><Wand2 className="mr-2 h-4 w-4" />Variante generieren</Button></CollapsibleContent></Collapsible>
-              <p className="text-center text-xs text-muted-foreground">Generiert mit {resultModel || configuredModel?.label || "dem konfigurierten Bildmodell"}</p>
-            </> : <div className="flex aspect-video flex-col items-center justify-center rounded-xl border border-dashed px-5 text-center"><ImageIcon className="mb-3 h-7 w-7 text-muted-foreground" /><p className="font-medium">Dein Thumbnail erscheint hier</p><p className="mt-1 max-w-xs text-sm text-muted-foreground">Gib ein Thema und ein kurzes visuelles Briefing an und erstelle dann das Thumbnail.</p></div>}
+          <aside className="min-w-0 lg:sticky lg:top-5"><Card className="border-border/70 shadow-sm"><CardHeader><CardTitle className="text-lg">{t("thumbnail.previewTitle")}</CardTitle></CardHeader><CardContent className="space-y-4">
+            {generationLoading ? <div className="space-y-3" role="status" aria-live="polite"><Skeleton className="aspect-video w-full" /><p className="text-sm text-muted-foreground">{t("thumbnail.previewLoading")}</p></div> : thumbnailData ? <>
+              <div className="overflow-hidden rounded-lg border bg-muted"><img src={thumbnailData} alt={t("thumbnail.generatedAlt")} className="aspect-video w-full object-cover" data-testid="img-generated-thumbnail" /></div>
+              <div className="flex flex-col gap-2 min-[400px]:flex-row"><Button type="button" variant="outline" className="min-h-11 flex-1" onClick={downloadThumbnail} data-testid="button-download-thumbnail"><Download className="mr-2 h-4 w-4" />{t("common.download")}</Button><Button type="button" variant="outline" className="min-h-11 flex-1" onClick={() => void generateThumbnail("create")} disabled={generationLoading}><RefreshCw className="mr-2 h-4 w-4" />{t("thumbnail.newVersion")}</Button></div>
+              {downloadedName && <p className="flex items-center gap-2 text-sm text-success" role="status"><CheckCircle2 className="h-4 w-4" />{t("thumbnail.downloadedAs", { name: downloadedName })}</p>}
+              <Collapsible open={variationOpen} onOpenChange={setVariationOpen}><CollapsibleTrigger asChild><Button type="button" variant="ghost" className="w-full justify-between"><span className="flex items-center gap-2"><Wand2 className="h-4 w-4" />{t("thumbnail.createVariation")}</span><ChevronDown className={`h-4 w-4 transition-transform ${variationOpen ? "rotate-180" : ""}`} /></Button></CollapsibleTrigger><CollapsibleContent className="space-y-2 pt-3"><Textarea id="thumbnail-variation" value={variationDirection} maxLength={500} onChange={(event) => setVariationDirection(event.target.value)} placeholder={t("thumbnail.variationPlaceholder")} className="min-h-20" /><Button type="button" className="min-h-11 w-full" onClick={() => void generateThumbnail("variation")} disabled={generationLoading || !variationDirection.trim()} data-testid="button-generate-variation"><Wand2 className="mr-2 h-4 w-4" />{t("thumbnail.generateVariation")}</Button></CollapsibleContent></Collapsible>
+              <p className="text-center text-xs text-muted-foreground">{t("thumbnail.generatedWith", { model: resultModel || configuredModel?.label || t("thumbnail.configuredModelFallback") })}</p>
+            </> : <div className="flex aspect-video flex-col items-center justify-center rounded-xl border border-dashed px-5 text-center"><ImageIcon className="mb-3 h-7 w-7 text-muted-foreground" /><p className="font-medium">{t("thumbnail.emptyTitle")}</p><p className="mt-1 max-w-xs text-sm text-muted-foreground">{t("thumbnail.emptyHint")}</p></div>}
           </CardContent></Card></aside>
         </div>
       </div>

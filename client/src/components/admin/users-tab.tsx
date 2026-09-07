@@ -58,6 +58,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useT } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { RoleBadge } from "./overview-tab";
 import { formatDate, formatDateTime, formatNumber, parseApiError, ROLE_LABELS } from "./utils";
@@ -72,8 +73,8 @@ function invalidateAdminQueries() {
   queryClient.invalidateQueries({ queryKey: ["/api/admin/activity"] });
 }
 
-function firstIssueMessage(error: { issues: Array<{ message: string }> }): string {
-  return error.issues[0]?.message || "Bitte prüfe deine Eingaben.";
+function firstIssueMessage(error: { issues: Array<{ message: string }> }, fallback: string): string {
+  return error.issues[0]?.message || fallback;
 }
 
 function RoleSelect({
@@ -85,10 +86,11 @@ function RoleSelect({
   value: UserRole;
   onChange: (role: UserRole) => void;
 }) {
+  const t = useT();
   return (
     <Select value={value} onValueChange={(next) => onChange(next as UserRole)}>
       <SelectTrigger id={id}>
-        <SelectValue placeholder="Rolle auswählen" />
+        <SelectValue placeholder={t("admin.users.selectRole")} />
       </SelectTrigger>
       <SelectContent>
         {USER_ROLES.map((role) => (
@@ -102,6 +104,7 @@ function RoleSelect({
 // ---------- Benutzer anlegen ----------
 
 function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT();
   const { toast } = useToast();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -123,17 +126,19 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     onSuccess: (data) => {
       invalidateAdminQueries();
       toast({
-        title: "Benutzer angelegt",
-        description: `${data?.user?.displayName || data?.user?.username || "Der Benutzer"} kann sich jetzt anmelden.`,
+        title: t("admin.users.createdToast"),
+        description: t("admin.users.createdToastDescription", {
+          name: data?.user?.displayName || data?.user?.username || t("admin.users.fallbackNameCreated"),
+        }),
       });
       reset();
       onOpenChange(false);
     },
     onError: (error) => {
       const { status, message } = parseApiError(error);
-      const text = status === 409 ? "Dieser Benutzername ist bereits vergeben." : message;
+      const text = status === 409 ? t("admin.users.usernameTaken") : message;
       setFormError(text);
-      toast({ title: "Benutzer konnte nicht angelegt werden", description: text, variant: "destructive" });
+      toast({ title: t("admin.users.createFailed"), description: text, variant: "destructive" });
     },
   });
 
@@ -141,7 +146,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     event.preventDefault();
     const parsed = adminCreateUserSchema.safeParse({ username, password, displayName, role });
     if (!parsed.success) {
-      setFormError(firstIssueMessage(parsed.error));
+      setFormError(firstIssueMessage(parsed.error, t("admin.users.checkInput")));
       return;
     }
     setFormError(null);
@@ -159,55 +164,55 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
-            <DialogTitle>Benutzer anlegen</DialogTitle>
+            <DialogTitle>{t("admin.users.createTitle")}</DialogTitle>
             <DialogDescription>
-              Lege einen neuen Zugang an. Das Startpasswort teilst du dem Benutzer selbst mit.
+              {t("admin.users.createDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="create-username">Benutzername</Label>
+            <Label htmlFor="create-username">{t("admin.users.username")}</Label>
             <Input
               id="create-username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="off"
               spellCheck={false}
-              placeholder="z. B. max.mustermann"
+              placeholder={t("admin.users.usernamePlaceholder")}
               data-testid="input-create-username"
             />
             <p className="text-xs text-muted-foreground">
-              3–40 Zeichen, nur Buchstaben, Zahlen, Punkt, Unterstrich und Bindestrich.
+              {t("admin.users.usernameHint")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="create-display-name">Anzeigename</Label>
+            <Label htmlFor="create-display-name">{t("admin.users.displayName")}</Label>
             <Input
               id="create-display-name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               autoComplete="off"
-              placeholder="z. B. Max Mustermann"
+              placeholder={t("admin.users.displayNamePlaceholder")}
               data-testid="input-create-display-name"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="create-password">Startpasswort</Label>
+            <Label htmlFor="create-password">{t("admin.users.initialPassword")}</Label>
             <Input
               id="create-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
-              placeholder="Mindestens 8 Zeichen"
+              placeholder={t("admin.users.passwordPlaceholder")}
               data-testid="input-create-password"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="create-role">Rolle</Label>
+            <Label htmlFor="create-role">{t("admin.users.role")}</Label>
             <RoleSelect id="create-role" value={role} onChange={setRole} />
           </div>
 
@@ -217,11 +222,11 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
-              Abbrechen
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={mutation.isPending} data-testid="button-create-user-submit">
               {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-              Anlegen
+              {t("admin.users.create")}
             </Button>
           </DialogFooter>
         </form>
@@ -233,6 +238,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 // ---------- Benutzer bearbeiten ----------
 
 function useUpdateUser(successTitle: string, onDone?: () => void) {
+  const t = useT();
   const { toast } = useToast();
   return useMutation({
     mutationFn: async ({ id, body }: { id: number; body: AdminUpdateUserRequest }) =>
@@ -241,13 +247,15 @@ function useUpdateUser(successTitle: string, onDone?: () => void) {
       invalidateAdminQueries();
       toast({
         title: successTitle,
-        description: `Änderungen für ${data?.user?.displayName || data?.user?.username || "den Benutzer"} wurden gespeichert.`,
+        description: t("admin.users.updatedToastDescription", {
+          name: data?.user?.displayName || data?.user?.username || t("admin.users.fallbackNameUpdated"),
+        }),
       });
       onDone?.();
     },
     onError: (error) => {
       toast({
-        title: "Änderung fehlgeschlagen",
+        title: t("admin.users.updateFailed"),
         description: parseApiError(error).message,
         variant: "destructive",
       });
@@ -256,10 +264,11 @@ function useUpdateUser(successTitle: string, onDone?: () => void) {
 }
 
 function EditUserDialog({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
+  const t = useT();
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [role, setRole] = useState<UserRole>(user?.role ?? "user");
   const [formError, setFormError] = useState<string | null>(null);
-  const mutation = useUpdateUser("Benutzer aktualisiert", onClose);
+  const mutation = useUpdateUser(t("admin.users.updated"), onClose);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -268,12 +277,12 @@ function EditUserDialog({ user, onClose }: { user: AdminUser | null; onClose: ()
     if (displayName.trim() !== user.displayName) body.displayName = displayName;
     if (role !== user.role) body.role = role;
     if (Object.keys(body).length === 0) {
-      setFormError("Es gibt keine Änderungen zum Speichern.");
+      setFormError(t("admin.users.noChanges"));
       return;
     }
     const parsed = adminUpdateUserSchema.safeParse(body);
     if (!parsed.success) {
-      setFormError(parsed.error.issues[0]?.message || "Bitte prüfe deine Eingaben.");
+      setFormError(parsed.error.issues[0]?.message || t("admin.users.checkInput"));
       return;
     }
     setFormError(null);
@@ -285,14 +294,14 @@ function EditUserDialog({ user, onClose }: { user: AdminUser | null; onClose: ()
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
-            <DialogTitle>Benutzer bearbeiten</DialogTitle>
+            <DialogTitle>{t("admin.users.editTitle")}</DialogTitle>
             <DialogDescription>
-              {user ? `Benutzername: ${user.username}` : ""}
+              {user ? t("admin.users.editDescription", { username: user.username }) : ""}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-display-name">Anzeigename</Label>
+            <Label htmlFor="edit-display-name">{t("admin.users.displayName")}</Label>
             <Input
               id="edit-display-name"
               value={displayName}
@@ -303,7 +312,7 @@ function EditUserDialog({ user, onClose }: { user: AdminUser | null; onClose: ()
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-role">Rolle</Label>
+            <Label htmlFor="edit-role">{t("admin.users.role")}</Label>
             <RoleSelect id="edit-role" value={role} onChange={setRole} />
           </div>
 
@@ -311,11 +320,11 @@ function EditUserDialog({ user, onClose }: { user: AdminUser | null; onClose: ()
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
-              Abbrechen
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={mutation.isPending} data-testid="button-edit-user-submit">
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Speichern
+              {t("common.save")}
             </Button>
           </DialogFooter>
         </form>
@@ -327,21 +336,22 @@ function EditUserDialog({ user, onClose }: { user: AdminUser | null; onClose: ()
 // ---------- Passwort zurücksetzen ----------
 
 function ResetPasswordDialog({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
+  const t = useT();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const mutation = useUpdateUser("Passwort zurückgesetzt", onClose);
+  const mutation = useUpdateUser(t("admin.users.passwordReset"), onClose);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user) return;
     const parsed = passwordSchema.safeParse(password);
     if (!parsed.success) {
-      setFormError(firstIssueMessage(parsed.error));
+      setFormError(firstIssueMessage(parsed.error, t("admin.users.checkInput")));
       return;
     }
     if (password !== confirm) {
-      setFormError("Die Passwörter stimmen nicht überein.");
+      setFormError(t("admin.users.passwordMismatch"));
       return;
     }
     setFormError(null);
@@ -353,27 +363,27 @@ function ResetPasswordDialog({ user, onClose }: { user: AdminUser | null; onClos
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
-            <DialogTitle>Passwort zurücksetzen</DialogTitle>
+            <DialogTitle>{t("admin.users.resetTitle")}</DialogTitle>
             <DialogDescription>
-              {user ? `Neues Passwort für ${user.displayName} (${user.username}) festlegen.` : ""}
+              {user ? t("admin.users.resetDescription", { name: user.displayName, username: user.username }) : ""}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="reset-password">Neues Passwort</Label>
+            <Label htmlFor="reset-password">{t("admin.users.newPassword")}</Label>
             <Input
               id="reset-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
-              placeholder="Mindestens 8 Zeichen"
+              placeholder={t("admin.users.passwordPlaceholder")}
               data-testid="input-reset-password"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reset-password-confirm">Passwort wiederholen</Label>
+            <Label htmlFor="reset-password-confirm">{t("admin.users.repeatPassword")}</Label>
             <Input
               id="reset-password-confirm"
               type="password"
@@ -388,11 +398,11 @@ function ResetPasswordDialog({ user, onClose }: { user: AdminUser | null; onClos
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
-              Abbrechen
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={mutation.isPending} data-testid="button-reset-password-submit">
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Passwort setzen
+              {t("admin.users.setPassword")}
             </Button>
           </DialogFooter>
         </form>
@@ -404,24 +414,26 @@ function ResetPasswordDialog({ user, onClose }: { user: AdminUser | null; onClos
 // ---------- Aktivieren / Deaktivieren ----------
 
 function ToggleActiveDialog({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
+  const t = useT();
   const deactivating = Boolean(user?.active);
-  const mutation = useUpdateUser(deactivating ? "Benutzer deaktiviert" : "Benutzer aktiviert", onClose);
+  const mutation = useUpdateUser(deactivating ? t("admin.users.deactivated") : t("admin.users.activated"), onClose);
 
   return (
     <AlertDialog open={Boolean(user)} onOpenChange={(next) => { if (!next) onClose(); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {deactivating ? "Benutzer deaktivieren?" : "Benutzer aktivieren?"}
+            {deactivating ? t("admin.users.deactivateQuestion") : t("admin.users.activateQuestion")}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {user && (deactivating
-              ? `${user.displayName} (${user.username}) kann sich danach nicht mehr anmelden. Bestehende Daten bleiben erhalten.`
-              : `${user.displayName} (${user.username}) kann sich danach wieder anmelden.`)}
+            {user && t(deactivating ? "admin.users.deactivateDescription" : "admin.users.activateDescription", {
+              name: user.displayName,
+              username: user.username,
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={mutation.isPending}>Abbrechen</AlertDialogCancel>
+          <AlertDialogCancel disabled={mutation.isPending}>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             disabled={mutation.isPending}
             className={deactivating ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
@@ -432,7 +444,7 @@ function ToggleActiveDialog({ user, onClose }: { user: AdminUser | null; onClose
             data-testid="button-toggle-active-confirm"
           >
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {deactivating ? "Deaktivieren" : "Aktivieren"}
+            {deactivating ? t("admin.users.deactivate") : t("admin.users.activate")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -449,6 +461,7 @@ type DialogState =
   | { type: "toggle"; user: AdminUser };
 
 export function UsersTab() {
+  const t = useT();
   const [createOpen, setCreateOpen] = useState(false);
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const closeDialog = () => setDialog({ type: "none" });
@@ -463,43 +476,43 @@ export function UsersTab() {
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
           <div>
-            <CardTitle>Benutzer</CardTitle>
+            <CardTitle>{t("admin.users.title")}</CardTitle>
             <CardDescription>
-              Zugänge anlegen, Rollen vergeben, Passwörter zurücksetzen und Benutzer deaktivieren.
+              {t("admin.users.description")}
             </CardDescription>
           </div>
           <Button onClick={() => setCreateOpen(true)} data-testid="button-create-user">
             <Plus className="mr-2 h-4 w-4" />
-            Benutzer anlegen
+            {t("admin.users.createButton")}
           </Button>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex min-h-48 items-center justify-center text-muted-foreground">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Benutzer werden geladen …
+              {t("admin.users.loading")}
             </div>
           ) : isError ? (
             <Alert variant="destructive">
-              <AlertTitle>Benutzer nicht verfügbar</AlertTitle>
+              <AlertTitle>{t("admin.users.errorTitle")}</AlertTitle>
               <AlertDescription>{parseApiError(error).message}</AlertDescription>
             </Alert>
           ) : users.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              Noch keine Benutzer vorhanden.
+              {t("admin.users.empty")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Anzeigename</TableHead>
-                  <TableHead>Benutzername</TableHead>
-                  <TableHead>Rolle</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Angelegt am</TableHead>
-                  <TableHead>Letzter Login</TableHead>
-                  <TableHead className="text-right">Aktivitäten</TableHead>
-                  <TableHead className="w-12"><span className="sr-only">Aktionen</span></TableHead>
+                  <TableHead>{t("admin.users.col.displayName")}</TableHead>
+                  <TableHead>{t("admin.users.col.username")}</TableHead>
+                  <TableHead>{t("admin.users.col.role")}</TableHead>
+                  <TableHead>{t("admin.users.col.status")}</TableHead>
+                  <TableHead>{t("admin.users.col.createdAt")}</TableHead>
+                  <TableHead>{t("admin.users.col.lastLogin")}</TableHead>
+                  <TableHead className="text-right">{t("admin.users.col.activities")}</TableHead>
+                  <TableHead className="w-12"><span className="sr-only">{t("admin.users.col.actions")}</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -515,7 +528,7 @@ export function UsersTab() {
                           ? "border-green-500/40 bg-green-500/10 text-green-500"
                           : "border-destructive/40 bg-destructive/10 text-destructive"}
                       >
-                        {user.active ? "Aktiv" : "Deaktiviert"}
+                        {user.active ? t("admin.users.active") : t("admin.users.inactive")}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(user.createdAt)}</TableCell>
@@ -527,7 +540,7 @@ export function UsersTab() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            aria-label={`Aktionen für ${user.displayName}`}
+                            aria-label={t("admin.users.actionsFor", { name: user.displayName })}
                             data-testid={`button-user-actions-${user.id}`}
                           >
                             <MoreHorizontal className="h-4 w-4" />
@@ -535,17 +548,17 @@ export function UsersTab() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onSelect={() => setDialog({ type: "edit", user })}>
-                            Bearbeiten
+                            {t("admin.users.edit")}
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => setDialog({ type: "password", user })}>
-                            Passwort zurücksetzen
+                            {t("admin.users.resetPassword")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className={user.active ? "text-destructive focus:text-destructive" : undefined}
                             onSelect={() => setDialog({ type: "toggle", user })}
                           >
-                            {user.active ? "Deaktivieren" : "Aktivieren"}
+                            {user.active ? t("admin.users.deactivate") : t("admin.users.activate")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

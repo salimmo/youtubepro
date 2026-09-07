@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Download, ExternalLink, Loader2 } from "lucide-react";
-import { CONTENT_KIND_LABELS, type ContentKind, type ContentRecord } from "@shared/auth-contracts";
+import { CONTENT_KIND_LABELS, type ContentRecord } from "@shared/auth-contracts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useT } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDateTime, formatNumber, parseApiError } from "./utils";
 
@@ -53,8 +54,12 @@ function stringList(value: unknown): string[] {
   return asArray(value).map(asString).filter((item) => item.length > 0);
 }
 
-function kindLabel(kind: string | null | undefined): string {
-  return kind && kind in CONTENT_KIND_LABELS ? CONTENT_KIND_LABELS[kind as ContentKind] : kind || "Inhalt";
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
+
+// Anzeige über das Wörterbuch (admin.contentKind.<kind>); die Konstante aus dem
+// Vertrag dient nur zur Prüfung, ob die Art bekannt ist.
+function kindLabel(t: Translate, kind: string | null | undefined): string {
+  return kind && kind in CONTENT_KIND_LABELS ? t(`admin.contentKind.${kind}`) : kind || t("admin.content.fallbackKind");
 }
 
 // ---------- Bausteine ----------
@@ -91,7 +96,8 @@ function JsonBlock({ value }: { value: unknown }) {
 }
 
 function BulletList({ items }: { items: string[] }) {
-  if (items.length === 0) return <p className="text-sm text-muted-foreground">Keine Einträge.</p>;
+  const t = useT();
+  if (items.length === 0) return <p className="text-sm text-muted-foreground">{t("admin.content.noEntries")}</p>;
   return (
     <ul className="list-disc space-y-1 pl-5 text-sm">
       {items.map((item, index) => <li key={`${index}-${item.slice(0, 20)}`}>{item}</li>)}
@@ -113,6 +119,7 @@ function MetaRow({ label, value }: { label: string; value: unknown }) {
 // ---------- Rendering je Kind ----------
 
 function ThumbnailContent({ payload }: { payload: AnyRecord }) {
+  const t = useT();
   const image = asString(payload.image);
   const topic = asString(payload.topic);
   const fileName = `thumbnail-${(topic || "youtube").replace(/[^a-z0-9äöüß-]+/gi, "-").toLowerCase()}.png`;
@@ -122,29 +129,29 @@ function ThumbnailContent({ payload }: { payload: AnyRecord }) {
         <div className="space-y-3">
           <img
             src={image}
-            alt={topic ? `Thumbnail zu ${topic}` : "Generiertes Thumbnail"}
+            alt={topic ? t("admin.content.thumbnailAlt", { topic }) : t("admin.content.thumbnailAltGeneric")}
             className="w-full max-w-2xl rounded-lg border border-border"
           />
           <Button asChild variant="outline" size="sm">
             <a href={image} download={fileName}>
               <Download className="mr-2 h-4 w-4" />
-              Bild herunterladen
+              {t("admin.content.downloadImage")}
             </a>
           </Button>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Kein Bild gespeichert.</p>
+        <p className="text-sm text-muted-foreground">{t("admin.content.noImage")}</p>
       )}
       <div className="space-y-1">
-        <MetaRow label="Thema" value={payload.topic} />
-        <MetaRow label="Haupttext" value={payload.mainText} />
-        <MetaRow label="Untertext" value={payload.subText} />
-        <MetaRow label="Stil" value={payload.style} />
-        <MetaRow label="Modell" value={payload.model} />
+        <MetaRow label={t("admin.content.topic")} value={payload.topic} />
+        <MetaRow label={t("admin.content.mainText")} value={payload.mainText} />
+        <MetaRow label={t("admin.content.subText")} value={payload.subText} />
+        <MetaRow label={t("admin.content.style")} value={payload.style} />
+        <MetaRow label={t("admin.content.model")} value={payload.model} />
       </div>
       {asString(payload.prompt) && (
         <details className="rounded-lg border border-border bg-background/50 p-3">
-          <summary className="cursor-pointer text-sm font-medium">Prompt anzeigen</summary>
+          <summary className="cursor-pointer text-sm font-medium">{t("admin.content.showPrompt")}</summary>
           <pre className="mt-2 whitespace-pre-wrap font-sans text-sm text-muted-foreground">{asString(payload.prompt)}</pre>
         </details>
       )}
@@ -153,23 +160,24 @@ function ThumbnailContent({ payload }: { payload: AnyRecord }) {
 }
 
 function ScriptContent({ payload }: { payload: AnyRecord }) {
+  const t = useT();
   const titles = stringList(payload.titles);
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <MetaRow label="Thema" value={payload.topic} />
-        <MetaRow label="Format" value={payload.format} />
-        <MetaRow label="Zielgruppe" value={payload.audience} />
+        <MetaRow label={t("admin.content.topic")} value={payload.topic} />
+        <MetaRow label={t("admin.content.format")} value={payload.format} />
+        <MetaRow label={t("admin.content.audience")} value={payload.audience} />
       </div>
       {titles.length > 0 && (
-        <Section title="Titelvorschläge"><BulletList items={titles} /></Section>
+        <Section title={t("admin.content.titleSuggestions")}><BulletList items={titles} /></Section>
       )}
-      {asString(payload.hook) && <Section title="Hook"><PreText>{asString(payload.hook)}</PreText></Section>}
-      {asString(payload.script) && <Section title="Skript"><PreText>{asString(payload.script)}</PreText></Section>}
-      {asString(payload.payoff) && <Section title="Payoff"><PreText>{asString(payload.payoff)}</PreText></Section>}
-      {asString(payload.primaryCta) && <Section title="Call-to-Action"><PreText>{asString(payload.primaryCta)}</PreText></Section>}
+      {asString(payload.hook) && <Section title={t("admin.content.hook")}><PreText>{asString(payload.hook)}</PreText></Section>}
+      {asString(payload.script) && <Section title={t("admin.content.script")}><PreText>{asString(payload.script)}</PreText></Section>}
+      {asString(payload.payoff) && <Section title={t("admin.content.payoff")}><PreText>{asString(payload.payoff)}</PreText></Section>}
+      {asString(payload.primaryCta) && <Section title={t("admin.content.cta")}><PreText>{asString(payload.primaryCta)}</PreText></Section>}
       {payload.studioValidation !== undefined && payload.studioValidation !== null && (
-        <Section title="Studio-Validierung">
+        <Section title={t("admin.content.studioValidation")}>
           {typeof payload.studioValidation === "string"
             ? <PreText>{payload.studioValidation}</PreText>
             : <JsonBlock value={payload.studioValidation} />}
@@ -180,8 +188,9 @@ function ScriptContent({ payload }: { payload: AnyRecord }) {
 }
 
 function IdeasContent({ payload }: { payload: AnyRecord }) {
+  const t = useT();
   const ideas = asArray(payload.ideas).map(asRecord);
-  if (ideas.length === 0) return <p className="text-sm text-muted-foreground">Keine Ideen gespeichert.</p>;
+  if (ideas.length === 0) return <p className="text-sm text-muted-foreground">{t("admin.content.noIdeas")}</p>;
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {ideas.map((idea, index) => {
@@ -189,7 +198,7 @@ function IdeasContent({ payload }: { payload: AnyRecord }) {
         return (
           <div key={`${index}-${asString(idea.title).slice(0, 20)}`} className="space-y-2 rounded-lg border border-border bg-background/50 p-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <h4 className="font-semibold">{asString(idea.title) || `Idee ${index + 1}`}</h4>
+              <h4 className="font-semibold">{asString(idea.title) || t("admin.content.ideaFallback", { index: index + 1 })}</h4>
               <div className="flex flex-wrap gap-1">
                 {asString(idea.format) && <Badge variant="outline">{asString(idea.format)}</Badge>}
                 {asString(idea.difficulty) && <Badge variant="outline">{asString(idea.difficulty)}</Badge>}
@@ -197,11 +206,11 @@ function IdeasContent({ payload }: { payload: AnyRecord }) {
             </div>
             {asString(idea.description) && <p className="text-sm text-muted-foreground">{asString(idea.description)}</p>}
             <div className="space-y-1">
-              <MetaRow label="Ehrliches Versprechen" value={idea.honestPromise} />
-              <MetaRow label="Payoff" value={idea.payoff} />
-              <MetaRow label="Thumbnail-Konzept" value={idea.thumbnailConcept} />
-              <MetaRow label="Studio-Metrik" value={idea.studioMetric} />
-              <MetaRow label="Experiment-Regel" value={idea.experimentRule} />
+              <MetaRow label={t("admin.content.honestPromise")} value={idea.honestPromise} />
+              <MetaRow label={t("admin.content.payoff")} value={idea.payoff} />
+              <MetaRow label={t("admin.content.thumbnailConcept")} value={idea.thumbnailConcept} />
+              <MetaRow label={t("admin.content.studioMetric")} value={idea.studioMetric} />
+              <MetaRow label={t("admin.content.experimentRule")} value={idea.experimentRule} />
             </div>
             {keywords.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-1">
@@ -216,6 +225,7 @@ function IdeasContent({ payload }: { payload: AnyRecord }) {
 }
 
 function ResearchSnapshotContent({ payload }: { payload: AnyRecord }) {
+  const t = useT();
   const videos = asArray(payload.videos).map(asRecord);
   const filters = asRecord(payload.filters);
   const filterEntries = Object.entries(filters).filter(([, value]) => asString(value));
@@ -223,11 +233,11 @@ function ResearchSnapshotContent({ payload }: { payload: AnyRecord }) {
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <MetaRow label="Suchbegriff" value={payload.query} />
-        <MetaRow label="Treffer gesamt" value={asNumber(payload.totalResults) !== undefined ? formatNumber(asNumber(payload.totalResults)) : ""} />
+        <MetaRow label={t("admin.content.query")} value={payload.query} />
+        <MetaRow label={t("admin.content.totalResults")} value={asNumber(payload.totalResults) !== undefined ? formatNumber(asNumber(payload.totalResults)) : ""} />
       </div>
       {filterEntries.length > 0 && (
-        <Section title="Filter">
+        <Section title={t("admin.content.filters")}>
           <div className="flex flex-wrap gap-1">
             {filterEntries.map(([key, value]) => (
               <Badge key={key} variant="outline">{key}: {asString(value)}</Badge>
@@ -236,25 +246,25 @@ function ResearchSnapshotContent({ payload }: { payload: AnyRecord }) {
         </Section>
       )}
       {warnings.length > 0 && (
-        <Section title="Hinweise"><BulletList items={warnings} /></Section>
+        <Section title={t("admin.content.warnings")}><BulletList items={warnings} /></Section>
       )}
-      <Section title={`Videos (${videos.length})`}>
+      <Section title={t("admin.content.videos", { count: videos.length })}>
         {videos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Keine Videos gespeichert.</p>
+          <p className="text-sm text-muted-foreground">{t("admin.content.noVideos")}</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Titel</TableHead>
-                <TableHead>Kanal</TableHead>
-                <TableHead className="text-right">Aufrufe</TableHead>
-                <TableHead>Veröffentlicht</TableHead>
+                <TableHead>{t("admin.content.col.title")}</TableHead>
+                <TableHead>{t("admin.content.col.channel")}</TableHead>
+                <TableHead className="text-right">{t("admin.content.col.views")}</TableHead>
+                <TableHead>{t("admin.content.col.published")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {videos.map((video, index) => {
                 const url = asString(video.url);
-                const title = asString(video.title) || "Ohne Titel";
+                const title = asString(video.title) || t("admin.content.untitled");
                 return (
                   <TableRow key={asString(video.id) || String(index)}>
                     <TableCell className="max-w-md">
@@ -286,7 +296,7 @@ function ResearchSnapshotContent({ payload }: { payload: AnyRecord }) {
       </Section>
       {payload.analytics !== undefined && payload.analytics !== null && (
         <details className="rounded-lg border border-border bg-background/50 p-3">
-          <summary className="cursor-pointer text-sm font-medium">Analytics (JSON)</summary>
+          <summary className="cursor-pointer text-sm font-medium">{t("admin.content.analyticsJson")}</summary>
           <div className="mt-2"><JsonBlock value={payload.analytics} /></div>
         </details>
       )}
@@ -301,10 +311,10 @@ const INSIGHT_KNOWN_KEYS = new Set([
   "recommendedActions",
 ]);
 
-const CLAIM_GROUPS: Array<{ key: string; title: string; match: (level: string) => boolean }> = [
-  { key: "observed", title: "Beobachtet", match: (level) => /observ|beobacht/i.test(level) },
-  { key: "inferred", title: "Abgeleitet", match: (level) => /infer|derive|abgeleit/i.test(level) },
-  { key: "studio", title: "Erfordert Studio", match: (level) => /studio/i.test(level) },
+const CLAIM_GROUPS: Array<{ key: string; titleKey: string; match: (level: string) => boolean }> = [
+  { key: "observed", titleKey: "admin.content.claim.observed", match: (level) => /observ|beobacht/i.test(level) },
+  { key: "inferred", titleKey: "admin.content.claim.inferred", match: (level) => /infer|derive|abgeleit/i.test(level) },
+  { key: "studio", titleKey: "admin.content.claim.studio", match: (level) => /studio/i.test(level) },
 ];
 
 function claimText(claim: unknown): string {
@@ -319,6 +329,7 @@ function claimLevel(claim: unknown): string {
 }
 
 function ResearchInsightsContent({ payload }: { payload: AnyRecord }) {
+  const t = useT();
   const claims = asArray(payload.evidenceClaims);
   const grouped = CLAIM_GROUPS.map((group) => ({
     ...group,
@@ -345,35 +356,35 @@ function ResearchInsightsContent({ payload }: { payload: AnyRecord }) {
   return (
     <div className="space-y-5">
       {asString(payload.summary) && (
-        <Section title="Zusammenfassung"><PreText>{asString(payload.summary)}</PreText></Section>
+        <Section title={t("admin.content.summary")}><PreText>{asString(payload.summary)}</PreText></Section>
       )}
       {claims.length > 0 && (
-        <Section title="Belege">
+        <Section title={t("admin.content.evidence")}>
           <div className="grid gap-4 md:grid-cols-3">
             {grouped.map((group) => (
               <div key={group.key} className="space-y-2 rounded-lg border border-border bg-background/50 p-3">
-                <h4 className="text-sm font-semibold">{group.title}</h4>
+                <h4 className="text-sm font-semibold">{t(group.titleKey)}</h4>
                 <BulletList items={group.items} />
               </div>
             ))}
           </div>
           {ungrouped.length > 0 && (
             <div className="space-y-2 rounded-lg border border-border bg-background/50 p-3">
-              <h4 className="text-sm font-semibold">Weitere Belege</h4>
+              <h4 className="text-sm font-semibold">{t("admin.content.moreEvidence")}</h4>
               <BulletList items={ungrouped} />
             </div>
           )}
         </Section>
       )}
       {questions.length > 0 && (
-        <Section title="Zuschauerfragen"><BulletList items={questions} /></Section>
+        <Section title={t("admin.content.viewerQuestions")}><BulletList items={questions} /></Section>
       )}
       {actions.length > 0 && (
-        <Section title="Handlungsempfehlungen"><BulletList items={actions} /></Section>
+        <Section title={t("admin.content.recommendedActions")}><BulletList items={actions} /></Section>
       )}
       {Object.keys(rest).length > 0 && (
         <details className="rounded-lg border border-border bg-background/50 p-3">
-          <summary className="cursor-pointer text-sm font-medium">Weitere Daten (JSON)</summary>
+          <summary className="cursor-pointer text-sm font-medium">{t("admin.content.moreDataJson")}</summary>
           <div className="mt-2"><JsonBlock value={rest} /></div>
         </details>
       )}
@@ -382,14 +393,15 @@ function ResearchInsightsContent({ payload }: { payload: AnyRecord }) {
 }
 
 function BeforeAfterContent({ payload }: { payload: AnyRecord }) {
+  const t = useT();
   return (
     <div className="space-y-4">
-      <MetaRow label="Abschnitt" value={payload.sectionName} />
+      <MetaRow label={t("admin.content.section")} value={payload.sectionName} />
       <div className="grid gap-4 md:grid-cols-2">
-        <Section title="Vorher">
+        <Section title={t("admin.content.before")}>
           <PreText>{asString(payload.before) || "–"}</PreText>
         </Section>
-        <Section title="Nachher">
+        <Section title={t("admin.content.after")}>
           <PreText>{asString(payload.after) || "–"}</PreText>
         </Section>
       </div>
@@ -398,15 +410,17 @@ function BeforeAfterContent({ payload }: { payload: AnyRecord }) {
 }
 
 function TitleListContent({ payload, listKey, title }: { payload: AnyRecord; listKey: string; title: string }) {
+  const t = useT();
   return (
     <div className="space-y-4">
-      <MetaRow label="Thema" value={payload.topic} />
+      <MetaRow label={t("admin.content.topic")} value={payload.topic} />
       <Section title={title}><BulletList items={stringList(payload[listKey])} /></Section>
     </div>
   );
 }
 
 function ContentBody({ content }: { content: ContentRecord }) {
+  const t = useT();
   const payload = asRecord(content.payload);
   switch (content.kind) {
     case "thumbnail":
@@ -423,9 +437,9 @@ function ContentBody({ content }: { content: ContentRecord }) {
     case "script_paragraph":
       return <BeforeAfterContent payload={payload} />;
     case "script_titles":
-      return <TitleListContent payload={payload} listKey="titles" title="Titelvorschläge" />;
+      return <TitleListContent payload={payload} listKey="titles" title={t("admin.content.titleSuggestions")} />;
     case "thumbnail_suggestions":
-      return <TitleListContent payload={payload} listKey="suggestions" title="Textvorschläge" />;
+      return <TitleListContent payload={payload} listKey="suggestions" title={t("admin.content.textSuggestions")} />;
     case "narration":
       return asString(payload.narration)
         ? <PreText>{asString(payload.narration)}</PreText>
@@ -443,6 +457,7 @@ interface ContentDialogProps {
 }
 
 export function ContentDialog({ contentId, onClose }: ContentDialogProps) {
+  const t = useT();
   const { data, isLoading, isError, error } = useQuery<{ content: ContentRecord }>({
     queryKey: ["/api/admin/contents", contentId],
     queryFn: async () => apiRequest("GET", `/api/admin/contents/${contentId}`) as Promise<{ content: ContentRecord }>,
@@ -454,11 +469,11 @@ export function ContentDialog({ contentId, onClose }: ContentDialogProps) {
     <Dialog open={contentId !== null} onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle className="pr-6">{content?.title || "Gespeicherter Inhalt"}</DialogTitle>
+          <DialogTitle className="pr-6">{content?.title || t("admin.content.dialogTitle")}</DialogTitle>
           <DialogDescription asChild>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-              {content && <Badge variant="outline">{kindLabel(content.kind)}</Badge>}
-              {content?.username && <span>Benutzer: {content.username}</span>}
+              {content && <Badge variant="outline">{kindLabel(t, content.kind)}</Badge>}
+              {content?.username && <span>{t("admin.content.user", { username: content.username })}</span>}
               {content?.createdAt && <span>{formatDateTime(content.createdAt)}</span>}
             </div>
           </DialogDescription>
@@ -467,11 +482,11 @@ export function ContentDialog({ contentId, onClose }: ContentDialogProps) {
         {isLoading ? (
           <div className="flex min-h-40 items-center justify-center text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Inhalt wird geladen …
+            {t("admin.content.loading")}
           </div>
         ) : isError ? (
           <Alert variant="destructive">
-            <AlertTitle>Inhalt nicht verfügbar</AlertTitle>
+            <AlertTitle>{t("admin.content.errorTitle")}</AlertTitle>
             <AlertDescription>{parseApiError(error).message}</AlertDescription>
           </Alert>
         ) : content ? (

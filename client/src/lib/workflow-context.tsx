@@ -24,6 +24,9 @@ import {
   type StoredWorkflowRecord,
 } from "@/lib/workflow-storage";
 import { useAuth } from "@/lib/auth-context";
+import { getActiveLanguage, translate } from "@/lib/i18n";
+
+const tx = (key: string) => translate(getActiveLanguage(), key);
 
 interface ResearchInsights {
   peopleAlsoAsk?: { question: string; answer: string }[];
@@ -331,7 +334,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       setHistoryError(null);
     }).catch((error) => {
       console.error("Failed to save workflow history:", error);
-      setHistoryError("Der Workflow konnte nicht auf dem Server gespeichert werden.");
+      setHistoryError(tx("shell.history.saveFailed"));
     });
   }, [rememberActive]);
 
@@ -394,7 +397,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           const summary = summaryFromState(fallback);
           setState(fallback);
           setRecentWorkflows(summary ? [summary] : []);
-          setHistoryError("Deine Workflows konnten nicht vom Server geladen werden. Der aktuelle Workflow bleibt für diese Sitzung geöffnet.");
+          setHistoryError(tx("shell.history.loadFailed"));
         }
       } finally {
         if (!cancelled) {
@@ -428,7 +431,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       const record = await getWorkflowRecord<WorkflowState>(id);
       if (!record) {
         setRecentWorkflows((current) => current.filter((item) => item.id !== id));
-        setHistoryError("Dieser Workflow ist nicht mehr verfügbar.");
+        setHistoryError(tx("shell.history.notAvailable"));
         return null;
       }
       const restored = normalizeState(record.state, record.id);
@@ -439,7 +442,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       return restored.currentStep;
     } catch (error) {
       console.error("Failed to open workflow:", error);
-      setHistoryError("Der ausgewählte Workflow konnte nicht geöffnet werden.");
+      setHistoryError(tx("shell.history.openFailed"));
       return null;
     }
   }, [rememberActive]);
@@ -447,7 +450,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const renameWorkflow = useCallback(async (id: string, title: string): Promise<boolean> => {
     const customTitle = normalizeCustomWorkflowTitle(title);
     if (!customTitle) {
-      setHistoryError("Workflow-Namen dürfen nicht leer sein.");
+      setHistoryError(tx("shell.history.nameEmpty"));
       return false;
     }
     try {
@@ -455,7 +458,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       const record = await getWorkflowRecord<WorkflowState>(id);
       if (!record) {
         setRecentWorkflows((current) => current.filter((item) => item.id !== id));
-        setHistoryError("Dieser Workflow ist nicht mehr verfügbar.");
+        setHistoryError(tx("shell.history.notAvailable"));
         return false;
       }
       const current = normalizeState(record.state, record.id);
@@ -479,7 +482,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error("Failed to rename workflow:", error);
-      setHistoryError("Der Workflow konnte nicht umbenannt werden.");
+      setHistoryError(tx("shell.history.renameFailed"));
       return false;
     }
   }, [state.id]);
@@ -511,7 +514,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       return "research";
     } catch (error) {
       console.error("Failed to delete workflow:", error);
-      setHistoryError("Der Workflow konnte nicht gelöscht werden.");
+      setHistoryError(tx("shell.history.deleteFailed"));
       return null;
     }
   }, [rememberActive, state.currentStep, state.id]);

@@ -1,10 +1,15 @@
 import { formatDistanceToNowStrict } from "date-fns";
-import { de } from "date-fns/locale";
 import type { UserRole } from "@shared/auth-contracts";
+import { dateFnsLocale, getActiveLanguage, intlLocale, translate } from "@/lib/i18n";
 
+function tr(key: string, vars?: Record<string, string | number>): string {
+  return translate(getActiveLanguage(), key, vars);
+}
+
+// Getter statt fester Strings, damit die Labels der aktiven Sprache folgen.
 export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: "Administrator",
-  user: "Benutzer",
+  get admin() { return tr("admin.role.admin"); },
+  get user() { return tr("admin.role.user"); },
 };
 
 export function roleLabel(role: string | null | undefined): string {
@@ -15,32 +20,32 @@ export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "–";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "–";
-  return date.toLocaleString("de-DE");
+  return date.toLocaleString(intlLocale(getActiveLanguage()));
 }
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "–";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "–";
-  return date.toLocaleDateString("de-DE");
+  return date.toLocaleDateString(intlLocale(getActiveLanguage()));
 }
 
 export function formatRelative(value: string | null | undefined): string {
   if (!value) return "–";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "–";
-  return formatDistanceToNowStrict(date, { addSuffix: true, locale: de });
+  return formatDistanceToNowStrict(date, { addSuffix: true, locale: dateFnsLocale(getActiveLanguage()) });
 }
 
 export function formatDuration(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || Number.isNaN(ms)) return "–";
   if (ms < 1000) return `${Math.round(ms)} ms`;
-  return `${(ms / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s`;
+  return `${(ms / 1000).toLocaleString(intlLocale(getActiveLanguage()), { maximumFractionDigits: 1 })} s`;
 }
 
 export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "–";
-  return value.toLocaleString("de-DE");
+  return value.toLocaleString(intlLocale(getActiveLanguage()));
 }
 
 export function truncate(text: string | null | undefined, max = 90): string {
@@ -52,7 +57,7 @@ export function truncate(text: string | null | undefined, max = 90): string {
 export function parseApiError(error: unknown): { status: number | null; message: string } {
   const raw = error instanceof Error ? error.message : String(error ?? "");
   const match = raw.match(/^(\d{3}):\s*([\s\S]*)$/);
-  if (!match) return { status: null, message: raw || "Unbekannter Fehler." };
+  if (!match) return { status: null, message: raw || tr("admin.unknownError") };
   const status = Number(match[1]);
   let message = match[2].trim();
   try {
@@ -62,10 +67,10 @@ export function parseApiError(error: unknown): { status: number | null; message:
   } catch {
     // Body ist kein JSON, Text unverändert verwenden.
   }
-  return { status, message: message || `Fehler ${status}` };
+  return { status, message: message || tr("admin.errorWithStatus", { status }) };
 }
 
 export function userLabel(displayName: string | null | undefined, username: string | null | undefined): string {
   if (displayName && username && displayName !== username) return `${displayName} (${username})`;
-  return displayName || username || "Unbekannt";
+  return displayName || username || tr("admin.unknownUser");
 }

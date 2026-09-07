@@ -4,18 +4,20 @@ import { ActivityTab } from "@/components/admin/activity-tab";
 import { OverviewTab } from "@/components/admin/overview-tab";
 import { UsersTab } from "@/components/admin/users-tab";
 import { WorkflowsTab } from "@/components/admin/workflows-tab";
+import { useT } from "@/lib/i18n";
 
 export default function AdminPage() {
+  const t = useT();
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 p-6 md:p-8">
       <div>
         <div className="flex items-center gap-2 text-primary">
           <ShieldCheck className="h-5 w-5" />
-          <span className="text-sm font-medium">Administration</span>
+          <span className="text-sm font-medium">{t("admin.eyebrow")}</span>
         </div>
-        <h1 className="mt-2 text-3xl font-bold">Admin-Bereich</h1>
+        <h1 className="mt-2 text-3xl font-bold">{t("admin.title")}</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          Verwalte Benutzer, behalte die Nutzung im Blick und sieh dir gespeicherte Inhalte an.
+          {t("admin.subtitle")}
         </p>
       </div>
 
@@ -23,19 +25,19 @@ export default function AdminPage() {
         <TabsList>
           <TabsTrigger value="overview" data-testid="tab-admin-overview">
             <LayoutDashboard className="mr-2 h-4 w-4" />
-            Übersicht
+            {t("admin.tab.overview")}
           </TabsTrigger>
           <TabsTrigger value="users" data-testid="tab-admin-users">
             <Users className="mr-2 h-4 w-4" />
-            Benutzer
+            {t("admin.tab.users")}
           </TabsTrigger>
           <TabsTrigger value="workflows" data-testid="tab-admin-workflows">
             <FolderKanban className="mr-2 h-4 w-4" />
-            Workflows
+            {t("admin.tab.workflows")}
           </TabsTrigger>
           <TabsTrigger value="activity" data-testid="tab-admin-activity">
             <Activity className="mr-2 h-4 w-4" />
-            Aktivitäten
+            {t("admin.tab.activity")}
           </TabsTrigger>
         </TabsList>
 

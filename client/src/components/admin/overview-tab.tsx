@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useT } from "@/lib/i18n";
 import { formatNumber, formatRelative, parseApiError, roleLabel } from "./utils";
 
 interface StatTileProps {
@@ -51,6 +52,7 @@ export function RoleBadge({ role }: { role: string | null | undefined }) {
 }
 
 export function OverviewTab() {
+  const t = useT();
   const { data, isLoading, isError, error } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
   });
@@ -59,7 +61,7 @@ export function OverviewTab() {
     return (
       <div className="flex min-h-48 items-center justify-center text-muted-foreground">
         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-        Kennzahlen werden geladen …
+        {t("admin.overview.loading")}
       </div>
     );
   }
@@ -67,7 +69,7 @@ export function OverviewTab() {
   if (isError) {
     return (
       <Alert variant="destructive">
-        <AlertTitle>Kennzahlen nicht verfügbar</AlertTitle>
+        <AlertTitle>{t("admin.overview.errorTitle")}</AlertTitle>
         <AlertDescription>{parseApiError(error).message}</AlertDescription>
       </Alert>
     );
@@ -78,33 +80,33 @@ export function OverviewTab() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <StatTile label="Benutzer" value={data?.users} icon={Users} />
-        <StatTile label="Aktive Benutzer" value={data?.activeUsers} icon={UserCheck} />
-        <StatTile label="Aktivitäten gesamt" value={data?.activitiesTotal} icon={Activity} />
-        <StatTile label="Aktivitäten (24 h)" value={data?.activitiesLast24h} icon={Clock} />
-        <StatTile label="Gespeicherte Inhalte" value={data?.contents} icon={FileText} />
+        <StatTile label={t("admin.overview.stat.users")} value={data?.users} icon={Users} />
+        <StatTile label={t("admin.overview.stat.activeUsers")} value={data?.activeUsers} icon={UserCheck} />
+        <StatTile label={t("admin.overview.stat.activitiesTotal")} value={data?.activitiesTotal} icon={Activity} />
+        <StatTile label={t("admin.overview.stat.activities24h")} value={data?.activitiesLast24h} icon={Clock} />
+        <StatTile label={t("admin.overview.stat.contents")} value={data?.contents} icon={FileText} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Aktivität pro Benutzer</CardTitle>
+          <CardTitle>{t("admin.overview.perUserTitle")}</CardTitle>
           <CardDescription>
-            Wer wie viel mit dem Tool arbeitet und wann zuletzt.
+            {t("admin.overview.perUserDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {perUser.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              Noch keine Benutzeraktivität vorhanden.
+              {t("admin.overview.empty")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Rolle</TableHead>
-                  <TableHead className="text-right">Aktivitäten</TableHead>
-                  <TableHead>Letzte Aktivität</TableHead>
+                  <TableHead>{t("admin.overview.col.name")}</TableHead>
+                  <TableHead>{t("admin.overview.col.role")}</TableHead>
+                  <TableHead className="text-right">{t("admin.overview.col.activities")}</TableHead>
+                  <TableHead>{t("admin.overview.col.lastActivity")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

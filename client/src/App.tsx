@@ -10,7 +10,9 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar";
 import { WorkflowProvider, useWorkflow } from "@/lib/workflow-context";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { I18nProvider, useI18n } from "@/lib/i18n";
 import { Loader2 } from "lucide-react";
+import type { ReactNode } from "react";
 import NotFound from "@/pages/not-found";
 import AdminPage from "@/pages/admin";
 import ChannelPage from "@/pages/channel";
@@ -42,6 +44,7 @@ function Router() {
 
 function AppLayout() {
   const [location] = useLocation();
+  const { t } = useI18n();
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3.5rem",
@@ -58,13 +61,13 @@ function AppLayout() {
           href="#main-content"
           className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-md bg-background px-3 py-2 text-sm font-medium text-foreground shadow-md transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          Zum Inhalt springen
+          {t("shell.skipToContent")}
         </a>
         <AppSidebar />
-        <SidebarInset id="main-content" tabIndex={-1} className="min-h-0 overflow-hidden" aria-label="Arbeitsbereich der Anwendung">
+        <SidebarInset id="main-content" tabIndex={-1} className="min-h-0 overflow-hidden" aria-label={t("shell.mainAreaLabel")}>
           <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
             <div className="flex items-center gap-2">
-              <SidebarTrigger data-testid="button-sidebar-toggle" aria-label="Seitenleiste umschalten" />
+              <SidebarTrigger data-testid="button-sidebar-toggle" aria-label={t("shell.toggleSidebar")} />
             </div>
             <div className="flex items-center gap-1">
               <ControllerGuide />
@@ -84,11 +87,12 @@ function AppLayout() {
 }
 
 function AuthLoadingScreen() {
+  const { t } = useI18n();
   return (
     <div className="flex min-h-dvh w-full items-center justify-center bg-background" role="status" aria-live="polite">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-        <span>Sitzung wird geprüft …</span>
+        <span>{t("shell.checkingSession")}</span>
       </div>
     </div>
   );
@@ -105,17 +109,30 @@ function AuthGate() {
   );
 }
 
+// Beim Sprachwechsel wird der gesamte Baum unterhalb neu eingehängt, damit
+// auch modulweite Helfer (translate/getActiveLanguage, Proxy-Labels) und
+// memoisierte Texte sofort in der neuen Sprache erscheinen. Der AuthProvider
+// bleibt außerhalb, damit die Sitzung beim Umschalten nicht neu geprüft wird.
+function LanguageKeyedTree({ children }: { children: ReactNode }) {
+  const { language } = useI18n();
+  return <div key={language} className="contents">{children}</div>;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <AuthProvider>
-            <AuthGate />
-          </AuthProvider>
-          <Toaster />
-        </TooltipProvider>
-      </ThemeProvider>
+      <I18nProvider>
+        <ThemeProvider defaultTheme="dark">
+          <TooltipProvider>
+            <AuthProvider>
+              <LanguageKeyedTree>
+                <AuthGate />
+                <Toaster />
+              </LanguageKeyedTree>
+            </AuthProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

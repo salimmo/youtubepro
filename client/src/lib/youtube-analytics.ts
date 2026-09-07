@@ -1,4 +1,7 @@
 import type { Video } from "@shared/schema";
+import { getActiveLanguage, translate } from "@/lib/i18n";
+
+const bucketLabel = (key: string) => translate(getActiveLanguage(), `export.${key}`);
 
 export function parseIsoDurationSeconds(duration?: string): number | null {
   if (!duration) return null;
@@ -63,16 +66,16 @@ export function calculateYouTubeAnalytics(videos: Video[], now = Date.now()) {
 
   const durationSeconds = videos.map((video) => parseIsoDurationSeconds(video.duration));
   const durationData = [
-    { name: "Unter 4 Min.", value: durationSeconds.filter((seconds) => seconds !== null && seconds < 240).length },
-    { name: "4 bis 20 Min.", value: durationSeconds.filter((seconds) => seconds !== null && seconds >= 240 && seconds <= 1200).length },
-    { name: "Über 20 Min.", value: durationSeconds.filter((seconds) => seconds !== null && seconds > 1200).length },
+    { name: bucketLabel("durationBucket.under4"), value: durationSeconds.filter((seconds) => seconds !== null && seconds < 240).length },
+    { name: bucketLabel("durationBucket.4to20"), value: durationSeconds.filter((seconds) => seconds !== null && seconds >= 240 && seconds <= 1200).length },
+    { name: bucketLabel("durationBucket.over20"), value: durationSeconds.filter((seconds) => seconds !== null && seconds > 1200).length },
   ];
 
   const recencyData = [
-    { name: "Letzte 7 Tage", value: 0 },
-    { name: "8–30 Tage", value: 0 },
-    { name: "1–12 Monate", value: 0 },
-    { name: "Über 1 Jahr", value: 0 },
+    { name: bucketLabel("recencyBucket.last7Days"), value: 0 },
+    { name: bucketLabel("recencyBucket.8to30Days"), value: 0 },
+    { name: bucketLabel("recencyBucket.1to12Months"), value: 0 },
+    { name: bucketLabel("recencyBucket.over1Year"), value: 0 },
   ];
   for (const video of videos) {
     const age = ageInDays(video.publishedAt, now);

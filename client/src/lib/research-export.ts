@@ -14,6 +14,12 @@ import {
   IDEA_FORMAT_LABELS,
   labelFor,
 } from "@/lib/labels";
+import { getActiveLanguage, translate, type TranslateVars } from "@/lib/i18n";
+
+// Alle Überschriften, Tabellen- und Spaltennamen kommen aus
+// locales/export.<de|en>.ts und folgen der aktiven Oberflächensprache.
+const tx = (key: string, vars?: TranslateVars) => translate(getActiveLanguage(), `export.${key}`, vars);
+const common = (key: string) => translate(getActiveLanguage(), `common.${key}`);
 
 export type ResearchAnalytics = ReturnType<typeof calculateYouTubeAnalytics>;
 
@@ -50,13 +56,13 @@ interface ExportTable {
 }
 
 function readable(value: Cell): string {
-  if (value === null || value === undefined || value === "") return "k. A.";
-  if (typeof value === "boolean") return value ? "Ja" : "Nein";
+  if (value === null || value === undefined || value === "") return common("notAvailable");
+  if (typeof value === "boolean") return value ? common("yes") : common("no");
   return String(value);
 }
 
 function joined(values?: readonly string[]): string {
-  return values && values.length > 0 ? values.join(" | ") : "k. A.";
+  return values && values.length > 0 ? values.join(" | ") : common("notAvailable");
 }
 
 // Verhältniswerte auf zwei Nachkommastellen; fehlende Baseline bleibt leer (k. A.).
@@ -65,7 +71,7 @@ function roundedMetric(value?: number, digits = 2): number | undefined {
 }
 
 function videoInteractionRate(video: Video): string {
-  if (!video.viewCount || video.likeCount === undefined || video.commentCount === undefined) return "k. A.";
+  if (!video.viewCount || video.likeCount === undefined || video.commentCount === undefined) return common("notAvailable");
   return `${(((video.likeCount + video.commentCount) / video.viewCount) * 100).toFixed(2)}%`;
 }
 
@@ -75,81 +81,82 @@ export function safeExportStem(query: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "recherche";
+    .slice(0, 60) || tx("fileStemFallback");
 }
 
 export function buildResearchExportTables(data: ResearchReportData): ExportTable[] {
   const { analytics, insights } = data;
+  const ofTotal = tx("overview.ofTotal", { total: analytics.totalVideos });
   const summary: ExportTable = {
-    name: "Zusammenfassung",
-    columns: ["Feld", "Wert"],
+    name: tx("table.summary"),
+    columns: [tx("col.field"), tx("col.value")],
     rows: [
-      ["Bericht", "YouTube-Recherchebericht"],
-      ["Suchbegriff", data.query],
-      ["Abgerufen", data.retrievedAt],
-      ["Snapshot-ID", data.snapshotId],
-      ["Geschätzte passende Ergebnisse", data.totalResults],
-      ["Ergebniszahl ist ungefähr", data.totalResultsIsApproximate],
-      ["Ergebnisse pro Seite", data.resultsPerPage],
-      ["Regionscode", data.regionCode],
-      ["Token für nächste Seite", data.nextPageToken],
-      ["Analysierte Videos", analytics.totalVideos],
-      ["Eindeutige Kanäle", analytics.uniqueChannels],
-      ["Aufrufe in der Stichprobe", analytics.totalViews],
-      ["Durchschnittliche Aufrufe", analytics.avgViews],
-      ["Median der Aufrufe", analytics.medianViews],
-      ["Median der Aufrufe pro Tag", analytics.medianDailyViews],
-      ["Sichtbare Interaktionsrate", analytics.avgEngagement === "N/A" ? "k. A." : `${analytics.avgEngagement}%`],
-      ["Upload-Datum-Filter", data.filters.uploadDate],
-      ["Dauer-Filter", data.filters.duration],
-      ["Sortierung", data.filters.sortBy],
-      ["Sprachfilter", data.filters.language],
-      ["Kurzfassung", insights.summary],
+      [tx("summary.report"), tx("summary.reportTitle")],
+      [tx("summary.query"), data.query],
+      [tx("summary.retrievedAt"), data.retrievedAt],
+      [tx("summary.snapshotId"), data.snapshotId],
+      [tx("summary.totalResults"), data.totalResults],
+      [tx("summary.approximate"), data.totalResultsIsApproximate],
+      [tx("summary.resultsPerPage"), data.resultsPerPage],
+      [tx("summary.regionCode"), data.regionCode],
+      [tx("summary.nextPageToken"), data.nextPageToken],
+      [tx("summary.analyzedVideos"), analytics.totalVideos],
+      [tx("summary.uniqueChannels"), analytics.uniqueChannels],
+      [tx("summary.sampleViews"), analytics.totalViews],
+      [tx("summary.avgViews"), analytics.avgViews],
+      [tx("summary.medianViews"), analytics.medianViews],
+      [tx("summary.medianDailyViews"), analytics.medianDailyViews],
+      [tx("summary.interactionRate"), analytics.avgEngagement === "N/A" ? common("notAvailable") : `${analytics.avgEngagement}%`],
+      [tx("summary.uploadDateFilter"), data.filters.uploadDate],
+      [tx("summary.durationFilter"), data.filters.duration],
+      [tx("summary.sortBy"), data.filters.sortBy],
+      [tx("summary.languageFilter"), data.filters.language],
+      [tx("summary.brief"), insights.summary],
     ],
   };
 
   const overview: ExportTable = {
-    name: "Überblick",
-    columns: ["Abschnitt", "Bezeichnung", "Wert", "Definition"],
+    name: tx("table.overview"),
+    columns: [tx("col.section"), tx("col.label"), tx("col.value"), tx("col.definition")],
     rows: [
-      ...analytics.durationData.map((item) => ["Dauer-Verteilung", item.name, item.value, "Zurückgegebene Videos"]),
-      ...analytics.recencyData.map((item) => ["Aktualität der Veröffentlichung", item.name, item.value, "Zurückgegebene Videos"]),
-      ...analytics.topTags.map((item) => ["Wiederkehrende Tags", item.label, item.count, "Verschiedene zurückgegebene Videos mit diesem öffentlichen Tag"]),
-      ["Datenabdeckung", "Aufrufe", analytics.coverage.views, `von ${analytics.totalVideos}`],
-      ["Datenabdeckung", "Vollständiges Engagement", analytics.coverage.engagement, `von ${analytics.totalVideos}`],
-      ["Datenabdeckung", "Öffentliche Abonnenten", analytics.coverage.subscribers, `von ${analytics.totalVideos}`],
-      ["Datenabdeckung", "Untertitel verfügbar", analytics.coverage.captions, `von ${analytics.totalVideos}`],
-      ["Datenabdeckung", "Öffentliche Tags", analytics.coverage.tags, `von ${analytics.totalVideos}`],
-      ["Datenabdeckung", "HD-Auflösung", analytics.coverage.hd, `von ${analytics.totalVideos}`],
+      ...analytics.durationData.map((item) => [tx("overview.durationDistribution"), item.name, item.value, tx("overview.returnedVideos")]),
+      ...analytics.recencyData.map((item) => [tx("overview.recency"), item.name, item.value, tx("overview.returnedVideos")]),
+      ...analytics.topTags.map((item) => [tx("overview.recurringTags"), item.label, item.count, tx("overview.tagDefinition")]),
+      [tx("overview.coverage"), tx("overview.coverageViews"), analytics.coverage.views, ofTotal],
+      [tx("overview.coverage"), tx("overview.coverageEngagement"), analytics.coverage.engagement, ofTotal],
+      [tx("overview.coverage"), tx("overview.coverageSubscribers"), analytics.coverage.subscribers, ofTotal],
+      [tx("overview.coverage"), tx("overview.coverageCaptions"), analytics.coverage.captions, ofTotal],
+      [tx("overview.coverage"), tx("overview.coverageTags"), analytics.coverage.tags, ofTotal],
+      [tx("overview.coverage"), tx("overview.coverageHd"), analytics.coverage.hd, ofTotal],
       ...analytics.velocityLeaders.map(({ video, viewsPerDay }, index) => [
-        "Momentum-Spitzenreiter",
+        tx("overview.velocityLeaders"),
         `${index + 1}. ${video.title}`,
         Math.round(viewsPerDay),
-        "Altersbereinigte Aufrufe pro Tag, keine Echtzeit-Geschwindigkeit",
+        tx("overview.velocityDefinition"),
       ]),
       ...analytics.breakoutLeaders.map(({ video, viewsPerSubscriber }, index) => [
-        "Breakout im Verhältnis zu Abonnenten",
+        tx("overview.breakoutLeaders"),
         `${index + 1}. ${video.title}`,
         Number(viewsPerSubscriber.toFixed(2)),
-        "Aufrufe geteilt durch die aktuelle gerundete öffentliche Abonnentenzahl",
+        tx("overview.breakoutDefinition"),
       ]),
     ],
   };
 
   const videos: ExportTable = {
-    name: "Videos",
+    name: tx("table.videos"),
     columns: [
-      "Rang", "Video-ID", "Titel", "Kanal", "Kanal-ID", "Veröffentlicht", "Dauer",
-      "Aufrufe", "Likes", "Kommentare", "Sichtbare Interaktionsrate",
-      "Outlier-Wert", "Tempo-Wert", "Aufrufe/Tag", "Tags", "Kategorie-ID",
-      "Live-Status", "Untertitel", "Auflösung", "Lizenzierter Inhalt", "Einbettbar",
-      "Für Kinder", "Bezahlte Produktplatzierung", "Standardsprache", "Audiosprache",
-      "Themenkategorien", "Live: tatsächlicher Start", "Live: tatsächliches Ende", "Live: geplanter Start",
-      "Live: gleichzeitige Zuschauer", "Kanal-Abonnenten", "Abonnenten verborgen", "Kanal-Videos",
-      "Kanal-Aufrufe", "Kanal erstellt", "Kanal-Land", "Kanal-Custom-URL",
-      "Kanal-Standardsprache", "Kanal-Keywords", "Kanal-Themenkategorien",
-      "Kanal-Thumbnail-URL", "Kanalbeschreibung", "Thumbnail-URL", "YouTube-URL", "Beschreibung",
-    ],
+      "rank", "videoId", "title", "channel", "channelId", "published", "duration",
+      "views", "likes", "comments", "interactionRate",
+      "outlierScore", "velocityScore", "viewsPerDay", "tags", "categoryId",
+      "liveStatus", "captions", "definition", "licensedContent", "embeddable",
+      "madeForKids", "paidPlacement", "defaultLanguage", "audioLanguage",
+      "topicCategories", "liveActualStart", "liveActualEnd", "liveScheduledStart",
+      "liveConcurrentViewers", "channelSubscribers", "subscribersHidden", "channelVideos",
+      "channelViews", "channelCreated", "channelCountry", "channelCustomUrl",
+      "channelDefaultLanguage", "channelKeywords", "channelTopicCategories",
+      "channelThumbnailUrl", "channelDescription", "thumbnailUrl", "youtubeUrl", "description",
+    ].map((column) => tx(`videos.${column}`)),
     rows: data.videos.map((video, index) => [
       index + 1,
       video.id,
@@ -200,47 +207,47 @@ export function buildResearchExportTables(data: ResearchReportData): ExportTable
   };
 
   const aiInsights: ExportTable = {
-    name: "KI-Insights",
-    columns: ["Abschnitt", "Element", "Detail"],
+    name: tx("table.insights"),
+    columns: [tx("col.section"), tx("col.element"), tx("col.detail")],
     rows: [
-      ["Kurzfassung", "Zusammenfassung", insights.summary],
-      ["Suchintention", "Primäre Intention", insights.queryIntent.primaryIntent],
-      ["Suchintention", "Zuschauerbedürfnis", insights.queryIntent.viewerNeed],
-      ["Suchintention", "Discovery-Oberfläche", insights.queryIntent.discoverySurface],
-      ["Suchintention", "Glaubwürdigkeitshinweis", insights.queryIntent.credibilityNote],
-      ...insights.evidenceSignals.observed.map((value, index) => ["Evidenz-Signale", `Beobachtet ${index + 1}`, value]),
-      ...insights.evidenceSignals.inferred.map((value, index) => ["Evidenz-Signale", `Abgeleitet ${index + 1}`, value]),
-      ...insights.evidenceSignals.requiresStudio.map((value, index) => ["Evidenz-Signale", `Erfordert Studio ${index + 1}`, value]),
+      [tx("insights.brief"), tx("insights.summary"), insights.summary],
+      [tx("insights.intent"), tx("insights.primaryIntent"), insights.queryIntent.primaryIntent],
+      [tx("insights.intent"), tx("insights.viewerNeed"), insights.queryIntent.viewerNeed],
+      [tx("insights.intent"), tx("insights.discoverySurface"), insights.queryIntent.discoverySurface],
+      [tx("insights.intent"), tx("insights.credibilityNote"), insights.queryIntent.credibilityNote],
+      ...insights.evidenceSignals.observed.map((value, index) => [tx("insights.evidenceSignals"), tx("insights.observed", { index: index + 1 }), value]),
+      ...insights.evidenceSignals.inferred.map((value, index) => [tx("insights.evidenceSignals"), tx("insights.inferred", { index: index + 1 }), value]),
+      ...insights.evidenceSignals.requiresStudio.map((value, index) => [tx("insights.evidenceSignals"), tx("insights.requiresStudio", { index: index + 1 }), value]),
       ...insights.peopleAlsoAsk.flatMap((item, index) => [
-        ["Zuschauerfragen", `Frage ${index + 1}`, item.question],
-        ["Zuschauerfragen", `Antwort ${index + 1}`, item.answer],
+        [tx("insights.viewerQuestions"), tx("insights.question", { index: index + 1 }), item.question],
+        [tx("insights.viewerQuestions"), tx("insights.answer", { index: index + 1 }), item.answer],
       ]),
-      ["Zielgruppe", "Hypothese zur primären Demografie", insights.targetAudience.primaryDemographic],
-      ["Zielgruppe", "Hypothese zur Altersspanne", insights.targetAudience.ageRange],
-      ["Zielgruppe", "Interessen", joined(insights.targetAudience.interests)],
-      ["Zielgruppe", "Schmerzpunkte", joined(insights.targetAudience.painPoints)],
-      ["Zielgruppe", "Content-Präferenzen", joined(insights.targetAudience.contentPreferences)],
-      ["Nische", "Wettbewerbsniveau", insights.nicheAnalysis.competitionLevel],
-      ["Nische", "Wachstumstrend", insights.nicheAnalysis.growthTrend],
-      ["Nische", "Hypothesen zu Veröffentlichungszeiten", joined(insights.nicheAnalysis.bestPostingTimes)],
-      ["Nische", "Empfohlene Formate", joined(insights.nicheAnalysis.recommendedFormats)],
-      ["Nische", "Monetarisierungshypothese", insights.nicheAnalysis.monetizationPotential],
-      ...insights.contentGaps.map((value, index) => ["Content-Lücken", `Lücke ${index + 1}`, value]),
-      ...insights.trendingSubtopics.map((value, index) => ["Unterthemen", `Unterthema ${index + 1}`, value]),
+      [tx("insights.audience"), tx("insights.primaryDemographic"), insights.targetAudience.primaryDemographic],
+      [tx("insights.audience"), tx("insights.ageRange"), insights.targetAudience.ageRange],
+      [tx("insights.audience"), tx("insights.interests"), joined(insights.targetAudience.interests)],
+      [tx("insights.audience"), tx("insights.painPoints"), joined(insights.targetAudience.painPoints)],
+      [tx("insights.audience"), tx("insights.contentPreferences"), joined(insights.targetAudience.contentPreferences)],
+      [tx("insights.niche"), tx("insights.competitionLevel"), insights.nicheAnalysis.competitionLevel],
+      [tx("insights.niche"), tx("insights.growthTrend"), insights.nicheAnalysis.growthTrend],
+      [tx("insights.niche"), tx("insights.postingTimes"), joined(insights.nicheAnalysis.bestPostingTimes)],
+      [tx("insights.niche"), tx("insights.recommendedFormats"), joined(insights.nicheAnalysis.recommendedFormats)],
+      [tx("insights.niche"), tx("insights.monetization"), insights.nicheAnalysis.monetizationPotential],
+      ...insights.contentGaps.map((value, index) => [tx("insights.contentGaps"), tx("insights.gap", { index: index + 1 }), value]),
+      ...insights.trendingSubtopics.map((value, index) => [tx("insights.subtopics"), tx("insights.subtopic", { index: index + 1 }), value]),
       ...insights.recommendedActions.flatMap((item, index) => [
-        ["Empfohlene Maßnahmen", `Maßnahme ${index + 1}`, item.title],
-        ["Empfohlene Maßnahmen", `Begründung ${index + 1}`, item.rationale],
-        ["Empfohlene Maßnahmen", `Format ${index + 1}`, item.format],
+        [tx("insights.actions"), tx("insights.action", { index: index + 1 }), item.title],
+        [tx("insights.actions"), tx("insights.rationale", { index: index + 1 }), item.rationale],
+        [tx("insights.actions"), tx("insights.format", { index: index + 1 }), item.format],
       ]),
-      ["Methodik", "Stichprobengröße", insights.methodology.sampleSize],
-      ["Methodik", "Grundlage", insights.methodology.basis],
-      ...insights.methodology.limitations.map((value, index) => ["Methodik", `Einschränkung ${index + 1}`, value]),
+      [tx("insights.methodology"), tx("insights.sampleSize"), insights.methodology.sampleSize],
+      [tx("insights.methodology"), tx("insights.basis"), insights.methodology.basis],
+      ...insights.methodology.limitations.map((value, index) => [tx("insights.methodology"), tx("insights.limitation", { index: index + 1 }), value]),
     ],
   };
 
   const evidence: ExportTable = {
-    name: "Evidenz",
-    columns: ["ID", "Klasse", "Aussage", "Konfidenz", "Quellvideo-IDs", "Einschränkungen", "Snapshot-ID"],
+    name: tx("table.evidence"),
+    columns: ["id", "class", "claim", "confidence", "sourceVideoIds", "limitations", "snapshotId"].map((column) => tx(`evidence.${column}`)),
     rows: insights.evidenceClaims.map((claim) => [
       claim.id,
       labelFor(EVIDENCE_CLASS_LABELS, claim.evidenceClass),
@@ -253,12 +260,12 @@ export function buildResearchExportTables(data: ResearchReportData): ExportTable
   };
 
   const ideas: ExportTable = {
-    name: "Ideen",
+    name: tx("table.ideas"),
     columns: [
-      "Idee", "Titel", "Beschreibung", "Keywords", "Format", "Schwierigkeit", "Discovery-Oberfläche",
-      "Ehrliches Versprechen", "Payoff", "Thumbnail-Konzept", "Studio-Metrik", "Experiment-Regel",
-      "Evidenz-Aussage-IDs", "Quellvideo-IDs",
-    ],
+      "index", "title", "description", "keywords", "format", "difficulty", "discoverySurface",
+      "honestPromise", "payoff", "thumbnailConcept", "studioMetric", "experimentRule",
+      "evidenceClaimIds", "sourceVideoIds",
+    ].map((column) => tx(`ideas.${column}`)),
     rows: data.ideas.map((idea, index) => [
       index + 1,
       idea.title,
@@ -278,19 +285,19 @@ export function buildResearchExportTables(data: ResearchReportData): ExportTable
   };
 
   const provenance: ExportTable = {
-    name: "Abdeckung & Quellen",
-    columns: ["Abschnitt", "Feld", "Wert"],
+    name: tx("table.provenance"),
+    columns: [tx("col.section"), tx("col.field"), tx("col.value")],
     rows: [
-      ["Herkunft", "Anbieter", data.provenance.provider],
-      ["Herkunft", "Suchbegriff", data.provenance.query],
-      ["Herkunft", "Geordnete Video-IDs", joined(data.provenance.orderedVideoIds)],
+      [tx("provenance.origin"), tx("provenance.provider"), data.provenance.provider],
+      [tx("provenance.origin"), tx("provenance.query"), data.provenance.query],
+      [tx("provenance.origin"), tx("provenance.orderedVideoIds"), joined(data.provenance.orderedVideoIds)],
       ...Object.entries(data.enrichment).flatMap(([stage, detail]) => [
-        ["Anreicherung", `${stage}: Status`, labelFor(ENRICHMENT_STATUS_LABELS, detail.status)],
-        ["Anreicherung", `${stage}: angefordert`, detail.requested],
-        ["Anreicherung", `${stage}: zurückgegeben`, detail.returned],
+        [tx("provenance.enrichment"), tx("provenance.status", { stage }), labelFor(ENRICHMENT_STATUS_LABELS, detail.status)],
+        [tx("provenance.enrichment"), tx("provenance.requested", { stage }), detail.requested],
+        [tx("provenance.enrichment"), tx("provenance.returned", { stage }), detail.returned],
       ]),
       ...data.warnings.map((warning, index) => [
-        "Warnungen",
+        tx("provenance.warnings"),
         `${index + 1}. ${warning.code}`,
         `${warning.stage}: ${warning.message}`,
       ]),
@@ -306,7 +313,7 @@ function csvCell(value: Cell): string {
 }
 
 export function buildResearchCsv(data: ResearchReportData): string {
-  const rows: Cell[][] = [["Tabelle", "Zeile", "Feld", "Wert"]];
+  const rows: Cell[][] = [[tx("csv.table"), tx("csv.row"), tx("col.field"), tx("col.value")]];
   for (const table of buildResearchExportTables(data)) {
     table.rows.forEach((row, rowIndex) => {
       row.forEach((value, columnIndex) => {
@@ -361,7 +368,7 @@ export function downloadResearchCsv(data: ResearchReportData): void {
   download(
     buildResearchCsv(data),
     "text/csv;charset=utf-8",
-    `youtube-recherche-${safeExportStem(data.query)}.csv`,
+    `${tx("filePrefix")}-${safeExportStem(data.query)}.csv`,
   );
 }
 
@@ -369,6 +376,6 @@ export function downloadResearchXls(data: ResearchReportData): void {
   download(
     buildResearchXls(data),
     "application/vnd.ms-excel;charset=utf-8",
-    `youtube-recherche-${safeExportStem(data.query)}.xls`,
+    `${tx("filePrefix")}-${safeExportStem(data.query)}.xls`,
   );
 }
